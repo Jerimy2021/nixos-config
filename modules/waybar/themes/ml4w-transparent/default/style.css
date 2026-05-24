@@ -1,0 +1,19 @@
+/* -----------------------------------------------------
+ * Import Matugen Colors
+ * ----------------------------------------------------- */
+/*@import '../../../../../.config/waybar/colors.css';*/
+
+@import '../style.css';
+
+@import "/home/jerimy/.cache/wal/colors-waybar.css";
+
+@define-color primary @color4;      /* Color principal */
+@define-color secondary @color2;    /* Color secundario */
+@define-color tertiary @color3;     /* Color terciario */
+@define-color urgent @color1;       /* Rojo/Alerta */
+
+@define-color surface @background;  /* Fondo oscuro */
+@define-color on_surface @foreground; /* Texto claro */
+
+@define-color background @background;
+@define-color foreground @foreground;

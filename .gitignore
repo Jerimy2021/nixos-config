@@ -1,0 +1,16 @@
+# Secretos y entornos
+.env
+*.pem
+*.key
+secrets/
+
+# Temporales de editores
+*.swp
+*~
+.swnetnix
+
+# Caché y logs de Nix/Hyprland
+.direnv/
+result
+result-*
+modules/hyprland/effects/wallpaper/*cache*
