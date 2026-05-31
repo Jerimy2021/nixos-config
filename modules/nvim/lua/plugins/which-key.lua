@@ -80,6 +80,7 @@ wk.add({
   { "<leader>ap", "<cmd>Copilot panel<cr>", desc = "Abrir Panel de Sugerencias" },
   { "<leader>ac", "<cmd>CopilotChatToggle<cr>", desc = "Abrir/Cerrar Chat" },
   { "<leader>ae", "<cmd>CopilotChatExplain<cr>", desc = "Explicar código seleccionado" },
+  { "<leader>ag", "<cmd>CopilotChat Commit<cr>", desc = "Generar Mensaje de Commit" },
 
   { "<leader>c", group = "Competitivo / Leetcode 🏆" },
   { "<leader>cl", "<cmd>Leet<cr>", desc = "Abrir entorno LeetCode" },

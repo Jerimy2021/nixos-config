@@ -130,6 +130,11 @@ return {
   { "numToStr/Comment.nvim" },
   -- Te permite crear sub-menús de atajos complejos (ideal para flujos específicos)
   { "anuvyklack/hydra.nvim" },
+  -- En tu archivo de lista de plugins, bajo la sección 7:
+  {	"lewis6991/gitsigns.nvim", 
+  	 config = function()
+	require('gitsigns').setup() end 
+  },
 
 
   -- =============================================================================
