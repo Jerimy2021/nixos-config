@@ -46,3 +46,4 @@ require("plugins.leetcode")			-- Configuracion de leetcode
 require("plugins.copilot") 			-- Configuracion de copilot
 require("plugins.copilotchat")		-- Configuracion de copilot-chat
 require("plugins.which-key")		-- Configuracion de which-key
+require("plugins.gitsigns")			-- Configuracion de gitsigns

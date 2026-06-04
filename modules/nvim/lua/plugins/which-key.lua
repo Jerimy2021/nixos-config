@@ -80,7 +80,7 @@ wk.add({
   { "<leader>ap", "<cmd>Copilot panel<cr>", desc = "Abrir Panel de Sugerencias" },
   { "<leader>ac", "<cmd>CopilotChatToggle<cr>", desc = "Abrir/Cerrar Chat" },
   { "<leader>ae", "<cmd>CopilotChatExplain<cr>", desc = "Explicar código seleccionado" },
-  { "<leader>ag", "<cmd>CopilotChat Commit<cr>", desc = "Generar Mensaje de Commit" },
+  { "<leader>ag", "<cmd>CopilotChatCommit<cr>", desc = "Generar Mensaje de Commit" },
 
   { "<leader>c", group = "Competitivo / Leetcode 🏆" },
   { "<leader>cl", "<cmd>Leet<cr>", desc = "Abrir entorno LeetCode" },
@@ -120,5 +120,15 @@ wk.add({
   { "<leader>s", group = "Sistema / Plugins 🛠️" },
   { "<leader>sm", "<cmd>Mason<cr>", desc = "Mason (LSP)" },
   { "<leader>sl", "<cmd>Lazy<cr>", desc = "Lazy (Plugins)" },
+
+  -- EL NUEVO BLOQUE PARA GITSIGNS
+  { "<leader>g", group = "Git / Gitsigns 🌿" },
+  { "<leader>gn", "<cmd>Gitsigns next_hunk<cr>", desc = "Siguiente cambio (Hunk)" },
+  { "<leader>gN", "<cmd>Gitsigns prev_hunk<cr>", desc = "Anterior cambio (Hunk)" },
+  { "<leader>gp", "<cmd>Gitsigns preview_hunk<cr>", desc = "Ver ventana del cambio" },
+  { "<leader>gs", "<cmd>Gitsigns stage_hunk<cr>", desc = "Stagear este cambio" },
+  { "<leader>gr", "<cmd>Gitsigns reset_hunk<cr>", desc = "Deshacer este cambio" },
+  { "<leader>gb", "<cmd>Gitsigns blame_line<cr>", desc = "Ver info del Commit (Blame)" },
+  { "<leader>gd", "<cmd>Gitsigns diffthis<cr>", desc = "Comparar archivo (Diff)" },
 
 })
