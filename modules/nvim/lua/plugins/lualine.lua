@@ -1,3 +1,8 @@
 require('lualine').setup({
-options = { theme = 'horizon' },
+  options = {
+    theme = 'cyberdream',
+    component_separators = { left = '│', right = '│' },
+    section_separators = { left = '', right = '' },
+    globalstatus = true,
+  },
 })

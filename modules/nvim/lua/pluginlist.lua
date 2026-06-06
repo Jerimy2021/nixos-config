@@ -141,7 +141,9 @@ return {
   -- =============================================================================
   { "ellisonleao/gruvbox.nvim", priority = 1000 }, -- Tema Retro Gruvbox
   { "folke/tokyonight.nvim", lazy = false, priority = 1000 }, -- Tema Moderno TokyoNight
-  { "nvim-lualine/lualine.nvim", dependencies = { "nvim-tree/nvim-web-devicons" } }, -- Barra informativa inferior
+  { "scottmckendry/cyberdream.nvim", lazy = false, priority = 1000 }, -- Tema CyberDream 
+  -- Barra informativa inferior
+  { "nvim-lualine/lualine.nvim", dependencies = { "nvim-tree/nvim-web-devicons" } },
 
 
   -- =============================================================================
