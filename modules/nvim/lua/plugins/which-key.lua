@@ -116,6 +116,8 @@ wk.add({
   { "<leader>ld", "<cmd>Telescope diagnostics<cr>", desc = "Ver Errores" },
   { "<leader>li", "<cmd>LspInfo<cr>", desc = "Estado de Servidores" },
   { "<leader>lg", "<cmd>Telescope lsp_definitions<cr>", desc = "Ir a Definición" },
+  { "<leader>lR", "<cmd>LspRestart<cr>", desc = "Reiniciar LSP (Crash/Lag) 🔄" },
+  { "<leader>ls", function() require('lsp_signature').toggle_float_win() end, desc = "Ver/Ocultar Info de Parámetros 🐼" },
 
   { "<leader>s", group = "Sistema / Plugins 🛠️" },
   { "<leader>sm", "<cmd>Mason<cr>", desc = "Mason (LSP)" },

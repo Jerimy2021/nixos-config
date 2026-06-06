@@ -6,6 +6,8 @@ return {
   -- ¿Qué va aquí?: Plugins de colores para paréntesis, cerrar etiquetas HTML, etc.
   -- =============================================================================
   { "nvim-treesitter/nvim-treesitter", build = ":TSUpdate" },
+  -- Resalta los paréntesis, corchetes y llaves con colores diferentes según su nivel
+  { "HiPhish/rainbow-delimiters.nvim" },
 
 
   -- =============================================================================
@@ -28,6 +30,8 @@ return {
   { "mfussenegger/nvim-jdtls" },
   -- Soporte avanzado y específico para C# y .NET (LSP de Roslyn)
   { "seblyng/roslyn.nvim", lazy = true, ft = "cs" },
+  -- Ayuda visual para mostrar los parámetros de las funciones mientras escribes (LSP Signature) 
+  { "ray-x/lsp_signature.nvim", event = "VeryLazy" },
 
 
   -- =============================================================================

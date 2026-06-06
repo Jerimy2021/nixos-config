@@ -7,3 +7,5 @@ vim.o.updatetime = 300
 vim.o.termguicolors = true
 -- Mostrar el numero de la linea que estas codeando
 vim.o.number = true
+-- Desactivar el salto de línea automático
+vim.opt.wrap = false 
