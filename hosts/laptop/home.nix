@@ -118,7 +118,7 @@
       themeFile = "Modus Vivendi";
       shell = "zsh";
       enable_audio_bell = false; 
-      background_opacity = "0.60";
+      background_opacity = "0.40";
       dynamic_background_opacity = "yes";
 	  };
   };
