@@ -117,8 +117,10 @@
       copy_to_clipboard = "yes";
       themeFile = "Modus Vivendi";
       shell = "zsh";
-      enable_audio_bell = false;
-    };
+      enable_audio_bell = false; 
+      background_opacity = "0.60";
+      dynamic_background_opacity = "yes";
+	  };
   };
 
   # Zsh + Powerlevel10k

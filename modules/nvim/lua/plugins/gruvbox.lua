@@ -10,4 +10,4 @@ require("gruvbox").setup({
 })
 
 -- Le decimos a Neovim que aplique el tema inmediatamente
-vim.cmd("colorscheme gruvbox")
+--vim.cmd("colorscheme gruvbox")

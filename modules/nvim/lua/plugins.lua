@@ -28,8 +28,8 @@ require("plugins.lspconfig")        -- Configuración de LSP
 require("plugins.telescope")     	-- Configuración de Telescope
 -- require("plugins.comment")       -- Configuración de Comment.nvim
 -- require("plugins.gruvbox")       -- Configuración de Gruvbox
--- require("plugins.tokyonight")    -- Configuración de Tokyo Night
-require("plugins.cyberdream")   	-- Configuración de Cyberdream
+require("plugins.tokyonight")    -- Configuración de Tokyo Night
+-- require("plugins.cyberdream")   	-- Configuración de Cyberdream
 require("plugins.lualine")          -- Configuración de Lualine
 require("plugins.nvim-tree")        -- Configuración de Nvim Tree
 require("plugins.luasnip")          -- Configuracion de luasnip
