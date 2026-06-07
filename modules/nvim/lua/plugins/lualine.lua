@@ -2,7 +2,7 @@
 require('lualine').setup({
   options = {
     -- Cámbialo a: 'gruvbox', 'tokyonight', o 'auto' (para cyberdream)
-    theme = 'cyberdream', 
+    theme = 'auto', 
     component_separators = { left = '│', right = '│' },
     section_separators = { left = '', right = '' },
     globalstatus = true,
