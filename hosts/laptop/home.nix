@@ -54,6 +54,7 @@
     wget
     direnv
     nix-direnv
+	vivid
 
     # 6. APLICACIONES
     kitty
@@ -144,6 +145,9 @@
       fastfetch 
       # Iniciar zoxide (cd inteligente)
       eval "$(zoxide init zsh)"
+	  # Configurar colores para ls y eza usando el tema de Vivid
+	  export LS_COLORS="$(vivid generate gruvbox-dark)"
+      export EZA_COLORS="$(vivid generate gruvbox-dark)"
     '';
     
     plugins = [
