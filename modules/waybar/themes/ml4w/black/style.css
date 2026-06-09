@@ -3,15 +3,18 @@
  * ----------------------------------------------------- */
 @import '../../../../../.config/waybar/colors.css';
 
-@define-color backgroundlight #000000;
-@define-color backgrounddark #000000;
-@define-color workspacesbackground1 #000000;
+/* Efecto Glassmorphism Premium (Oscuro traslúcido para que resalte tu fondo claro) */
+@define-color backgroundlight rgba(20, 20, 25, 0.65);
+@define-color backgrounddark rgba(15, 15, 18, 0.8);
+@define-color workspacesbackground1 rgba(255, 255, 255, 0.08);
 @define-color workspacesbackground2 @on_secondary;
-@define-color bordercolor #000000;
-@define-color textcolor1 @FFFFFF;
-@define-color textcolor2 @FFFFFF;
-@define-color textcolor3 #000000;
-@define-color iconcolor #000000;
+@define-color bordercolor rgba(255, 255, 255, 0.12);
+
+/* CORREGIDO: Cambiado @FFFFFF por #ffffff para evitar errores de renderizado */
+@define-color textcolor1 #ffffff;
+@define-color textcolor2 #e2e8f0;
+@define-color textcolor3 #1a1a1a;
+@define-color iconcolor #ffffff;
 
 @import '../style.css';
 
