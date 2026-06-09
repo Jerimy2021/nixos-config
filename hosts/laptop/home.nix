@@ -8,7 +8,7 @@
   home.packages = with pkgs; [
     # 1. ENTRONO GRÁFICO (Core ML4W)
     waybar              # Barra de estado
-    rofi    	        # Lanzador de aplicaciones
+    rofi                # Lanzador de aplicaciones
     swww                # Motor de fondo de pantalla
     waypaper            # Selector gráfico de fondos
     wlogout             # Menú de salida (Apagar/Reiniciar)
@@ -18,7 +18,7 @@
     dunst               # Sistema de notificaciones
     networkmanagerapplet # Icono de Wifi en la barra
     blueman             # Gestor de Bluetooth
-	nautilus            # Explorador de archivos
+    nautilus            # Explorador de archivos
 
     # 2. DEPENDENCIAS DE SCRIPTS (Vitales para que no se vea negro)
     jq                  # Procesador de datos (Sin esto, los scripts fallan)
@@ -30,7 +30,8 @@
     slurp               # Herramienta de selección de área
     swaynotificationcenter # Centro de notificaciones alternativo
     wlsunset            # Filtro de luz azul (Noche)
-	grimblast			
+    hyprshade           # Motor de shaders para hyprland
+    grimblast           
 
     # 3. MULTIMEDIA Y CONTROL
     pavucontrol         # Control de volumen avanzado (GUI)
@@ -54,7 +55,7 @@
     wget
     direnv
     nix-direnv
-	vivid
+    vivid
 
     # 6. APLICACIONES
     kitty
@@ -68,20 +69,23 @@
     nerd-fonts.jetbrains-mono # Fuente principal para código
     font-awesome              # Iconos extra para Waybar
 
-	psmisc
-	matugen
-	glib
+    psmisc
+    matugen
+    glib
 
-	bc 
-	findutils
-	pywal
-	# 9. Mensajería
-	nchat
-	#10. Games
-	prismlauncher
-	#11. Redes y seguridad (hacker mode)
-	aircrack-ng
-	termshark
+    bc 
+    findutils
+    pywal
+    # 9. Mensajería
+    nchat
+    #10. Games
+    prismlauncher
+    #11. Redes y seguridad (hacker mode)
+    aircrack-ng
+    termshark
+    
+    # 12. Videollamadas
+    zoom-us
   ];
 
   # --- ENLACES DE CONFIGURACIÓN (LOS PLANOS) ---
@@ -121,7 +125,7 @@
       enable_audio_bell = false; 
       background_opacity = "0.40";
       dynamic_background_opacity = "yes";
-	  };
+      };
   };
 
   # Zsh + Powerlevel10k
@@ -137,7 +141,7 @@
       ll = "eza -l --icons";     # Lista detallada
       cat = "bat";               # Usar bat en lugar de cat
       cd = "z";                  # Usar zoxide en lugar de cd
-	  nix-rebuild-fast = "sudo nixos-rebuild switch --flake ~/system/nixos/#laptop"; # Alias para reconstruir el sistema con un comando corto
+      nix-rebuild-fast = "sudo nixos-rebuild switch --flake ~/system/nixos/#laptop"; # Alias para reconstruir el sistema con un comando corto
     };
 
      initContent = ''
@@ -145,9 +149,9 @@
       fastfetch 
       # Iniciar zoxide (cd inteligente)
       eval "$(zoxide init zsh)"
-	  # Configurar colores para ls y eza usando el tema de Vivid
-	  export LS_COLORS="$(vivid generate gruvbox-dark)"
-      export EZA_COLORS="$(vivid generate gruvbox-dark)"
+      # Configurar colores para ls y eza usando el tema de Vivid
+      export LS_COLORS="$(vivid generate tokyonight-night)"
+      export EZA_COLORS="$(vivid generate tokyonight-night)"
     '';
     
     plugins = [
@@ -169,11 +173,11 @@
   
   # --- CONFIGURACIÓN DEL CURSOR (MOUSE) ---
   home.pointerCursor = {
-  	gtk.enable = true;
-  	# x11.enable = true; # Si usas aplicaciones antiguas
-  	name = "Bibata-Modern-Ice";
-  	package = pkgs.bibata-cursors;
-  	size = 24;
+      gtk.enable = true;
+      # x11.enable = true; # Si usas aplicaciones antiguas
+      name = "Bibata-Modern-Ice";
+      package = pkgs.bibata-cursors;
+      size = 24;
   };
   programs.home-manager.enable = true;
 }

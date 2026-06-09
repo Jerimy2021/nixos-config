@@ -56,9 +56,9 @@
   },
   // ML4W Welcome App
   "custom/ml4w-welcome": {
-    "on-click": "flatpak run com.ml4w.sidebar",
-    "format": " ",
-    "tooltip-format": "Open ML4W Sidebar App"
+    "on-click": "sleep 0.1 && flatpak run com.ml4w.settings || ~/.config/hypr/scripts/launcher.sh",
+    "format": " 󱃖 ",
+    "tooltip-format": "Centro de Control"
   },
   // Empty
   "custom/empty": {
@@ -187,9 +187,9 @@
   // Hyprshade
   "custom/hyprshade": {
     "format": "",
-    "tooltip-format": "Toggle Screen Shader",
-    "on-click": "sleep 0.5; ~/.config/hypr/scripts/hyprshade.sh",
-    "on-click-right": "sleep 0.5; ~/.config/hypr/scripts/hyprshade.sh rofi"
+    "tooltip-format": "Filtro de Luz Azul",
+    "on-click": "hyprshade toggle blue-light-filter",
+    "on-click-right": "hyprshade off"
   },
   // Hypridle inhibitor
   "custom/hypridle": {

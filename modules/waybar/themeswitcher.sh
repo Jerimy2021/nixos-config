@@ -1,89 +1,37 @@
 #!/usr/bin/env bash
-#  _____ _                                       _ _       _
-# |_   _| |__   ___ _ __ ___   ___  _____      _(_) |_ ___| |__   ___ _ __
-#   | | | '_ \ / _ \ '_ ` _ \ / _ \/ __\ \ /\ / / | __/ __| '_ \ / _ \ '__|
-#   | | | | | |  __/ | | | | |  __/\__ \\ V  V /| | || (__| | | |  __/ |
-#   |_| |_| |_|\___|_| |_| |_|\___||___/ \_/\_/ |_|\__\___|_| |_|\___|_|
+#  _____ _                               _ _       _   
+# |_   _| |__   ___ _ __ ___   ___  _____      _(_) |_ ___| |__   ___  ___ _ __
+#   | | | '_ \ / _ \ '_ ` _ \ / _ \/ __\ \ /\ / / | __/ __| '_ \ / _ \/ __| '__|
+#   | | | | | |  __/ | | | | |  __/\__ \\ V  V /| | || (__| | | |  __/ (__| |   
+#   |_| |_| |_|\___|_| |_| |_|\___||___/ \_/\_/ |_|\__\___|_| |_|\___|\___|_|   
 #
-# by Stephan Raabe (2024)
-# -----------------------------------------------------
+# Optimizado y libre de errores para Symlinks en NixOS
 
-# -----------------------------------------------------
-# Load Launcher
-# -----------------------------------------------------
-launcher=$(cat $HOME/.config/ml4w/settings/launcher)
-
-# -----------------------------------------------------
-# Default theme folder
-# -----------------------------------------------------
+launcher=$(cat $HOME/.config/ml4w/settings/launcher 2>/dev/null || echo "rofi")
 themes_path="$HOME/.config/waybar/themes"
-
-# -----------------------------------------------------
-# Initialize arrays
-# -----------------------------------------------------
-listThemes=""
 listNames=""
-listNames2=""
 
-# -----------------------------------------------------
-# Read theme folder
-# -----------------------------------------------------
-sleep 0.2
-options=$(find $themes_path -maxdepth 2 -type d)
-for value in $options; do
-    if [ ! $value == "$HOME/.config/waybar/themes/assets" ]; then
-        if [ ! $value == "$themes_path" ]; then
-            if [ $(find $value -maxdepth 1 -type d | wc -l) = 1 ]; then
-                result=$(echo $value | sed "s#$HOME/.config/waybar/themes/#/#g")
-                IFS='/' read -ra arrThemes <<<"$result"
-                listThemes[${#listThemes[@]}]="/${arrThemes[1]};$result"
-                if [ -f $themes_path$result/config.sh ]; then
-                    source $themes_path$result/config.sh
-                    listNames+="$theme_name\n"
-                    listNames2+="$theme_name~"
-                else
-                    listNames+="/${arrThemes[1]};$result\n"
-                    listNames2+="/${arrThemes[1]};$result~"
-                fi
-            fi
-        fi
-    fi
-done
+while IFS= read -r style_file; do
+    rel_path=$(echo "$style_file" | sed "s#$themes_path/##" | sed "s#/style.css##")
+    if [[ "$rel_path" == *"assets"* ]]; then continue; fi
+    listNames+="$rel_path\n"
+done < <(find -L "$themes_path" -type f -name "style.css" 2>/dev/null)
 
-# -----------------------------------------------------
-# Use Walker to select the theme
-# -----------------------------------------------------
-_get_choice_walker() {
-    echo $(echo -e "$listNames" | $HOME/.config/walker/launch.sh -d -i -N -H --height 400 -p "Search Theme")
-}
-
-# -----------------------------------------------------
-# Use Rofi to select the theme
-# -----------------------------------------------------
-_get_choice_rofi() {
-    echo $(echo -e "$listNames" | rofi -dmenu -replace -i -config ~/.config/rofi/config-themes.rasi -no-show-icons -width 30 -p "Themes" -format i)
-}
-
-# -----------------------------------------------------
-# Show dialog
-# -----------------------------------------------------
-listNames=${listNames::-2}
+listNames=$(echo -e "$listNames" | sed '/^$/d' | sort)
 
 if [ "$launcher" == "walker" ]; then
-    choice=$(_get_choice_walker)
+    choice=$(echo -e "$listNames" | $HOME/.config/walker/launch.sh -d -i -N -H --height 400 -p "Search Theme")
 else
-    choice=$(_get_choice_rofi)
+    choice=$(echo -e "$listNames" | rofi -dmenu -replace -i -config ~/.config/rofi/config-themes.rasi -no-show-icons -width 30 -p "Themes")
 fi
 
-IFS="~"
-input=$listNames2
-read -ra array <<<"$input"
+choice=$(echo "$choice" | xargs)
 
-# -----------------------------------------------------
-# Set new theme by writing the theme information to ~/.config/ml4w/settings/waybar-theme.sh
-# -----------------------------------------------------
-if [ "$choice" ]; then
-    echo "Loading waybar theme..."
-    echo "${listThemes[$choice + 1]}" >~/.config/ml4w/settings/waybar-theme.sh
-    ~/.config/waybar/launch.sh
+if [ -n "$choice" ]; then
+    echo "Loading waybar theme: $choice"
+    
+    # 🔥 EL CAMBIO CLAVE: Guardamos en .cache que siempre es escribible
+    echo "$choice" > ~/.cache/waybar-theme-active
+    
+    bash ~/.config/waybar/launch.sh
 fi

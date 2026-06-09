@@ -1,58 +1,50 @@
 #!/usr/bin/env bash
-#  _                       _       _     
-# | |    __ _ _   _ _ __   ___| |__  _ __  
-# | |   / _` | | | | '_ \ / __| '_ \| '_ \ 
-# | |__| (_| | |_| | | | | (__| | | | | | |
-# |_____\__,_|\__,_|_| |_|\___|_| |_|_| |_|
-# Patched for NixOS Immutability
-
-# Evitar ejecuciones duplicadas en paralelo
+#  _                               _       _     
+# | |    __ _ _   _ _ __   ___| |__  _ __  | |__  
+# | |   / _` | | | | '_ \ / __| '_ \| '_ \ | '_ \ 
+# | |__| (_| | |_| | | | | (__| | | | | | || | | |
+# |_____\__,_|\__,_|_| |_|\___|_| |_|_| |_||_| |_|
+# Lanzador Determinista y Resiliente de Waybar para NixOS
+#
 exec 200>/tmp/waybar-launch.lock
 flock -n 200 || exit 0
 
-# Matar instancias previas de Waybar
 killall waybar || true
 pkill waybar || true
 sleep 0.3
 
-# Tema por defecto si no se encuentra ninguno
-default_theme="/default;/default"
-
-# Obtener el tema seleccionado desde el archivo mutable de configuración
-if [ -f ~/.config/ml4w/settings/waybar-theme.sh ]; then
-    themestyle=$(cat ~/.config/ml4w/settings/waybar-theme.sh)
+# 🔥 EL CAMBIO CLAVE: Leemos desde .cache
+if [ -f ~/.cache/waybar-theme-active ]; then
+    theme_string=$(cat ~/.cache/waybar-theme-active | xargs)
 else
-    mkdir -p ~/.config/ml4w/settings
-    echo "$default_theme" > ~/.config/ml4w/settings/waybar-theme.sh
-    themestyle=$default_theme
+    theme_string="ml4w-transparent/default"
 fi
 
-IFS=';' read -ra arrThemes <<<"$themestyle"
-echo ":: Cargando Tema Waybar: ${arrThemes[0]}"
-
-# Validar que el archivo de estilo exista en el entorno Nix, si no, usar default
-if [ ! -f ~/.config/waybar/themes${arrThemes[1]}/style.css ]; then
-    themestyle=$default_theme
-    IFS=';' read -ra arrThemes <<<"$themestyle"
+if [ -z "$theme_string" ]; then
+    theme_string="ml4w-transparent/default"
 fi
 
-config_file="config"
-style_file="style.css"
+parent_theme=$(echo "$theme_string" | cut -d'/' -f1)
 
-# Permitir sobreescritura si existen archivos personalizados (-custom)
-if [ -f ~/.config/waybar/themes${arrThemes[0]}/config-custom ]; then
-    config_file="config-custom"
-fi
-if [ -f ~/.config/waybar/themes${arrThemes[1]}/style-custom.css ]; then
-    style_file="style-custom.css"
+if [ -f "$HOME/.config/waybar/themes/$theme_string/config" ]; then
+    config_path="$HOME/.config/waybar/themes/$theme_string/config"
+elif [ -f "$HOME/.config/waybar/themes/$parent_theme/config" ]; then
+    config_path="$HOME/.config/waybar/themes/$parent_theme/config"
+else
+    config_path="$HOME/.config/waybar/themes/default/config"
 fi
 
-# Lanzar Waybar apuntando directamente a las rutas del Nix Store en ~/.config/waybar
+if [ -f "$HOME/.config/waybar/themes/$theme_string/style.css" ]; then
+    style_path="$HOME/.config/waybar/themes/$theme_string/style.css"
+else
+    style_path="$HOME/.config/waybar/themes/default/style.css"
+fi
+
+echo ":: Cargando Tema Waybar: $theme_string"
+
 if [ ! -f $HOME/.config/ml4w/settings/waybar-disabled ]; then
     HYPRLAND_SIGNATURE=$(hyprctl instances -j | jq -r '.[0].instance')
-    HYPRLAND_INSTANCE_SIGNATURE="$HYPRLAND_SIGNATURE" waybar -c ~/.config/waybar/themes${arrThemes[0]}/$config_file -s ~/.config/waybar/themes${arrThemes[1]}/$style_file &
-else
-    echo ":: Waybar deshabilitado en los settings"
+    HYPRLAND_INSTANCE_SIGNATURE="$HYPRLAND_SIGNATURE" waybar -c "$config_path" -s "$style_path" &
 fi
 
 flock -u 200
