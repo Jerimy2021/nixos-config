@@ -13,11 +13,11 @@
     "on-click": "activate",
     "active-only": false,
     "all-outputs": true,
-    "format": "{}",
+    "format": "{icon}",
     "format-icons": {
-      "urgent": "",
-      "active": "",
-      "default": ""
+      "active": "",
+      "default": "",
+      "urgent": ""
     },
     "persistent-workspaces": {
       "*": 5
@@ -218,7 +218,7 @@
   },
   // Clock
   "clock": {
-	"format": "  {:%H:%M | %a}",
+    "format": "  {:%H∶%M | %a}",
     "tooltip-format": "<big>{:%Y %B}</big>\n<tt><small>{calendar}</small></tt>",
     "timezone": "",
     "tooltip": true
@@ -304,14 +304,14 @@
   },
   // Network
   "network": {
-    "format": "󰈀  {ifname}",
-    "format-wifi": "󰖩  {signalStrength}%",
-    "format-ethernet": "󰈀  {ifname}",
-    "format-disconnected": "󰖪  Desconectado",
-    "tooltip-format": " {ifname} via {gwaddr}",
-    "tooltip-format-wifi": "󰖩  {essid} ({signalStrength}%)\nIP: {ipaddr}",
+    "format": "󰤨  {signalStrength}%",
+    "format-wifi": "󰤨  {signalStrength}%",
+    "format-ethernet": "󰈀  LAN",
+    "format-disconnected": "󰤭  Offline",
+    "tooltip-format": "Red: {ifname} via {gwaddr}",
+    "tooltip-format-wifi": "󰤨  {essid} ({signalStrength}%)\nIP: {ipaddr}",
     "tooltip-format-ethernet": "󰈀  {ifname}\nIP: {ipaddr}",
-    "tooltip-format-disconnected": "Sistema sin internet",
+    "tooltip-format-disconnected": "Desconectado",
     "max-length": 50,
     "on-click": "~/.config/ml4w/settings/networkmanager.sh",
     "on-click-right": "~/.config/ml4w/scripts/nm-applet.sh toggle"

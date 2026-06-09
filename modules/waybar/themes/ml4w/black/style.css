@@ -1,24 +1,30 @@
 /* -----------------------------------------------------
- * Import Pywal colors
+ * Import Pywal colors (Lo mantenemos por compatibilidad del script)
  * ----------------------------------------------------- */
 @import '../../../../../.config/waybar/colors.css';
 
-/* Efecto Glassmorphism Premium (Oscuro traslúcido para que resalte tu fondo claro) */
-@define-color backgroundlight rgba(20, 20, 25, 0.65);
-@define-color backgrounddark rgba(15, 15, 18, 0.8);
-@define-color workspacesbackground1 rgba(255, 255, 255, 0.08);
-@define-color workspacesbackground2 @on_secondary;
-@define-color bordercolor rgba(255, 255, 255, 0.12);
+/* -----------------------------------------------------
+ * OVERRIDE: Estilo Developer Senior (Light Monocromático)
+ * ----------------------------------------------------- */
+/* Fondo claro esmerilado para la barra */
+@define-color backgroundlight rgba(245, 245, 250, 0.75); 
+@define-color backgrounddark rgba(230, 230, 235, 0.85);
 
-/* CORREGIDO: Cambiado @FFFFFF por #ffffff para evitar errores de renderizado */
-@define-color textcolor1 #ffffff;
-@define-color textcolor2 #e2e8f0;
-@define-color textcolor3 #1a1a1a;
-@define-color iconcolor #ffffff;
+/* WORKSPACES: Anulamos los colores de Pywal. Estilo limpio. */
+@define-color workspacesbackground1 rgba(0, 0, 0, 0.05); /* Inactivo: Gris muy transparente */
+@define-color workspacesbackground2 #1a1a1a; /* Activo: Negro sólido y elegante */
+@define-color bordercolor rgba(0, 0, 0, 0.15); /* Borde sutil oscuro */
+
+/* TEXTOS E ÍCONOS: Negros y grises oscuros para máximo contraste */
+@define-color textcolor1 #1a1a1a; /* Texto principal oscuro */
+@define-color textcolor2 #4d4d4d; /* Texto secundario gris oscuro */
+@define-color textcolor3 #ffffff; /* Texto inverso (ej. número blanco en workspace activo negro) */
+@define-color iconcolor #1a1a1a;  /* Íconos oscuros */
 
 @import '../style.css';
 
 #custom-ml4w-welcome {
+    /* Volvemos a los íconos negros originales de ML4W */
     background-image: url("../../assets/ml4w-icon-black.svg");
 }
 
