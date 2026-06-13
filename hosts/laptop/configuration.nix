@@ -61,6 +61,13 @@
 
   # Habilitar Flakes
   nix.settings.experimental-features = [ "nix-command" "flakes" ];
+  # Optimización de almacenamiento y limpieza automática
+  nix.settings.auto-optimise-store = true;
+  nix.gc = {
+    automatic = true;
+    dates = "weekly";
+    options = "--delete-older-than 7d";
+  };
 
   system.stateVersion = "24.11"; 
 }

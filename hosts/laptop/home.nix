@@ -145,14 +145,15 @@
     };
 
      initContent = ''
-      source ~/.p10k.zsh
-      fastfetch 
-      # Iniciar zoxide (cd inteligente)
-      eval "$(zoxide init zsh)"
-      # Configurar colores para ls y eza usando el tema de Vivid
-      export LS_COLORS="$(vivid generate tokyonight-night)"
-      export EZA_COLORS="$(vivid generate tokyonight-night)"
-    '';
+        source ~/.p10k.zsh
+        fastfetch 
+        # Iniciar zoxide (cd inteligente)
+        eval "$(zoxide init zsh)"
+        
+        # Configurar colores para ls y eza usando un tema armónico con el fondo claro
+        export LS_COLORS="$(vivid generate modus-operandi)"
+        export EZA_COLORS="$(vivid generate modus-operandi)"
+      '';
     
     plugins = [
       {
