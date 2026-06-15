@@ -36,10 +36,27 @@
         "type": "github"
       }
     },
+    "nvim-config": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1781458875,
+        "narHash": "sha256-fcT1eSZXyCjlyB1iWLyoeqC2rQxUw18ImS/+Ov5Um+Y=",
+        "owner": "Jerimy2021",
+        "repo": "nvim-config",
+        "rev": "c05857e175e780c7724175316289010e7dabe209",
+        "type": "github"
+      },
+      "original": {
+        "owner": "Jerimy2021",
+        "repo": "nvim-config",
+        "type": "github"
+      }
+    },
     "root": {
       "inputs": {
         "home-manager": "home-manager",
-        "nixpkgs": "nixpkgs"
+        "nixpkgs": "nixpkgs",
+        "nvim-config": "nvim-config"
       }
     }
   },

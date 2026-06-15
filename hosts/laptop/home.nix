@@ -1,4 +1,4 @@
-{ config, pkgs, ... }:
+{ config, pkgs, inputs, ... }:
 
 {
   home.username = "jerimy";
@@ -90,7 +90,7 @@
 
   # --- ENLACES DE CONFIGURACIÓN (LOS PLANOS) ---
   xdg.configFile = {
-    "nvim".source = ../../modules/nvim;
+    "nvim".source = inputs.nvim-config;
     "waybar".source = ../../modules/waybar;
     "hypr".source = ../../modules/hyprland;
     "ml4w".source = ../../modules/ml4w;
@@ -153,7 +153,12 @@
         # Configurar colores para ls y eza usando un tema armónico con el fondo claro
         export LS_COLORS="$(vivid generate modus-operandi)"
         export EZA_COLORS="$(vivid generate modus-operandi)"
-      '';
+        typeset -A ZSH_HIGHLIGHT_STYLES
+        ZSH_HIGHLIGHT_STYLES[command]='fg=cyan,bold'       # Comandos base (ej: ls, cd, nvim)
+        ZSH_HIGHLIGHT_STYLES[alias]='fg=magenta,bold'     # Tus alias personalizados
+        ZSH_HIGHLIGHT_STYLES[builtin]='fg=cyan,bold'       # Comandos internos de zsh
+        ZSH_HIGHLIGHT_STYLES[function]='fg=blue,bold'      # Funciones de shell
+    '';
     
     plugins = [
       {

@@ -8,6 +8,11 @@
       url = "github:nix-community/home-manager";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    
+    nvim-config = {
+      url = "github:Jerimy2021/nvim-config";
+      flake = false;
+    };
   };
 
   outputs = { self, nixpkgs, home-manager, ... }@inputs:
@@ -18,7 +23,6 @@
       nixosConfigurations = {
         laptop = nixpkgs.lib.nixosSystem {
           inherit system;
-          # Pasamos los inputs a todos los módulos para poder usarlos dentro
           specialArgs = { inherit inputs; }; 
           modules = [
             ./hosts/laptop/configuration.nix
@@ -27,7 +31,10 @@
               home-manager.useGlobalPkgs = true;
               home-manager.useUserPackages = true;
               home-manager.backupFileExtension = "backup";
-	      home-manager.users.jerimy = import ./hosts/laptop/home.nix;
+              
+              home-manager.extraSpecialArgs = { inherit inputs; }; 
+              
+              home-manager.users.jerimy = import ./hosts/laptop/home.nix;
             }
           ];
         };
