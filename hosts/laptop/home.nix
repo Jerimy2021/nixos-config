@@ -123,7 +123,7 @@
       themeFile = "Modus Vivendi";
       shell = "zsh";
       enable_audio_bell = false; 
-      background_opacity = "0.40";
+      background_opacity = "0.32";
       dynamic_background_opacity = "yes";
       };
   };
