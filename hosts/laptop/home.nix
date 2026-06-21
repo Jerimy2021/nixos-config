@@ -83,6 +83,7 @@
     #11. Redes y seguridad (hacker mode)
     aircrack-ng
     termshark
+    rsync
     
     # 12. Videollamadas
     zoom-us
@@ -94,8 +95,8 @@
     "waybar".source = ../../modules/waybar;
     "hypr".source = ../../modules/hyprland;
     "ml4w".source = ../../modules/ml4w;
-    # A veces rofi busca su config aquí, aseguramos el enlace
     "rofi/config.rasi".source = ../../modules/ml4w/settings/rofi-border.rasi;
+	"matugen".source = ../../modules/matugen;
   };
 
   # --- CONFIGURACIÓN DE PROGRAMAS ---
@@ -113,6 +114,10 @@
   # Kitty
   programs.kitty = {
     enable = true;
+		#extraConfig = ''
+		#include ~/.cache/wal/colors-kitty.conf
+		#'';
+	themeFile = "Dracula";
     settings = {
       font_family = "JetBrainsMono Nerd Font";
       bold_font = "JetBrainsMono Nerd Font Bold";
@@ -120,12 +125,11 @@
       bold_italic_font = "JetBrainsMono Nerd Font Bold Italic";
       font_size = 12.0;
       copy_to_clipboard = "yes";
-      themeFile = "Modus Vivendi";
       shell = "zsh";
       enable_audio_bell = false; 
       background_opacity = "0.32";
       dynamic_background_opacity = "yes";
-      };
+    };
   };
 
   # Zsh + Powerlevel10k

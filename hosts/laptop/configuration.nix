@@ -86,6 +86,19 @@
     settings.General.Enable = "Source,Sink,Media,Socket";
   };
   services.blueman.enable = true;
+  
+  # Activar el servidor OpenSSH
+  services.openssh = {
+    enable = true;
+    ports = [ 22 ];
+    settings = {
+      PasswordAuthentication = true;
+      PermitRootLogin = "no";
+	};
+  };
+
+  # Abrir el puerto 22 en el firewall de NixOS
+  networking.firewall.allowedTCPPorts = [ 22 ];
 
   # ==========================================
   # JUEGOS (STEAM)

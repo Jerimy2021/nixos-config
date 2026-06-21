@@ -1,0 +1,6 @@
+[config]
+reload_apps = false
+
+[templates.kitty]
+input_path = "/home/jerimy/.config/matugen/templates/kitty.conf"
+output_path = "/home/jerimy/.config/kitty/colors-matugen.conf"
