@@ -145,6 +145,7 @@
       ll = "eza -l --icons";     # Lista detallada
       cat = "bat";               # Usar bat en lugar de cat
       cd = "z";                  # Usar zoxide en lugar de cd
+	  claude = "npx @anthropic-ai/claude-code"; # claude-code
       nix-rebuild-fast = "sudo nixos-rebuild switch --flake ~/system/nixos/#laptop"; # Alias para reconstruir el sistema con un comando corto
     };
 
