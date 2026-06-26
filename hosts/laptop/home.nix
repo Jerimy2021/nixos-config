@@ -77,7 +77,7 @@
     findutils
     pywal
     # 9. Mensajería
-    nchat
+
     #10. Games
     prismlauncher
     #11. Redes y seguridad (hacker mode)

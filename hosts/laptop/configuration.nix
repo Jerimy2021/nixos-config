@@ -101,6 +101,18 @@
   networking.firewall.allowedTCPPorts = [ 22 ];
 
   # ==========================================
+  # HABILITAR BINARIOS GENÉRICOS (NPM / CLAUDE)
+  # ==========================================
+  programs.nix-ld.enable = true;
+  programs.nix-ld.libraries = with pkgs; [
+    stdenv.cc.cc.lib
+    zlib
+    openssl
+    curl
+    glibc
+  ];
+
+  # ==========================================
   # JUEGOS (STEAM)
   # ==========================================
   programs.steam = {
