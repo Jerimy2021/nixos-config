@@ -149,21 +149,26 @@
       nix-rebuild-fast = "sudo nixos-rebuild switch --flake ~/system/nixos/#laptop"; # Alias para reconstruir el sistema con un comando corto
     };
 
-     initContent = ''
-        source ~/.p10k.zsh
-        fastfetch 
-        # Iniciar zoxide (cd inteligente)
-        eval "$(zoxide init zsh)"
-        
-        # Configurar colores para ls y eza usando un tema armónico con el fondo claro
-        export LS_COLORS="$(vivid generate modus-operandi)"
-        export EZA_COLORS="$(vivid generate modus-operandi)"
-        typeset -A ZSH_HIGHLIGHT_STYLES
-        ZSH_HIGHLIGHT_STYLES[command]='fg=cyan,bold'       # Comandos base (ej: ls, cd, nvim)
-        ZSH_HIGHLIGHT_STYLES[alias]='fg=magenta,bold'     # Tus alias personalizados
-        ZSH_HIGHLIGHT_STYLES[builtin]='fg=cyan,bold'       # Comandos internos de zsh
-        ZSH_HIGHLIGHT_STYLES[function]='fg=blue,bold'      # Funciones de shell
-    '';
+     initContent = lib.mkMerge [
+			(lib.mkOrder 100 ''
+			if [[ "$(tty)" == /dev/tty[0-9]* ]]; then 
+			exec bash 
+			fi 
+			'')
+			(lib.mkOrder 1000 ''
+			source ~/.p10k.zsh 
+			fastfetch 
+			eval "$(zoxide init zsh)"
+
+			export LS_COLORS="$(vivid generate modus-operandi)"
+			export EZA_COLORS="$(vivid generate modus-operandi)"
+			typeset -A ZSH_HIGHLIGHT_STYLES 
+			ZSH_HIGHLIGHT_STYLES[command]='fg=cyan,bold' 
+			ZSH_HIGHLIGHT_STYLES[alias]='fg=magenta,bold' 
+			ZSH_HIGHLIGHT_STYLES[builtin]='fg=cyan,bold' 
+			ZSH_HIGHLIGHT_STYLES[function]='fg=blue,bold'
+			'')
+		];
     
     plugins = [
       {
