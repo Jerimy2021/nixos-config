@@ -14,8 +14,7 @@ hl.gesture({ fingers = 3, direction = "down", action = "close" })
 -- 4. MODO PANTALLA COMPLETA
 hl.gesture({ fingers = 3, direction = "up", action = "fullscreen" })
 
--- Deslizar 4 dedos hacia arriba sube el volumen un 5%
-hl.gesture({ fingers = 4, direction = "up", action = "exec", arg = "wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%+" })
-
--- Deslizar 4 dedos hacia abajo baja el volumen un 5%
-hl.gesture({ fingers = 4, direction = "down", action = "exec", arg = "wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-" })
+-- 5. CONTROL DE VOLUMEN (Vía Hyprctl Nativo)
+-- Esto inyecta el atajo directamente al motor en su idioma original
+hl.exec_cmd("hyprctl keyword bind swipe:4:u, exec, wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%+")
+hl.exec_cmd("hyprctl keyword bind swipe:4:d, exec, wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-")
