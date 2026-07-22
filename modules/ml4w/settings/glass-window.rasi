@@ -1,0 +1,98 @@
+/* ==========================================================================
+   ROFI WINDOW SWITCHER - ESTILO GLASSMORPHISM EXTREMO
+   ========================================================================== */
+
+configuration {
+    show-icons:                 true;
+    display-window:             "󰖲  Ventanas";
+    window-format:              "{icon} {t}";
+    hover-select:               true;
+    me-select-entry:            "MousePrimary";
+    me-accept-entry:            "MousePrimary";
+}
+
+/* Fondo transparente principal */
+window {
+    transparency:               "real";
+    background-color:           rgba(17, 17, 27, 0.5); /* Translúcido */
+    text-color:                 #cdd6f4;
+    border:                     2px;
+    border-color:               rgba(203, 166, 247, 0.8); /* Borde de Neón Morado */
+    border-radius:              25px;
+    width:                      900px;
+    padding:                    20px;
+    
+    /* Sombra externa */
+    box-shadow:                 0px 0px 20px rgba(203, 166, 247, 0.4);
+}
+
+/* La barra de búsqueda */
+inputbar {
+    background-color:           rgba(30, 30, 46, 0.6);
+    text-color:                 #cdd6f4;
+    border-radius:              15px;
+    padding:                    15px;
+    margin:                     0px 0px 20px 0px;
+    border:                     1px;
+    border-color:               rgba(255, 255, 255, 0.1);
+}
+
+prompt {
+    background-color:           transparent;
+    text-color:                 #89b4fa; /* Azul neón para el texto "Ventanas" */
+    font:                       "sans-serif bold 14";
+    margin:                     0px 15px 0px 0px;
+}
+
+entry {
+    background-color:           transparent;
+    text-color:                 #cdd6f4;
+    placeholder:                "Buscar ventana abierta...";
+    placeholder-color:          rgba(205, 214, 244, 0.3);
+}
+
+/* La lista de ventanas */
+listview {
+    background-color:           transparent;
+    columns:                    2; /* Muestra las ventanas en dos columnas */
+    lines:                      6; /* Cantidad de ventanas por columna */
+    spacing:                    10px;
+    cycle:                      true;
+    dynamic:                    true;
+    layout:                     vertical;
+}
+
+/* Cada ventana individual */
+element {
+    background-color:           transparent;
+    text-color:                 #cdd6f4;
+    border-radius:              12px;
+    padding:                    12px;
+    cursor:                     pointer;
+}
+
+/* El ícono de la aplicación */
+element-icon {
+    background-color:           transparent;
+    text-color:                 inherit;
+    size:                       48px; /* Íconos grandes */
+    cursor:                     inherit;
+}
+
+/* El texto de la aplicación */
+element-text {
+    background-color:           transparent;
+    text-color:                 inherit;
+    cursor:                     inherit;
+    vertical-align:             0.5;
+    margin:                     0px 0px 0px 15px;
+}
+
+/* EFECTO HOVER Y SELECCIÓN (EL BRILLO) */
+element selected.normal {
+    background-color:           rgba(203, 166, 247, 0.3); /* Resalta en morado */
+    text-color:                 #11111b; /* Texto oscuro para contrastar */
+    border:                     1px;
+    border-color:               rgba(203, 166, 247, 1);
+    box-shadow:                 0px 0px 15px rgba(203, 166, 247, 0.6);
+}

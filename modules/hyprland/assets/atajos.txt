@@ -1,0 +1,22 @@
+󰖲 SUPER + ENTER : Abrir Terminal (Kitty)
+󰖲 SUPER + D : Menú de Aplicaciones (Rofi)
+󰖲 SUPER + B : Navegador Web (Firefox)
+󰖲 SUPER + E : Explorador de Archivos (Thunar)
+󰖲 SUPER + Q : Cerrar Ventana Actual
+󰖲 SUPER + F : Alternar Pantalla Completa
+󰖲 SUPER + T : Alternar Ventana Flotante
+󰖲 SUPER + V : Historial del Portapapeles
+󰖲 CTRL + TAB : Menú de Ventanas Abiertas
+󰖲 SUPER + CTRL + Q : Menú de Apagado (Wlogout)
+󰖲 SUPER + CTRL + L : Bloquear Pantalla (Hyprlock)
+󰖲 SUPER + CTRL + B : Ocultar/Mostrar Barra (Waybar)
+󰖲 SUPER + CTRL + T : Cambiar Tema de Waybar
+󰖲 SUPER + CTRL + E : Selector de Emojis
+󰖲 SUPER + CTRL + C : Calculadora Rápida
+󰖲 SUPER + CTRL + FLECHAS : Abrir Sidepad Claude Code
+󰖲 SUPER + ALT + W : Cambiar Fondo Aleatorio
+󰖲 SUPER + ALT + G : Activar/Desactivar Modo Juego
+󰖲 SUPER + ALT + F : Captura de Pantalla Completa
+󰖲 SUPER + ALT + S : Seleccionar y Capturar Área
+󰖲 SUPER + SHIFT + H : Activar/Desactivar Luz Nocturna
+󰖲 SUPER + SHIFT + R : Recargar Hyprland

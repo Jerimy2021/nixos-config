@@ -1,0 +1,77 @@
+/* ==========================================================================
+   ROFI CHEATSHEET HUD - ESTILO NEÓN Y CRISTAL
+   ========================================================================== */
+
+configuration {
+    show-icons: false;
+    hover-select: true;
+    me-select-entry: "MousePrimary";
+    me-accept-entry: "MousePrimary";
+}
+
+/* El panel gigante de cristal */
+window {
+    transparency: "real";
+    background-color: rgba(10, 10, 15, 0.6); /* Cristal oscuro */
+    border: 2px;
+    border-color: rgba(137, 180, 250, 0.8); /* Borde Azul Neón */
+    border-radius: 20px;
+    width: 1100px; /* Ventana ancha estilo HUD */
+    padding: 30px;
+    
+    /* Brillo exterior profundo */
+    box-shadow: 0px 0px 40px rgba(137, 180, 250, 0.3);
+}
+
+/* La cabecera */
+inputbar {
+    background-color: transparent;
+    text-color: #cdd6f4;
+    margin: 0px 0px 30px 0px;
+    padding: 10px;
+}
+
+prompt {
+    text-color: #f38ba8; /* Título en Rosa/Rojo Neón */
+    font: "sans-serif bold 16";
+    margin: 0px 15px 0px 0px;
+}
+
+entry {
+    text-color: #cdd6f4;
+    placeholder: "Escribe para filtrar un atajo...";
+    placeholder-color: rgba(205, 214, 244, 0.3);
+    font: "sans-serif 14";
+}
+
+/* La cuadrícula mágica de 3 columnas */
+listview {
+    columns: 3;
+    lines: 12;
+    spacing: 15px;
+    background-color: transparent;
+    cycle: true;
+    dynamic: true;
+}
+
+/* Cada "tarjeta" de atajo */
+element {
+    padding: 12px;
+    border-radius: 12px;
+    background-color: rgba(30, 30, 46, 0.5); /* Cajas semi-transparentes */
+    text-color: #cdd6f4;
+}
+
+element-text {
+    background-color: transparent;
+    text-color: inherit;
+    vertical-align: 0.5;
+}
+
+/* El brillo al pasar el ratón o flechas */
+element selected.normal {
+    background-color: rgba(137, 180, 250, 0.2);
+    border: 1px solid rgba(137, 180, 250, 0.9);
+    text-color: #ffffff;
+    box-shadow: 0px 0px 20px rgba(137, 180, 250, 0.6);
+}

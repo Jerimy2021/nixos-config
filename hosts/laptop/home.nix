@@ -1,12 +1,15 @@
 { config, pkgs, inputs, lib, ... }:
 
+let
+  mis-scripts = import ./scripts.nix { inherit pkgs; };
+in
 {
   home.username = "jerimy";
   home.homeDirectory = "/home/jerimy";
 
   # --- PAQUETES (LOS OBREROS) ---
   home.packages = with pkgs; [
-    # 1. ENTRONO GRÁFICO (Core ML4W)
+    # 1. ENTRONO GRÁFICO
     waybar              # Barra de estado
     rofi                # Lanzador de aplicaciones
     swww                # Motor de fondo de pantalla
@@ -18,7 +21,12 @@
     dunst               # Sistema de notificaciones
     networkmanagerapplet # Icono de Wifi en la barra
     blueman             # Gestor de Bluetooth
-    nautilus            # Explorador de archivos
+    xfce.thunar                  # El explorador principal
+    xfce.tumbler                 # Motor imprescindible para generar miniaturas
+    xfce.thunar-archive-plugin   # Para descomprimir archivos desde el clic derecho
+    ffmpegthumbnailer            # Miniaturas para archivos de VIDEO (.mp4, .mkv)
+    webp-pixbuf-loader           # Miniaturas para imágenes .webp
+    poppler_gi                   # Miniaturas para archivos .pdf
 
     # 2. DEPENDENCIAS DE SCRIPTS (Vitales para que no se vea negro)
     jq                  # Procesador de datos (Sin esto, los scripts fallan)
@@ -61,6 +69,11 @@
     kitty
     firefox
     neovim
+    rofimoji          # Selector de emojis para Rofi/Wayland
+    wtype             # Necesario para que rofimoji "escriba" el emoji por ti
+    rofi-calc         # Calculadora integrada directamente en Rofi
+    qalculate-gtk     # (Opcional) Calculadora en ventana por si prefieres interfaz gráfica
+    wl-clip-persist   # (Opcional pero recomendado) Para que el portapapeles no se borre al cerrar una app
     
     # 7. DESARROLLO
     nodejs_22
@@ -87,6 +100,9 @@
     
     # 12. Videollamadas
     zoom-us
+	# 13. SCRIPTS NATIVOS DE NIX
+    mis-scripts.hypr-gamemode
+	mis-scripts.set-wallpaper
   ];
 
   # --- ENLACES DE CONFIGURACIÓN (LOS PLANOS) ---
@@ -96,7 +112,11 @@
     "hypr".source = ../../modules/hyprland;
     "ml4w".source = ../../modules/ml4w;
     "rofi/config.rasi".source = ../../modules/ml4w/settings/rofi-border.rasi;
-	"matugen".source = ../../modules/matugen;
+	"rofi/glass-window.rasi".source = ../../modules/ml4w/settings/glass-window.rasi;
+    "rofi/cheatsheet.rasi".source = ../../modules/ml4w/settings/cheatsheet.rasi;
+	"wlogout".source = ../../modules/wlogout;
+    "matugen".source = ../../modules/matugen;
+	"gtk-3.0/gtk.css".source = ../../modules/gtk/gtk.css;
   };
 
   # --- CONFIGURACIÓN DE PROGRAMAS ---

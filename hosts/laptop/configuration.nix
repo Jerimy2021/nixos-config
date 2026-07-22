@@ -37,7 +37,15 @@
 
   time.timeZone = "America/Lima"; 
   i18n.defaultLocale = "en_US.UTF-8";
-
+  console.keyMap = "la-latin1";
+  services.xserver = {
+    enable = true;
+    xkb = {
+      layout = "latam";
+      variant = "";
+    };
+  };
+  
   # ==========================================
   # GRÁFICOS, HYPRLAND Y NVIDIA PRO
   # ==========================================

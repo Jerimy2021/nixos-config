@@ -1,0 +1,65 @@
+/* ==============================================================================
+   WLOGOUT - ESTILO EXTREMO (Glassmorphism & Neon Glow)
+   ============================================================================== */
+
+/* Fondo general de la pantalla: Oscuro con efecto cristal */
+window {
+    background-color: rgba(10, 10, 15, 0.6);
+}
+
+/* Base para todos los botones */
+button {
+    /* Centrado dinámico sin necesidad de scripts de bash */
+    margin: 35vh 2vw;
+    
+    background-color: rgba(30, 30, 46, 0.5); /* Translúcido */
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: 25%; /* Tamaño del icono */
+    
+    border: 1px solid rgba(255, 255, 255, 0.1); /* Borde de cristal fino */
+    border-radius: 40px; /* Bordes muy redondeados */
+    
+    /* Sombra base sutil */
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+    
+    color: transparent; /* Ocultamos el texto feo por defecto */
+    
+    /* ANIMACIÓN: 0.4s de fluidez para todo (brillo, tamaño, color) */
+    transition: box-shadow 0.4s cubic-bezier(0.33, 1, 0.68, 1), 
+                background-color 0.4s cubic-bezier(0.33, 1, 0.68, 1),
+                border 0.4s ease;
+}
+
+/* ---------------------------------------------------------
+   HOVER: LA MAGIA DEL BRILLO NEÓN (GLOW) Y AUMENTO
+   --------------------------------------------------------- */
+button:hover {
+    background-color: rgba(40, 40, 60, 0.8);
+    background-size: 35%; /* El icono crece */
+    
+    /* Bordes brillantes según la acción */
+    border: 2px solid rgba(203, 166, 247, 0.9);
+    
+    /* El Glow Extremo estilo Jakoolit (Capas de sombra) */
+    box-shadow: 0 0 10px rgba(203, 166, 247, 0.4),
+                0 0 20px rgba(203, 166, 247, 0.4),
+                0 0 40px rgba(203, 166, 247, 0.6),
+                0 0 80px rgba(203, 166, 247, 0.2);
+}
+
+/* Efectos de color específicos al pasar el ratón */
+#lock:hover     { border-color: #89b4fa; box-shadow: 0 0 30px rgba(137, 180, 250, 0.8); } /* Azul */
+#logout:hover   { border-color: #a6e3a1; box-shadow: 0 0 30px rgba(166, 227, 161, 0.8); } /* Verde */
+#suspend:hover  { border-color: #f9e2af; box-shadow: 0 0 30px rgba(249, 226, 175, 0.8); } /* Amarillo */
+#reboot:hover   { border-color: #fab387; box-shadow: 0 0 30px rgba(250, 179, 135, 0.8); } /* Naranja */
+#shutdown:hover { border-color: #f38ba8; box-shadow: 0 0 40px rgba(243, 139, 168, 0.9); } /* Rojo Sangre */
+
+/* ---------------------------------------------------------
+   ENLACE A MIS ICONOS LOCALES (Inmunes a actualizaciones)
+   --------------------------------------------------------- */
+#lock     { background-image: image(url("/home/jerimy/.config/wlogout/icons/lock.png")); }
+#logout   { background-image: image(url("/home/jerimy/.config/wlogout/icons/logout.png")); }
+#suspend  { background-image: image(url("/home/jerimy/.config/wlogout/icons/suspend.png")); }
+#reboot   { background-image: image(url("/home/jerimy/.config/wlogout/icons/reboot.png")); }
+#shutdown { background-image: image(url("/home/jerimy/.config/wlogout/icons/shutdown.png")); }

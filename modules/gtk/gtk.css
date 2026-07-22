@@ -1,0 +1,66 @@
+/* ==============================================================================
+ * THUNAR GLASSMORPHISM & END-4 STYLE
+ * ============================================================================== */
+
+/* 1. Fondo de la ventana principal */
+window.thunar {
+  background-color: rgba(18, 18, 26, 0.85);
+  color: #cdd6f4;
+}
+
+/* 2. Barra lateral flotante */
+.thunar .sidebar {
+  background-color: rgba(12, 12, 18, 0.60);
+  border-right: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  margin: 6px;
+  padding: 4px;
+}
+
+.thunar .sidebar row:selected {
+  background-color: rgba(137, 180, 250, 0.20);
+  color: #89b4fa;
+  border-radius: 8px;
+  font-weight: bold;
+}
+
+.thunar .sidebar row:hover {
+  background-color: rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  transition: all 150ms ease-in-out;
+}
+
+/* 3. Barra de ruta */
+.thunar path-bar button {
+  border-radius: 8px;
+  background-color: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  margin: 2px;
+  padding: 4px 8px;
+  transition: all 200ms ease-in-out;
+}
+
+.thunar path-bar button:hover {
+  background-color: rgba(137, 180, 250, 0.3);
+  border-color: rgba(137, 180, 250, 0.5);
+}
+
+/* 4. Campo de búsqueda */
+.thunar entry {
+  background-color: rgba(0, 0, 0, 0.3);
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 6px;
+}
+
+/* 5. Vista de archivos */
+.thunar .standard-view {
+  background-color: transparent;
+}
+
+.thunar .standard-view row:hover,
+.thunar .standard-view iconview element:hover {
+  background-color: rgba(255, 255, 255, 0.07);
+  border-radius: 10px;
+  transition: all 150ms ease;
+}
