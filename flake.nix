@@ -13,6 +13,7 @@
       url = "github:Jerimy2021/nvim-config";
       flake = false;
     };
+    hyprland.url = "github:hyprwm/Hyprland"
   };
 
   outputs = { self, nixpkgs, home-manager, ... }@inputs:
