@@ -49,10 +49,7 @@
   # ==========================================
   # GRÁFICOS, HYPRLAND Y NVIDIA PRO
   # ==========================================
-  programs.hyprland = {
-   enable = true;
-   package = inputs.hyprland.packages.${pkgs.system}.hyprland;
-  };
+  programs.hyprland.enable = true;
   xdg.portal = {
     enable = true;
     extraPortals = [ pkgs.xdg-desktop-portal-gtk ];
