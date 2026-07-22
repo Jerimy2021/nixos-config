@@ -14,4 +14,4 @@ load_conf("core/window-rules.conf")
 load_conf("themes/active.conf")
 
 
-dotfile(config_dir .. "core/gestures.lua")
+dofile(config_dir .. "core/gestures.lua")
