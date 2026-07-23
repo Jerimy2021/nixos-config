@@ -7,55 +7,65 @@ in
   home.username = "jerimy";
   home.homeDirectory = "/home/jerimy";
 
+  fonts.fontconfig.enable = true;
+
+  home.sessionVariables = {
+    TERMINAL = "foot";
+    TERM = "foot";
+  };
+
   # --- PAQUETES (LOS OBREROS) ---
   home.packages = with pkgs; [
-    # 1. ENTRONO GRÁFICO
-    waybar              # Barra de estado
-    rofi                # Lanzador de aplicaciones
-    swww                # Motor de fondo de pantalla
-    waypaper            # Selector gráfico de fondos
-    wlogout             # Menú de salida (Apagar/Reiniciar)
-    hyprlock            # Bloqueo de pantalla
-    hypridle            # Suspensión por inactividad
-    hyprpicker          # Selector de color (Pipeta)
-    dunst               # Sistema de notificaciones
-    networkmanagerapplet # Icono de Wifi en la barra
-    blueman             # Gestor de Bluetooth
-    xfce.thunar                  # El explorador principal
-    xfce.tumbler                 # Motor imprescindible para generar miniaturas
-    xfce.thunar-archive-plugin   # Para descomprimir archivos desde el clic derecho
-    ffmpegthumbnailer            # Miniaturas para archivos de VIDEO (.mp4, .mkv)
-    webp-pixbuf-loader           # Miniaturas para imágenes .webp
-    poppler_gi                   # Miniaturas para archivos .pdf
+    # 1. ENTORNO GRÁFICO Y TEMAS
+    waybar
+    rofi
+    swww
+    waypaper
+    wlogout
+    hyprlock
+    hypridle
+    hyprpicker
+    dunst
+    networkmanagerapplet
+    blueman
+    
+    # Thunar y Miniaturas
+    thunar
+    tumbler
+    thunar-archive-plugin
+    ffmpegthumbnailer
+    webp-pixbuf-loader
+    poppler_gi
+    papirus-icon-theme
 
-    # 2. DEPENDENCIAS DE SCRIPTS (Vitales para que no se vea negro)
-    jq                  # Procesador de datos (Sin esto, los scripts fallan)
-    imagemagick         # Procesamiento de iconos e imágenes
-    libnotify           # Para enviar notificaciones al sistema
-    cliphist            # Historial del portapapeles
-    wl-clipboard        # Copiar/Pegar en Wayland
-    grim                # Herramienta de captura de pantalla
-    slurp               # Herramienta de selección de área
-    swaynotificationcenter # Centro de notificaciones alternativo
-    wlsunset            # Filtro de luz azul (Noche)
-    hyprshade           # Motor de shaders para hyprland
+    # 2. DEPENDENCIAS DE SCRIPTS
+    jq
+    imagemagick
+    libnotify
+    cliphist
+    wl-clipboard
+    grim
+    slurp
+    swaynotificationcenter
+    wlsunset
+    hyprshade
     grimblast           
 
     # 3. MULTIMEDIA Y CONTROL
-    pavucontrol         # Control de volumen avanzado (GUI)
-    playerctl           # Control de música (Play/Pause teclas)
-    brightnessctl       # Control de brillo de pantalla
+    pavucontrol
+    playerctl
+    brightnessctl
 
     # 4. HERRAMIENTAS HACKER / PRO (Terminal Moderna)
-    fastfetch           # Información del sistema
-    btop                # Monitor de recursos estilo Matrix
-    ripgrep             # Buscador rápido (grep con esteroides)
-    fd                  # Alternativa rápida a 'find'
-    fzf                 # <--- PRO: Buscador borroso (Ctrl+R mejorado)
-    eza                 # <--- PRO: Reemplazo de 'ls' con iconos y colores
-    bat                 # <--- PRO: Reemplazo de 'cat' para leer código
-    zoxide              # <--- PRO: Reemplazo de 'cd' que recuerda rutas
-    tldr                # <--- PRO: Manuales simplificados (ej: 'tldr tar')
+    fastfetch
+    btop
+    ripgrep
+    fd
+    fzf
+    eza
+    bat
+    zoxide
+    tldr
 
     # 5. UTILIDADES BASE
     unzip
@@ -66,43 +76,41 @@ in
     vivid
 
     # 6. APLICACIONES
-    kitty
+    foot
     firefox
     neovim
-    rofimoji          # Selector de emojis para Rofi/Wayland
-    wtype             # Necesario para que rofimoji "escriba" el emoji por ti
-    rofi-calc         # Calculadora integrada directamente en Rofi
-    qalculate-gtk     # (Opcional) Calculadora en ventana por si prefieres interfaz gráfica
-    wl-clip-persist   # (Opcional pero recomendado) Para que el portapapeles no se borre al cerrar una app
+    rofimoji
+    wtype
+    rofi-calc
+    qalculate-gtk
+    wl-clip-persist
     
     # 7. DESARROLLO
     nodejs_22
 
     # 8. FUENTES E ICONOS
-    nerd-fonts.jetbrains-mono # Fuente principal para código
-    font-awesome              # Iconos extra para Waybar
+    nerd-fonts.jetbrains-mono
+    font-awesome
 
     psmisc
     matugen
     glib
-
     bc 
     findutils
     pywal
-    # 9. Mensajería
 
-    #10. Games
+    # 9. JUEGOS Y VIDEOLLAMADAS
     prismlauncher
-    #11. Redes y seguridad (hacker mode)
+    zoom-us
+
+    # 10. REDES Y SEGURIDAD
     aircrack-ng
     termshark
     rsync
     
-    # 12. Videollamadas
-    zoom-us
-	# 13. SCRIPTS NATIVOS DE NIX
+    # 11. SCRIPTS NATIVOS DE NIX
     mis-scripts.hypr-gamemode
-	mis-scripts.set-wallpaper
+    mis-scripts.set-wallpaper
   ];
 
   # --- ENLACES DE CONFIGURACIÓN (LOS PLANOS) ---
@@ -112,16 +120,20 @@ in
     "hypr".source = ../../modules/hyprland;
     "ml4w".source = ../../modules/ml4w;
     "rofi/config.rasi".source = ../../modules/ml4w/settings/rofi-border.rasi;
-	"rofi/glass-window.rasi".source = ../../modules/ml4w/settings/glass-window.rasi;
+    "rofi/glass-window.rasi".source = ../../modules/ml4w/settings/glass-window.rasi;
     "rofi/cheatsheet.rasi".source = ../../modules/ml4w/settings/cheatsheet.rasi;
-	"wlogout".source = ../../modules/wlogout;
+    "wlogout".source = ../../modules/wlogout;
     "matugen".source = ../../modules/matugen;
-	"gtk-3.0/gtk.css".source = ../../modules/gtk/gtk.css;
+    
+    "gtk-3.0/gtk.css".source = ../../modules/gtk/gtk.css;
   };
 
-  # --- CONFIGURACIÓN DE PROGRAMAS ---
+  # --- CONFIGURACIÓN DE TERMINAL PREDETERMINADA PARA XFCE ---
+  xdg.configFile."xfce4/helpers.rc".text = ''
+     TerminalEmulator=foot
+  '';
 
-  # Git
+  # --- GIT ---
   programs.git = {
     enable = true;
     extraConfig = {
@@ -131,64 +143,74 @@ in
     };
   };
 
-  # Kitty
-  programs.kitty = {
+  # --- FOOT TERMINAL (Corregido) ---
+  programs.foot = {
     enable = true;
-		#extraConfig = ''
-		#include ~/.cache/wal/colors-kitty.conf
-		#'';
-	themeFile = "Dracula";
     settings = {
-      font_family = "JetBrainsMono Nerd Font";
-      bold_font = "JetBrainsMono Nerd Font Bold";
-      italic_font = "JetBrainsMono Nerd Font Italic";
-      bold_italic_font = "JetBrainsMono Nerd Font Bold Italic";
-      font_size = 12.0;
-      copy_to_clipboard = "yes";
-      shell = "zsh";
-      enable_audio_bell = false; 
-      background_opacity = "0.32";
-      dynamic_background_opacity = "yes";
+      main = {
+        font = "JetBrainsMono Nerd Font:size=11";
+        font-bold = "JetBrainsMono Nerd Font:style=Bold:size=11";
+        font-italic = "JetBrainsMono Nerd Font:style=Italic:size=11";
+        font-bold-italic = "JetBrainsMono Nerd Font:style=Bold Italic:size=11";
+        pad = "12x12";
+        selection-target = "clipboard";
+      };
+      cursor = {
+        style = "beam";
+        blink = "yes";
+      };
+      "colors-dark" = {
+        alpha = "0.85";
+        foreground = "cdd6f4";
+        background = "1e1e2e";
+        regular0 = "45475a"; # black
+        regular1 = "f38ba8"; # red
+        regular2 = "a6e3a1"; # green
+        regular3 = "f9e2af"; # yellow
+        regular4 = "89b4fa"; # blue
+        regular5 = "f5c2e7"; # magenta
+        regular6 = "94e2d5"; # cyan
+        regular7 = "bac2de"; # white
+      };
     };
   };
 
-  # Zsh + Powerlevel10k
+  # --- ZSH + POWERLEVEL10K ---
   programs.zsh = {
     enable = true;
     enableCompletion = true;
     autosuggestion.enable = true;
     syntaxHighlighting.enable = true;
     
-    # Alias para usar las herramientas modernas
     shellAliases = {
-      ls = "eza --icons";        # Usar eza en lugar de ls
-      ll = "eza -l --icons";     # Lista detallada
-      cat = "bat";               # Usar bat en lugar de cat
-      cd = "z";                  # Usar zoxide en lugar de cd
-	  claude = "npx @anthropic-ai/claude-code"; # claude-code
-      nix-rebuild-fast = "sudo nixos-rebuild switch --flake ~/system/nixos/#laptop"; # Alias para reconstruir el sistema con un comando corto
+      ls = "eza --icons";
+      ll = "eza -l --icons";
+      cat = "bat";
+      cd = "z";
+      claude = "npx @anthropic-ai/claude-code";
+      nix-rebuild-fast = "sudo nixos-rebuild switch --flake ~/system/nixos/#laptop";
     };
 
-     initContent = lib.mkMerge [
-			(lib.mkOrder 100 ''
-			if [[ "$(tty)" == /dev/tty[0-9]* ]]; then 
-			exec bash 
-			fi 
-			'')
-			(lib.mkOrder 1000 ''
-			source ~/.p10k.zsh 
-			fastfetch 
-			eval "$(zoxide init zsh)"
+    initContent = lib.mkMerge [
+      (lib.mkOrder 100 ''
+        if [[ "$(tty)" == /dev/tty[0-9]* ]]; then 
+          exec bash
+		  fastfetch
+        fi 
+      '')
+      (lib.mkOrder 1000 ''
+        source ~/.p10k.zsh 
+        eval "$(zoxide init zsh)"
 
-			export LS_COLORS="$(vivid generate modus-operandi)"
-			export EZA_COLORS="$(vivid generate modus-operandi)"
-			typeset -A ZSH_HIGHLIGHT_STYLES 
-			ZSH_HIGHLIGHT_STYLES[command]='fg=cyan,bold' 
-			ZSH_HIGHLIGHT_STYLES[alias]='fg=magenta,bold' 
-			ZSH_HIGHLIGHT_STYLES[builtin]='fg=cyan,bold' 
-			ZSH_HIGHLIGHT_STYLES[function]='fg=blue,bold'
-			'')
-		];
+        export LS_COLORS="$(vivid generate modus-operandi)"
+        export EZA_COLORS="$(vivid generate modus-operandi)"
+        typeset -A ZSH_HIGHLIGHT_STYLES 
+        ZSH_HIGHLIGHT_STYLES[command]='fg=cyan,bold' 
+        ZSH_HIGHLIGHT_STYLES[alias]='fg=magenta,bold' 
+        ZSH_HIGHLIGHT_STYLES[builtin]='fg=cyan,bold' 
+        ZSH_HIGHLIGHT_STYLES[function]='fg=blue,bold'
+      '')
+    ];
     
     plugins = [
       {
@@ -197,6 +219,15 @@ in
         file = "share/zsh-powerlevel10k/powerlevel10k.zsh-theme";
       }
     ];
+  };
+
+  # --- MEJORAS GTK ---
+  gtk = {
+    enable = true;
+    iconTheme = {
+      name = "Papirus-Dark";
+      package = pkgs.papirus-icon-theme;
+    };
   };
 
   programs.direnv = {
@@ -209,11 +240,11 @@ in
   
   # --- CONFIGURACIÓN DEL CURSOR (MOUSE) ---
   home.pointerCursor = {
-      gtk.enable = true;
-      # x11.enable = true; # Si usas aplicaciones antiguas
-      name = "Bibata-Modern-Ice";
-      package = pkgs.bibata-cursors;
-      size = 24;
+    gtk.enable = true;
+    name = "Bibata-Modern-Ice";
+    package = pkgs.bibata-cursors;
+    size = 24;
   };
+
   programs.home-manager.enable = true;
 }
