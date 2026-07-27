@@ -39,11 +39,11 @@
     "nvim-config": {
       "flake": false,
       "locked": {
-        "lastModified": 1785168274,
-        "narHash": "sha256-ZsoCFjqhRJC2nXkeUex5nk4gZ8NUFUui7LuEV3hkGeY=",
+        "lastModified": 1785192745,
+        "narHash": "sha256-11RAkeqZekuZVC3TdNUZHFpcUnW4qY7nRf7lu/HwBPk=",
         "owner": "Jerimy2021",
         "repo": "nvim-config",
-        "rev": "ab1ac7840b9b8bd79c5a35868b826eb6d10d43bb",
+        "rev": "2e03e153c19e443782ebc05b4d84b4a7d7aa5541",
         "type": "github"
       },
       "original": {
