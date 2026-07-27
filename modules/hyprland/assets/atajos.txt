@@ -1,22 +1,36 @@
-󰖲 SUPER + ENTER : Abrir Terminal (Kitty)
-󰖲 SUPER + D : Menú de Aplicaciones (Rofi)
-󰖲 SUPER + B : Navegador Web (Firefox)
-󰖲 SUPER + E : Explorador de Archivos (Thunar)
-󰖲 SUPER + Q : Cerrar Ventana Actual
-󰖲 SUPER + F : Alternar Pantalla Completa
-󰖲 SUPER + T : Alternar Ventana Flotante
-󰖲 SUPER + V : Historial del Portapapeles
-󰖲 CTRL + TAB : Menú de Ventanas Abiertas
-󰖲 SUPER + CTRL + Q : Menú de Apagado (Wlogout)
-󰖲 SUPER + CTRL + L : Bloquear Pantalla (Hyprlock)
-󰖲 SUPER + CTRL + B : Ocultar/Mostrar Barra (Waybar)
-󰖲 SUPER + CTRL + T : Cambiar Tema de Waybar
-󰖲 SUPER + CTRL + E : Selector de Emojis
-󰖲 SUPER + CTRL + C : Calculadora Rápida
-󰖲 SUPER + CTRL + FLECHAS : Abrir Sidepad Claude Code
-󰖲 SUPER + ALT + W : Cambiar Fondo Aleatorio
-󰖲 SUPER + ALT + G : Activar/Desactivar Modo Juego
-󰖲 SUPER + ALT + F : Captura de Pantalla Completa
-󰖲 SUPER + ALT + S : Seleccionar y Capturar Área
-󰖲 SUPER + SHIFT + H : Activar/Desactivar Luz Nocturna
-󰖲 SUPER + SHIFT + R : Recargar Hyprland
+<b><span foreground="#89dceb">SUPER + ENTER</span></b>   Abrir Terminal
+<b><span foreground="#89dceb">SUPER + D</span></b>   Menú de Aplicaciones
+<b><span foreground="#89dceb">SUPER + B</span></b>   Navegador Web
+<b><span foreground="#89dceb">SUPER + E</span></b>   Explorador de Archivos
+<b><span foreground="#a6e3a1">SUPER + Q</span></b>   Cerrar Ventana
+<b><span foreground="#a6e3a1">SUPER + F</span></b>   Pantalla Completa
+<b><span foreground="#a6e3a1">SUPER + M</span></b>   Maximizar
+<b><span foreground="#a6e3a1">SUPER + T</span></b>   Alternar Flotante
+<b><span foreground="#a6e3a1">SUPER + SHIFT + T</span></b>   Todas Flotantes
+<b><span foreground="#a6e3a1">SUPER + J</span></b>   Cambiar División
+<b><span foreground="#a6e3a1">SUPER + K</span></b>   Intercambiar División
+<b><span foreground="#a6e3a1">SUPER + G</span></b>   Agrupar Ventanas
+<b><span foreground="#a6e3a1">ALT + TAB</span></b>   Ciclar Ventanas
+<b><span foreground="#89dceb">SUPER + V</span></b>   Historial Portapapeles
+<b><span foreground="#89dceb">CTRL + TAB</span></b>   Menú de Ventanas
+<b><span foreground="#cba6f7">SUPER + S</span></b>   Sidepad Genérico
+<b><span foreground="#cba6f7">SUPER + SHIFT + S</span></b>   Mover a Sidepad
+<b><span foreground="#cba6f7">SUPER + CTRL + FLECHAS</span></b>   Sidepad Claude Code
+<b><span foreground="#f38ba8">SUPER + CTRL + Q</span></b>   Menú de Apagado
+<b><span foreground="#f38ba8">SUPER + CTRL + L</span></b>   Bloquear Pantalla
+<b><span foreground="#89dceb">SUPER + CTRL + B</span></b>   Ocultar/Mostrar Barra
+<b><span foreground="#89dceb">SUPER + CTRL + T</span></b>   Tema de Waybar
+<b><span foreground="#89dceb">SUPER + CTRL + E</span></b>   Selector de Emojis
+<b><span foreground="#89dceb">SUPER + CTRL + C</span></b>   Calculadora Rápida
+<b><span foreground="#89dceb">SUPER + CTRL + K</span></b>   Este Cheatsheet
+<b><span foreground="#f9e2af">SUPER + ALT + W</span></b>   Fondo Aleatorio
+<b><span foreground="#f9e2af">SUPER + ALT + G</span></b>   Modo Juego
+<b><span foreground="#f9e2af">SUPER + ALT + F</span></b>   Captura Completa
+<b><span foreground="#f9e2af">SUPER + ALT + S</span></b>   Capturar Área
+<b><span foreground="#f9e2af">PRINT</span></b>   Captura de Selección
+<b><span foreground="#f38ba8">SUPER + SHIFT + H</span></b>   Luz Nocturna
+<b><span foreground="#f38ba8">SUPER + SHIFT + Z</span></b>   Reset Zoom
+<b><span foreground="#f38ba8">SUPER + SHIFT + R</span></b>   Recargar Hyprland
+<b><span foreground="#a6e3a1">SUPER + 1..9 / 0</span></b>   Ir a Workspace
+<b><span foreground="#a6e3a1">SUPER + SHIFT + 1..9</span></b>   Mover a Workspace
+<b><span foreground="#a6e3a1">SUPER + TAB</span></b>   Siguiente Workspace

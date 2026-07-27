@@ -1,0 +1,13 @@
+/* Variables de color reutilizables en todo GTK3 (Catppuccin Mocha, a juego con foot) */
+@define-color bg_base rgba(18, 18, 26, 0.85);
+@define-color bg_alt rgba(12, 12, 18, 0.60);
+@define-color accent #89b4fa;
+@define-color accent_pink #f5c2e7;
+@define-color accent_cyan #94e2d5;
+@define-color accent_orange #fab387;
+@define-color accent_violet #cba6f7;
+@define-color text_main #cdd6f4;
+
+* {
+  font-family: "JetBrainsMono Nerd Font", sans-serif;
+}

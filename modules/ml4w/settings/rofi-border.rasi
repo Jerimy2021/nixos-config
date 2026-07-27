@@ -1,1 +1,128 @@
-* { border-width: 2px; }
+/* ==========================================================================
+   ROFI DRUN LAUNCHER - NEON GLASS (End-4 style)
+   ========================================================================== */
+* {
+    font:                       "JetBrainsMono Nerd Font 12";
+}
+
+configuration {
+    show-icons:                 true;
+    icon-theme:                 "Papirus-Dark";
+    display-drun:               "  Aplicaciones";
+    drun-display-format:        "{name}";
+    hover-select:                true;
+    me-select-entry:            "";
+    me-accept-entry:            "MousePrimary";
+}
+
+window {
+    transparency:               "real";
+    background-color:           rgba(15, 15, 23, 0.70);
+    text-color:                 #cdd6f4;
+    border:                     2.5px solid;
+    border-color:               rgba(137, 180, 250, 0.85);
+    border-radius:              22px;
+    width:                       560px;
+    padding:                    16px;
+}
+
+mainbox {
+    background-color:           transparent;
+    spacing:                    12px;
+    children:                   [ "inputbar", "listview", "mode-switcher" ];
+}
+
+/* Barra de búsqueda */
+inputbar {
+    background-color:           rgba(30, 30, 46, 0.75);
+    border-radius:              14px;
+    padding:                    10px 16px;
+    border:                     1.5px solid;
+    border-color:               rgba(137, 180, 250, 0.4);
+    spacing:                    10px;
+    children:                   [ "prompt", "entry" ];
+}
+
+prompt {
+    background-color:           transparent;
+    text-color:                 #89b4fa;
+    font:                       "JetBrainsMono Nerd Font Bold 13";
+}
+
+entry {
+    background-color:           transparent;
+    text-color:                 #cdd6f4;
+    border:                     0px;
+    placeholder:                "Buscar aplicación...";
+    placeholder-color:          rgba(205, 214, 244, 0.35);
+    expand:                     true;
+}
+
+/* Lista de resultados */
+listview {
+    background-color:           transparent;
+    columns:                    1;
+    lines:                      9;
+    spacing:                    5px;
+    cycle:                      true;
+    dynamic:                    true;
+    scrollbar:                  false;
+}
+
+element {
+    background-color:           transparent;
+    text-color:                 #cdd6f4;
+    border-radius:              12px;
+    padding:                    8px 12px;
+    border:                     0px 0px 0px 3px solid;
+    border-color:               transparent;
+    orientation:                horizontal;
+    cursor:                     pointer;
+}
+
+element-icon {
+    background-color:           transparent;
+    size:                       30px;
+    border-radius:              8px;
+    cursor:                     inherit;
+}
+
+element-text {
+    background-color:           transparent;
+    text-color:                 inherit;
+    vertical-align:             0.5;
+    margin:                     0px 0px 0px 14px;
+    font:                       "JetBrainsMono Nerd Font 12";
+}
+
+/* Selección: glow completo + acento lateral */
+element selected.normal {
+    background-color:           rgba(137, 180, 250, 0.20);
+    border:                     0px 0px 0px 3px solid;
+    border-color:               #89b4fa;
+    text-color:                 #ffffff;
+}
+
+element selected.normal element-text {
+    font:                       "JetBrainsMono Nerd Font Bold 12";
+}
+
+/* Barra inferior con el modo (útil como indicador de estado, estilo HUD) */
+mode-switcher {
+    background-color:           transparent;
+    spacing:                    0px;
+    margin:                     4px 0px 0px 0px;
+}
+
+button {
+    background-color:           rgba(255, 255, 255, 0.04);
+    text-color:                 rgba(205, 214, 244, 0.5);
+    border-radius:              10px;
+    padding:                    6px 0px;
+    font:                       "JetBrainsMono Nerd Font 10";
+}
+
+button selected {
+    background-color:           rgba(137, 180, 250, 0.18);
+    text-color:                 #89b4fa;
+}

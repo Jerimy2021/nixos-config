@@ -18,8 +18,7 @@ in
   home.packages = with pkgs; [
     # 1. ENTORNO GRÁFICO Y TEMAS
     waybar
-    rofi
-    swww
+    awww
     waypaper
     wlogout
     hyprlock
@@ -28,8 +27,9 @@ in
     dunst
     networkmanagerapplet
     blueman
-    
-    # Thunar y Miniaturas
+    gnome-themes-extra
+	
+    # Thunar, Miniaturas y Visor de Imágenes
     thunar
     tumbler
     thunar-archive-plugin
@@ -37,6 +37,7 @@ in
     webp-pixbuf-loader
     poppler_gi
     papirus-icon-theme
+    imv
 
     # 2. DEPENDENCIAS DE SCRIPTS
     jq
@@ -49,7 +50,7 @@ in
     swaynotificationcenter
     wlsunset
     hyprshade
-    grimblast           
+    grimblast         
 
     # 3. MULTIMEDIA Y CONTROL
     pavucontrol
@@ -77,11 +78,11 @@ in
 
     # 6. APLICACIONES
     foot
+	papirus-folders
     firefox
     neovim
     rofimoji
     wtype
-    rofi-calc
     qalculate-gtk
     wl-clip-persist
     
@@ -113,25 +114,107 @@ in
     mis-scripts.set-wallpaper
   ];
 
-  # --- ENLACES DE CONFIGURACIÓN (LOS PLANOS) ---
   xdg.configFile = {
     "nvim".source = inputs.nvim-config;
     "waybar".source = ../../modules/waybar;
     "hypr".source = ../../modules/hyprland;
     "ml4w".source = ../../modules/ml4w;
-    "rofi/config.rasi".source = ../../modules/ml4w/settings/rofi-border.rasi;
+    "rofi/rofi-border.rasi".source = ../../modules/ml4w/settings/rofi-border.rasi;
     "rofi/glass-window.rasi".source = ../../modules/ml4w/settings/glass-window.rasi;
     "rofi/cheatsheet.rasi".source = ../../modules/ml4w/settings/cheatsheet.rasi;
     "wlogout".source = ../../modules/wlogout;
-    "matugen".source = ../../modules/matugen;
-    
+    "matugen".source = ../../modules/matugen; 
     "gtk-3.0/gtk.css".source = ../../modules/gtk/gtk.css;
+    "gtk-global/base.css".source = ../../modules/gtk-global/base.css;
+    "thunar/thunar.css".source = ../../modules/thunar/thunar.css;
+  };
+  
+  dconf.settings = {
+     "org/gnome/desktop/wm/preferences" = {
+     button-layout = "close,minimize,maximize:";
+    };
   };
 
   # --- CONFIGURACIÓN DE TERMINAL PREDETERMINADA PARA XFCE ---
   xdg.configFile."xfce4/helpers.rc".text = ''
      TerminalEmulator=foot
   '';
+
+  # --- APLICACIONES POR DEFECTO (LA SOLUCIÓN A THUNAR) ---
+  xdg = {
+    enable = true;
+    
+    # 1. Creamos un acceso directo "falso" que obliga a usar Foot
+    desktopEntries.nvim-foot = {
+      name = "Neovim (Foot)";
+      genericName = "Text Editor";
+      exec = "foot -e nvim %F"; # Aquí está la magia: Abre foot y dentro ejecuta nvim
+      terminal = false; # Se pone false porque nosotros ya estamos llamando a la terminal manualmente arriba
+      categories = [ "Development" "Utility" "TextEditor" ];
+      mimeType = [
+        "text/plain"
+        "text/markdown"
+        "text/x-c"
+        "text/x-c++"
+        "text/x-c++src"
+        "text/x-c++hdr"
+        "text/x-csrc"
+        "text/x-chdr"
+        "text/x-python"
+        "text/x-java"
+        "text/x-go"
+        "text/x-rust"
+        "text/x-javascript"
+        "text/x-typescript"
+        "text/x-html"
+        "text/x-css"
+        "application/json"
+        "application/xml"
+        "application/x-shellscript"
+        "application/x-yaml"
+        "text/x-cmake"
+        "text/x-nix"
+      ];
+	};
+
+    # 2. Le decimos al sistema qué usar para cada archivo
+    mimeApps = {
+      enable = true;
+      defaultApplications = {
+        # Todo tipo de código o texto a Neovim en Foot
+        "text/plain" = "nvim-foot.desktop";
+        "text/markdown" = "nvim-foot.desktop";
+        "text/x-c" = "nvim-foot.desktop";
+        "text/x-c++" = "nvim-foot.desktop";
+        "text/x-c++src" = "nvim-foot.desktop";
+        "text/x-c++hdr" = "nvim-foot.desktop";
+        "text/x-csrc" = "nvim-foot.desktop";
+        "text/x-chdr" = "nvim-foot.desktop";
+        "text/x-python" = "nvim-foot.desktop";
+        "text/x-java" = "nvim-foot.desktop";
+        "text/x-go" = "nvim-foot.desktop";
+        "text/x-rust" = "nvim-foot.desktop";
+        "text/x-javascript" = "nvim-foot.desktop";
+        "text/x-typescript" = "nvim-foot.desktop";
+        "text/x-html" = "nvim-foot.desktop";
+        "text/x-css" = "nvim-foot.desktop";
+        "application/json" = "nvim-foot.desktop";
+        "application/xml" = "nvim-foot.desktop";
+        "application/x-shellscript" = "nvim-foot.desktop";
+        "application/x-yaml" = "nvim-foot.desktop";
+        "text/x-cmake" = "nvim-foot.desktop";
+        "text/x-nix" = "nvim-foot.desktop";
+
+        # Imágenes estrictamente a IMV
+        "image/png" = "imv.desktop";
+        "image/jpeg" = "imv.desktop";
+        "image/jpg" = "imv.desktop";
+        "image/gif" = "imv.desktop";
+        "image/webp" = "imv.desktop";
+        "image/svg+xml" = "imv.desktop";
+      };
+    };
+  };
 
   # --- GIT ---
   programs.git = {
@@ -143,7 +226,7 @@ in
     };
   };
 
-  # --- FOOT TERMINAL (Corregido) ---
+  # --- FOOT TERMINAL ---
   programs.foot = {
     enable = true;
     settings = {
@@ -174,6 +257,12 @@ in
       };
     };
   };
+  
+  programs.rofi = {
+    enable = true;
+    package = pkgs.rofi;
+    plugins = with pkgs; [ rofi-calc ];
+  };
 
   # --- ZSH + POWERLEVEL10K ---
   programs.zsh = {
@@ -195,7 +284,7 @@ in
       (lib.mkOrder 100 ''
         if [[ "$(tty)" == /dev/tty[0-9]* ]]; then 
           exec bash
-		  fastfetch
+          fastfetch
         fi 
       '')
       (lib.mkOrder 1000 ''
@@ -224,9 +313,19 @@ in
   # --- MEJORAS GTK ---
   gtk = {
     enable = true;
-    iconTheme = {
+    theme = {
+      name = "Adwaita-dark";
+      package = pkgs.gnome-themes-extra;
+    };
+	iconTheme = {
       name = "Papirus-Dark";
       package = pkgs.papirus-icon-theme;
+    };
+    gtk3.extraConfig = {
+      gtk-application-prefer-dark-theme = 1;
+    };
+    gtk4.extraConfig = {
+      gtk-application-prefer-dark-theme = 1;
     };
   };
 

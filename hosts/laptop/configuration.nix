@@ -105,6 +105,8 @@
       PermitRootLogin = "no";
 	};
   };
+  
+  services.gvfs.enable = true;
 
   # Abrir el puerto 22 en el firewall de NixOS
   networking.firewall.allowedTCPPorts = [ 22 ];

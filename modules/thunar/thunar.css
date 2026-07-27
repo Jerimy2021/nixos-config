@@ -1,0 +1,208 @@
+/* ==============================================================================
+ * THUNAR GLASSMORPHISM & END-4 STYLE
+ * ============================================================================== */
+
+/* 1. Fondo de la ventana principal + borde con gradiente (igual que tus rofi/sidepad) */
+window.thunar {
+  background-color: rgba(18, 18, 26, 0.85);
+  color: #cdd6f4;
+  border-radius: 14px;
+  border: 2px solid;
+  border-top-color: #89b4fa;
+  border-right-color: #cba6f7;
+  border-bottom-color: #f5c2e7;
+  border-left-color: #89b4fa;
+}
+
+/* 2. Barra lateral flotante */
+.thunar .sidebar,
+.thunar .sidebar treeview {
+  background-color: rgba(12, 12, 18, 0.55);
+  border-right: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.thunar .sidebar {
+  border-radius: 12px;
+  margin: 6px;
+  padding: 6px 4px;
+}
+
+/* Selección real: TreeView, no ListBox */
+.thunar .sidebar treeview:selected,
+.thunar .sidebar treeview.view:selected,
+.thunar .sidebar treeview row:selected,
+.thunar .sidebar treeview:selected:focus {
+  background-color: rgba(203, 166, 247, 0.25) !important;
+  color: #f5e0ff !important;
+  border-radius: 8px;
+  font-weight: bold;
+}
+
+.thunar .sidebar treeview:hover {
+  background-color: rgba(255, 255, 255, 0.06);
+  border-radius: 8px;
+}
+
+/* 3. Barra de ruta — estilo "píldoras conectadas" */
+.thunar path-bar {
+  background-color: rgba(0, 0, 0, 0.15);
+  border-radius: 10px;
+  padding: 3px;
+}
+
+.thunar path-bar button {
+  border-radius: 7px;
+  background-color: transparent;
+  border: 1px solid transparent;
+  margin: 1px;
+  padding: 4px 10px;
+  color: #cdd6f4;
+  transition: all 200ms ease-in-out;
+}
+
+.thunar path-bar button:hover {
+  background-color: rgba(203, 166, 247, 0.20);
+  border-color: rgba(203, 166, 247, 0.4);
+  color: #f5e0ff;
+}
+
+.thunar path-bar button:checked,
+.thunar path-bar button:active {
+  background-color: rgba(137, 180, 250, 0.25);
+  color: #89b4fa;
+  font-weight: bold;
+}
+
+/* 4. Campo de búsqueda */
+.thunar entry {
+  background-color: rgba(0, 0, 0, 0.3);
+  color: #cdd6f4;
+  border-radius: 8px;
+  border: 1px solid rgba(203, 166, 247, 0.25);
+  padding: 6px 10px;
+}
+
+.thunar entry:focus {
+  border-color: rgba(203, 166, 247, 0.7);
+}
+
+/* 5. Vista de archivos */
+.thunar .standard-view {
+  background-color: transparent;
+  color: #cdd6f4;
+}
+
+.thunar .standard-view row,
+.thunar .standard-view iconview element {
+  border-radius: 10px;
+  border-left: 3px solid transparent;
+  transition: all 150ms ease;
+}
+
+.thunar .standard-view row:hover,
+.thunar .standard-view iconview element:hover {
+  background-color: rgba(255, 255, 255, 0.06);
+}
+
+/* 6. Barra de menú y herramientas superior */
+.thunar headerbar,
+.thunar toolbar {
+  background-color: rgba(15, 15, 22, 0.88);
+  border-bottom: 1px solid rgba(203, 166, 247, 0.15);
+  padding: 4px;
+}
+
+.thunar toolbar button {
+  border-radius: 8px;
+  padding: 4px 6px;
+  transition: all 150ms ease;
+}
+
+.thunar toolbar button:hover {
+  background-color: rgba(137, 180, 250, 0.15);
+}
+
+/* 7. Selección real (acento lateral, igual que rofi) */
+.thunar .standard-view row:selected,
+.thunar .standard-view iconview element:selected {
+  background-color: rgba(203, 166, 247, 0.18);
+  border-left: 3px solid #cba6f7;
+  color: #f5e0ff;
+}
+
+/* 8. Barra de estado inferior */
+.thunar statusbar {
+  background-color: rgba(12, 12, 18, 0.70);
+  border-top: 1px solid rgba(203, 166, 247, 0.12);
+  color: #a6adc8;
+  padding: 4px 10px;
+}
+
+/* Barra de uso de disco (nodo real confirmado en docs de Xfce) */
+.thunar .disk-space-usage-bar {
+  min-height: 6px;
+  border-radius: 4px;
+  background-color: rgba(255, 255, 255, 0.08);
+}
+
+.thunar .disk-space-usage-bar--normal {
+  background-image: linear-gradient(to right, #89b4fa, #cba6f7, #f5c2e7);
+  background-color: transparent;
+  border-radius: 4px;
+}
+
+.thunar .disk-space-usage-bar--warning {
+  background-color: #f9e2af;
+}
+
+.thunar .disk-space-usage-bar--full {
+  background-color: #f38ba8;
+}
+
+/* 9. Scrollbars */
+.thunar scrollbar slider {
+  background-color: rgba(203, 166, 247, 0.35);
+  border-radius: 8px;
+  min-width: 8px;
+}
+
+.thunar scrollbar slider:hover {
+  background-color: rgba(203, 166, 247, 0.55);
+}
+
+/* 10. Menús contextuales (clic derecho) */
+.thunar menu,
+.thunar popover {
+  background-color: rgba(18, 18, 26, 0.92);
+  border-radius: 10px;
+  border: 1px solid rgba(203, 166, 247, 0.2);
+  padding: 4px;
+}
+
+.thunar menu menuitem,
+.thunar popover modelbutton {
+  border-radius: 6px;
+  padding: 6px 10px;
+  transition: all 120ms ease;
+}
+
+.thunar menu menuitem:hover,
+.thunar popover modelbutton:hover {
+  background-color: rgba(203, 166, 247, 0.20);
+  color: #f5e0ff;
+}
+
+/* 11. Botones de ventana estilo "traffic light" coloreado */
+headerbar button.titlebutton {
+  border-radius: 50%;
+  min-width: 12px;
+  min-height: 12px;
+  padding: 0;
+  margin: 0 4px;
+  border: none;
+  box-shadow: none;
+}
+headerbar button.titlebutton > image { opacity: 0; }
+headerbar button.titlebutton.close     { background-color: #f5c2e7; } /* rosa */
+headerbar button.titlebutton.maximize  { background-color: #94e2d5; } /* cyan */
+headerbar button.titlebutton.minimize  { background-color: #fab387; } /* naranja */
