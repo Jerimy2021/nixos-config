@@ -71,6 +71,7 @@ in
     # 5. UTILIDADES BASE
     unzip
     gcc
+	gnumake
     wget
     direnv
     nix-direnv
