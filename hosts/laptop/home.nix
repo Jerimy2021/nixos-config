@@ -76,6 +76,9 @@ in
     direnv
     nix-direnv
     vivid
+	tree-sitter
+	gnutar
+	curl
 
     # 6. APLICACIONES
     foot
