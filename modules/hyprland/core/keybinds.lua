@@ -148,14 +148,28 @@ hl.bind(mainMod .. " + SHIFT + Z", hl.dsp.exec_cmd("hyprctl keyword cursor:zoom_
 hl.bind(mainMod .. " + S", function() hl.dispatch(hl.dsp.workspace.toggle_special("magic")) end)
 hl.bind(mainMod .. " + SHIFT + S", function() hl.dispatch(hl.dsp.window.move({ workspace = "special:magic" })) end)
 
+-- Función auxiliar: revisa la lista REAL consultando a Hyprland
+-- Esto evita el bug donde Lua ignora las ventanas en workspaces especiales ocultos
+local function window_exists(class_name)
+  -- Ejecuta 'hyprctl clients' y cuenta cuántas coinciden con la clase
+  local handle = io.popen("hyprctl clients | grep -c 'class: " .. class_name .. "'")
+  local result = handle:read("*a")
+  handle:close()
+  
+  -- Si el conteo es mayor a 0, la ventana sí existe (aunque esté oculta)
+  return tonumber(result) ~= nil and tonumber(result) > 0
+end
+
 -- Panel combinado: Claude Code (derecha) + Terminal/logs (izquierda), un solo workspace
 local function open_sidepad()
-  if not hl.get_window("^(claude-sidepad)$") then
+  if not window_exists("claude-sidepad") then
     hl.dispatch(hl.dsp.exec_cmd([[[workspace special:sidepad silent] foot --app-id claude-sidepad -e bash -lc "npx @anthropic-ai/claude-code"]]))
   end
-  if not hl.get_window("^(term-sidepad)$") then
+  
+  if not window_exists("term-sidepad") then
     hl.dispatch(hl.dsp.exec_cmd([[[workspace special:sidepad silent] foot --app-id term-sidepad -e bash -lc "zsh"]]))
   end
+  
   hl.dispatch(hl.dsp.workspace.toggle_special("sidepad"))
 end
 
