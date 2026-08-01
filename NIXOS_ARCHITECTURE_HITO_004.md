@@ -1,0 +1,149 @@
+# NixOS + Hyprland — Mapa de Arquitectura del Sistema
+## Jerimy's Laptop | Hito 004 — QuickShell (bar, wallpaper-sync, dashboard, notificaciones)
+
+**Fecha del hito:** 2026-08-01
+**Estado:** QuickShell construido y verificado en vivo contra la sesión Hyprland real, pero **no autostarted todavía** — ver §5 antes de asumir que ya reemplazó a waybar/swaync en el sistema desplegado.
+**Precede a:** `NIXOS_ARCHITECTURE_HITO_003.md` (2026-08-01), `002` (2026-08-01), `001` (2026-07-07). Este documento asume esos tres baselines.
+**Uso:** Adjuntar junto a los Hitos 001-003 al inicio de cualquier sesión futura.
+
+---
+
+## 0. Resumen ejecutivo del hito
+
+Sesión autónoma (sin supervisión humana disponible) que implementó las 4 piezas especificadas para el rediseño del shell de escritorio, en orden:
+
+1. Barra principal: workspaces animados (grow+glow) + cápsulas de sistema agrupadas (red/bluetooth/batería/reloj).
+2. Wallpaper dinámico por workspace + sincronización del acento/glow de la barra.
+3. Dashboard desplegable: perfil, toggles rápidos, accesos a carpetas, calendario, mezclador de volumen por dispositivo.
+4. Centro de notificaciones (reemplaza swaync como servidor `org.freedesktop.Notifications`).
+
+Motor elegido: **QuickShell** (QML/Qt), decisión ya tomada antes de esta sesión (ver Hito 003 §7.1 — evaluado contra HyprPanel/AGS, elegido por el techo de animación de QML). Cada pieza se verificó **en vivo** contra la sesión Hyprland real corriendo en la máquina (no solo `nixos-rebuild build`), lo cual expuso y corrigió varios bugs reales que una simple evaluación de Nix nunca habría detectado — documentados en detalle en los mensajes de commit de cada pieza (`git log`), resumidos en §4 aquí.
+
+**Limitación crítica de esta sesión:** no hubo forma de ejecutar `sudo nixos-rebuild switch` (contraseña de sudo interactiva no disponible en el entorno del agente). Todo se validó con `nixos-rebuild build` (evalúa y construye el closure sin activarlo) más pruebas en vivo de QuickShell vía `nix shell nixpkgs#quickshell -c qs -p modules/quickshell` apuntando directamente a la sesión Wayland real. Esto significa que **el sistema desplegado todavía no tiene los paquetes nuevos activos** (`quickshell`, `kdePackages.qt6ct`, `services.upower`) hasta que alguien con la contraseña corra `nix-rebuild-fast`. Ver §5.
+
+---
+
+## 1. Estructura del nuevo módulo
+
+```
+modules/quickshell/
+├── shell.qml                          # Entry point (qs -p modules/quickshell)
+├── services/                          # Singletons, importados como `qs.services`
+│   ├── Theme.qml                      # Paleta única del sistema + curvas de easing
+│   ├── Hypr.qml                       # Envoltorio sobre Quickshell.Hyprland
+│   ├── Battery.qml                    # Quickshell.Services.UPower
+│   ├── Network.qml                    # nmcli por Process (no hay módulo nativo)
+│   ├── BluetoothStatus.qml            # Quickshell.Bluetooth
+│   ├── Volume.qml                     # Quickshell.Services.Pipewire
+│   ├── NotifServer.qml                # NotificationServer — reemplaza swaync
+│   ├── WorkspaceSync.qml              # Wallpaper + acento por workspace
+│   └── UiState.qml                    # Visibilidad compartida dashboard/notif-center
+└── modules/
+    ├── bar/            Bar.qml, Workspaces.qml, Capsule.qml, SystemCapsules.qml
+    ├── dashboard/       Dashboard.qml, ProfileHeader.qml, QuickToggles.qml,
+    │                    Shortcuts.qml, Calendar.qml, VolumeMixer.qml
+    └── notifications/   NotificationCard.qml, NotificationPopups.qml,
+                         NotificationCenter.qml
+```
+
+**Convención de imports (QuickShell-specific, no es un patrón QML estándar):** QuickShell registra automáticamente el directorio de configuración como un módulo implícito `qs`, y cada subcarpeta como submódulo (`qs.services`, `qs.modules.bar`, ...). Los singletons se declaran con `pragma Singleton` + `Singleton { ... }` (tipo base de Quickshell, no `QtObject`) y **no requieren `qmldir`** — se descubren solo por convención de carpeta+nombre de archivo. Esto se confirmó inspeccionando una config de referencia real (`caelestia-dots/shell`) porque la documentación oficial de quickshell.org no cubre esta convención explícitamente.
+
+**Un solo archivo = un widget**, mandatorio (ver directriz del brief): cualquier módulo nuevo futuro es una carpeta/archivo nuevo bajo `modules/`, sin tocar `shell.qml` salvo por la línea de instanciación.
+
+---
+
+## 2. Paleta y animación
+
+`services/Theme.qml` centraliza la paleta ya establecida en el resto del sistema (bordes Hyprland en `themes/cyberdream/theme.lua`, rofi en `modules/rofi/*.rasi`):
+
+- **Acentos núcleo** (bordes activos de Hyprland, base de la barra): lavender `#cba6f7`, blue `#89b4fa`, pink `#f5c2e7`.
+- **Acentos neón** (reservados a superficies elevadas — dashboard, notificaciones — nunca la barra base, por directriz explícita del brief): magenta `#ff2a6d`, cyan `#05d9e8`, verde `#00ff9f`.
+- **Curvas compartidas:** `durFast/durMed/durSlow` (140/240/420ms) + `Easing.OutCubic/OutBack/InOutQuad`, usadas consistentemente en todos los `Behavior on` del árbol para que la barra, el dashboard y las notificaciones se sientan como un solo sistema, no piezas sueltas.
+
+**Gotcha real encontrado y corregido (ver §4.1):** QML interpreta los colores hex de 8 dígitos como `#AARRGGBB`, no `#RRGGBBAA`. Todo color con alpha en este módulo pasa por `Qt.rgba(r, g, b, a)` o por las constantes ya resueltas de `Theme.qml` — no hay hex de 8 dígitos sueltos en ningún otro archivo del módulo.
+
+---
+
+## 3. Detalle por ítem de scope
+
+### 3.1 Barra (`modules/bar/`)
+
+- `Workspaces.qml`: 9 slots fijos (igual que los binds `SUPER+1..9` de `core/keybinds.lua`). Activo = pastilla ancha + halo de glow con `Theme.activeAccent`; ocupado-inactivo = punto mediano gris; vacío = punto mínimo casi invisible. Todas las transiciones vía `Behavior on width/color` con `Easing.OutBack` — nunca un salto instantáneo.
+- `SystemCapsules.qml`: red (nmcli, click abre `nm-applet-ctl toggle`), bluetooth (`Quickshell.Bluetooth`, click togglea el adapter), batería (`Quickshell.Services.UPower`), reloj (`SystemClock`, click abre el dashboard).
+- `Capsule.qml`: componente genérico icono+valor reutilizado por las 4 cápsulas de sistema — el punto de extensión para agregar módulos nuevos a la barra.
+- Despacho a Hyprland vía `Hyprland.dispatch("hl.dsp.focus({ workspace = \"N\" })")` — sintaxis Lua nativa de Hyprland ≥0.55 (Hito 002 §1.3), no el formato de dispatcher clásico.
+
+### 3.2 Wallpaper + acento por workspace (`services/WorkspaceSync.qml`)
+
+- Escucha `Hypr.activeId` (alimentado por `Hyprland.rawEvent` nativo de QuickShell, sin mecanismo paralelo).
+- En cada cambio: dispara `workspace-wallpaper <ruta>` (nuevo script en `scripts.nix`, deliberadamente separado de `set-wallpaper` para saltar pywal/matugen y sentirse instantáneo) y fija `Theme.activeAccent` a un color del ciclo núcleo `(id-1) % 3`.
+- Mapeo de wallpapers usa la librería real del usuario en `~/Pictures/Wallpapers/` (9 imágenes), no assets del repo.
+- **Bug preexistente encontrado y corregido de paso:** `set-wallpaper` (ya existente desde antes de este hito) todavía usaba `${pkgs.swww}/bin/swww` — nixpkgs renombró el atributo a `pkgs.awww` y el binario resultante también se llama `awww`, no `swww`. El script fallaba en silencio en el paso de wallpaper (pywal/matugen sí corrían, enmascarando el fallo). Corregido a `${pkgs.awww}/bin/awww`.
+
+### 3.3 Dashboard (`modules/dashboard/`)
+
+Panel desplegable desde la cápsula del reloj (`UiState.toggleDashboard()`), glassmorphism (`Theme.surfaceElevated` + borde teñido con `Theme.activeAccent`), animación open/close vía scale+opacity con un `Timer` de gracia (`hideDelay`) para que la ventana siga mapeada durante el fade-out — si no, no hay animación de cierre posible.
+
+Sub-widgets: `ProfileHeader` (usuario@host + `uptime -p`), `QuickToggles` (wifi/bluetooth/DND/mute), `Shortcuts` (chips que abren Thunar), `Calendar` (grid mensual, hoy resaltado con el acento activo — verificado contra la fecha real del sistema), `VolumeMixer` (sliders por nodo de Pipewire, salida y entrada por separado).
+
+### 3.4 Centro de notificaciones (`modules/notifications/`)
+
+`services/NotifServer.qml` instancia `NotificationServer` (Quickshell.Services.Notifications) y mantiene `popups` (activos, auto-descartados a 6s) e `history` (hasta 50). `NotificationCard.qml` es la unidad visual compartida entre el toast (`NotificationPopups`) y el historial (`NotificationCenter`) — borde izquierdo coloreado por urgencia (magenta=crítica, cyan=normal, verde=baja).
+
+Esto convierte a QuickShell en el daemon de notificaciones real del sistema — **compite con swaync por el nombre `org.freedesktop.Notifications`**, y gana si arranca antes o si swaync no está corriendo. swaync se queda instalado y con su `systemd --user` service intacto (no se tocó `home.nix` ni el autostart) — ver §5 sobre por qué el corte definitivo se dejó pendiente.
+
+---
+
+## 4. Bugs reales encontrados por verificación en vivo (no por revisión de código)
+
+Cada uno de estos solo se detectó porque la verificación fue "lanzar QuickShell contra la sesión Hyprland real + `grim` + `awww query` + `notify-send`", no solo "¿compila el flake". Se documentan aquí porque son la evidencia de por qué ese método de verificación es el correcto para este tipo de cambio, y porque el patrón general (síntoma sutil, causa no obvia) es reutilizable.
+
+1. **Hex de 8 dígitos en QML es `#AARRGGBB`, no `#RRGGBBAA`.** Colores pensados como "blanco casi transparente" (`#ffffff08`) se renderizaban como amarillo opaco. Visible solo en un screenshot real, nunca en el código fuente. Fix: `Qt.rgba()` en todas partes.
+2. **`SystemClock` expone `date`, no `currentDate`.** Tiraba `Invalid argument passed to formatDateTime()` en cada tick — visible solo en los logs de `qs`, no en la superficie visual (el reloj simplemente no aparecía).
+3. **`Component.onCompleted` no es válido directamente sobre `ShellRoot`** ("Non-existent attached object"). QuickShell rechazaba la config entera al arrancar. Fix: envolver la referencia forzadora del singleton en un `QtObject` hijo.
+4. **`NotificationPopups` y `NotificationCenter` colisionaban visualmente** — mismo anchor top-right, misma margin. Solo visible al forzar ambos abiertos a la vez durante la prueba. Fix: ocultar los popups mientras el centro está abierto.
+5. **`services.upower.enable` no estaba declarado en ningún lado del sistema** — `Quickshell.Services.UPower` necesita que el nombre `org.freedesktop.UPower` sea activatable por D-Bus, y nada en `configuration.nix` lo proveía (el `battery-notify` existente lee `/sys/class/power_supply` directo, así que el hueco era invisible hasta ahora). Agregado a `configuration.nix`.
+6. **`swaync` no muere con `kill`/`pkill`** — corre como `systemd --user` service (`swaync.service`) que se re-activa por D-Bus. Para probar el registro exclusivo de `NotifServer` hubo que `systemctl --user stop swaync.service`, no solo matar el PID. (Se restauró con `start` al terminar.)
+7. **Gotcha de la propia sesión del agente, no del código:** `pkill -9 -f "bin/quickshell -p"` mata su propio shell invocador, porque `-f` matchea contra la línea de comando completa y esa línea literalmente contiene el string del patrón como argumento de `pkill`. Causó abortos silenciosos de scripts de prueba completos (exit code 1/144 sin explicación) hasta que se cambió a `pkill -9 quickshell` (sin `-f`, matchea solo el nombre del proceso).
+
+---
+
+## 5. Por qué QuickShell NO reemplazó a waybar/swaync en el autostart todavía
+
+Esto es una decisión deliberada, no un ítem olvidado:
+
+- **No se pudo correr `nixos-rebuild switch`** en esta sesión (sudo pide contraseña interactiva; el entorno del agente no tiene una). Todo se validó con `nixos-rebuild build` (construye el closure, no lo activa) más pruebas ad-hoc de QuickShell vía `nix shell nixpkgs#quickshell -c qs -p modules/quickshell` contra la sesión Wayland real ya corriendo — que es como se generaron todos los screenshots y verificaciones de este documento.
+- Esto significa que **el sistema activo todavía no tiene `quickshell`, `kdePackages.qt6ct` ni `services.upower` en su PATH/generación real** — solo están en el store porque `build` los compiló, pero la generación de sistema activa (`/run/current-system`) es anterior a este hito.
+- Si `modules/hyprland/core/autostart.lua` se hubiera cambiado para lanzar `quickshell` en vez de `waybar`+`swaync` en esta sesión, y Hyprland se reinicia (o la sesión se re-loguea) antes de que alguien corra `nix-rebuild-fast` con la contraseña real, **el autostart fallaría silenciosamente y el usuario se quedaría sin ninguna barra** — exactamente el escenario que el brief pidió evitar explícitamente para `modules/ml4w/`, aplicado aquí al mismo razonamiento.
+
+**Siguiente paso manual, en orden, la próxima vez que Jerimy esté frente al teclado:**
+
+1. `nix-rebuild-fast` (con la contraseña real) para activar `quickshell`, `qt6ct` y `services.upower` en el sistema de verdad.
+2. Verificar visualmente que `qs -p ~/.config/quickshell` (ahora resuelto vía el symlink de Home Manager, no la ruta del repo) sigue viéndose igual que en los screenshots de esta sesión.
+3. Recién ahí, editar `modules/hyprland/core/autostart.lua`: quitar `hl.exec_cmd("swaync")` y `hl.exec_cmd("waybar")`, agregar `hl.exec_cmd("qs")`. Mantener `~/.config/waybar/launch.sh` (bind `SUPER+SHIFT+B`) intacto como fallback manual durante un período de prueba.
+4. Solo después de confirmar estabilidad en uso real (no en una sesión de prueba de 30 minutos), evaluar la eliminación de `modules/ml4w/settings/` (pendiente desde Hito 003) y de `modules/waybar/` completo.
+
+---
+
+## 6. Pendientes abiertos (heredados o nuevos)
+
+### 6.1 Heredados de Hitos anteriores, aún sin resolver
+- Refactor topológico del flake (`flake-parts`, `disko`, `sops-nix`/`agenix`, `nh`).
+- Migración de rEFInd a gestión declarativa.
+- Deprecación de `modules/ml4w/settings/` (5 archivos, pendiente desde Hito 003 — ahora doblemente pendiente de la estabilización de QuickShell, ver §5).
+- `services.logind.settings.Login` (lid-switch en dock) — evaluado en Hito 003, no aplicado.
+- Bug de matugen (`--prefer` ambiguo con fuente de color múltiple) en `set-wallpaper` — detectado en esta sesión al diagnosticar el bug de `swww`→`awww`, pero es una decisión de UX separada (qué preferencia default usar) y se dejó sin tocar.
+
+### 6.2 Nuevos de esta sesión
+- **Cutover de autostart pendiente** — ver §5, es el pendiente más importante de este hito.
+- **`services.upower`** recién declarado, nunca activado en el sistema real (pendiente de switch) — confirmar que no rompe nada más una vez activo (no debería; es un servicio D-Bus pasivo).
+- **Colisión de posición popups/notification-center** — resuelta con "ocultar popups si el center está abierto", pero es una solución de alcance mínimo; si en el futuro se quiere que convivan (ej. mostrar el toast desplazado en vez de ocultarlo), es un rediseño de layout pendiente.
+- **Explícitamente fuera de alcance, sin tocar:** panel de IA/chat (diferido a un módulo futuro por decisión ya tomada), `sidepad-toggle`, mecanismo de Claude Code, quicklinks de rofi (`SUPER+CTRL+U`).
+
+---
+
+## 7. Estado de Ratificación
+
+Snapshot verdadero al cierre del Hito 004. Cualquier cambio posterior invalida secciones específicas y debe generar Hito 005. No modificar retroactivamente — versionar hitos.
+
+**FIN DEL DOCUMENTO — Hito 004**
