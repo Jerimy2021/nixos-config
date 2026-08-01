@@ -142,8 +142,41 @@ Esto es una decisión deliberada, no un ítem olvidado:
 
 ---
 
-## 7. Estado de Ratificación
+## 8. Addendum — Follow-up en la misma rama (mismo día, sesión posterior)
 
-Snapshot verdadero al cierre del Hito 004. Cualquier cambio posterior invalida secciones específicas y debe generar Hito 005. No modificar retroactivamente — versionar hitos.
+Las secciones 1-6 son el snapshot original, sin editar. Esto documenta una sesión de seguimiento en `hito-04-quickshell` que ejecutó exactamente los 4 pendientes marcados en §5 y parte de §6.2. **Supera puntualmente** la afirmación de §5 de que "QuickShell no reemplazó a waybar/swaync en el autostart" — eso ya no es cierto en el código de la rama (sigue sin probarse en el sistema activado, ver más abajo).
+
+### 8.1 Los 4 cambios, en orden
+
+1. **Autostart real.** `autostart.lua` ahora lanza `qs` en vez de `waybar`+`swaync`. Se encontró y corrigió un gap real de la sesión original: `home.nix` nunca linkeaba `modules/quickshell` a `~/.config/quickshell` (`xdg.configFile`) — sin eso, `qs` en autostart no habría encontrado ninguna config. También se activó `settings.watchFiles: true` en `shell.qml`.
+2. **Keybinds.** `SUPER+CTRL+B` ahora mata y relanza `quickshell` (antes: señal específica de waybar). `SUPER+SHIFT+B` ahora togglea el dashboard vía `quickshell ipc call uiState toggleDashboard` (antes: `waybar/launch.sh`) — se agregó un `IpcHandler` a `UiState.qml` para esto. `SUPER+CTRL+T` (themeswitcher de waybar) se eliminó sin reemplazo directo.
+3. **Acento matugen-driven.** `WallpaperPalette.qml` (nombrado así y no `Palette.qml` por una colisión real con el tipo built-in `QtQuick.Palette`, encontrada en runtime) lee una paleta cacheada por wallpaper que `workspace-wallpaper` genera corriendo matugen una sola vez por imagen, en background, sin bloquear el cambio de workspace. Se corrigió el bug preexistente de `--prefer` en matugen (`--prefer saturation`). Los colores de matugen se "vividize"-an (clamp de saturación/luminosidad en HSL) porque Material You por defecto elige tonos pastel, incompatible con la regla no-negociable de este sistema.
+4. **Limpieza de lo muerto.** `modules/waybar/` completo y los 5 archivos restantes de `modules/ml4w/settings/` eliminados (verificado por grep, no asumido — todas sus referencias vivían exclusivamente dentro de `modules/waybar/`). Paquetes `dunst` y `swaynotificationcenter` retirados de `home.nix`. Bonus: se reemplazaron los `layer_rule` muertos de swaync/waybar en `window-rules.lua` por uno para el namespace real de QuickShell (`"quickshell"`, confirmado con `hyprctl layers -j`) — esto además cierra un hueco real de la sesión original, donde el dashboard y el centro de notificaciones nunca tuvieron blur de compositor de verdad detrás del glassmorphism.
+
+### 8.2 Estado de verificación — sigue sin haber `switch`
+
+Mismo bloqueo que la sesión original: sin contraseña de sudo interactiva disponible, todo se validó con `nixos-rebuild build` (5 veces, una por cambio funcional) más pruebas en vivo de QuickShell contra la sesión Hyprland real (`qs -p modules/quickshell`, y una vez con un symlink manual `~/.config/quickshell` → repo para probar la invocación exacta `qs` sin argumentos que usa el autostart real, removido después de la prueba). El cambio de `window-rules.lua` es la única pieza de este follow-up que **no** se pudo probar en vivo: `~/.config/hypr` ya es un symlink de home-manager de un switch real anterior a esta sesión, así que Hyprland corre una generación vieja del store, ajena a estos archivos de trabajo — apuntar el compositor real a la config en progreso sin un switch de verdad habría arriesgado la sesión real del usuario. Se dejó verificado solo por consistencia de patrón contra la regla `rofi-glass` ya probada, no por ejecución.
+
+### 8.3 Incidente — pantalla bloqueada
+
+Durante la verificación del ítem 3 se mató por error una instancia de `hyprlock` disparada por idle-timeout (confundida con un proceso de prueba propio), lo que dejó al compositor en su fallback nativo de "lockscreen died" (Hyprland rechaza un lock client nuevo tras la muerte de uno viejo salvo que se permita explícitamente). Se recuperó con:
+```
+hyprctl eval "hl.config({misc={allow_session_lock_restore=true}})"
+hyprctl dispatch "hl.dsp.exec_cmd([[hyprlock]])"
+```
+`hyprctl eval "<lua>"` es un verbo de nivel superior no documentado en `hyprctl --help` de este fork con motor Lua — `hyprctl keyword` falla explícitamente ("can't work with non-legacy parsers. Use eval.") bajo este engine. Vale la pena recordarlo junto a los gotchas de `hl.dsp.*` ya documentados en el Hito 002 §1.3. La pantalla quedó bloqueada de verdad al final (correcto) — la lección real: un lock screen durante trabajo desatendido es una señal a respetar, no un obstáculo para matar.
+
+### 8.4 Pendientes actualizados
+
+- Los 4 puntos de §5 (roadmap de cutover) ya están hechos en la rama. Lo único que falta es que Jerimy corra `nix-rebuild-fast` (contraseña real) y confirme visualmente que todo se ve/comporta igual que en las pruebas de esta sesión antes de mergear.
+- `services.logind.settings.Login` (lid-switch en dock, Hito 003) — sigue sin aplicar.
+- Refactor topológico del flake, migración de rEFInd — siguen sin tocar.
+- Nuevo: el `layer_rule` de `window-rules.lua` para el namespace `quickshell` está sin probar en vivo (ver §8.2) — confirmar visualmente el blur del dashboard/notificaciones apenas se pueda hacer un switch real.
+
+---
+
+## 9. Estado de Ratificación
+
+Snapshot verdadero al cierre del Hito 004 (secciones 1-7) más su follow-up en la misma rama (sección 8). Cualquier cambio posterior invalida secciones específicas y debe generar Hito 005. No modificar retroactivamente — versionar hitos.
 
 **FIN DEL DOCUMENTO — Hito 004**
