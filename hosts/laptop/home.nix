@@ -124,6 +124,7 @@ in
     # 11. SCRIPTS NATIVOS DE NIX
     mis-scripts.hypr-gamemode
     mis-scripts.set-wallpaper
+    mis-scripts.workspace-wallpaper
 	mis-scripts.sidepad-toggle
 	mis-scripts.battery-notify
 	mis-scripts.wlogout-launch

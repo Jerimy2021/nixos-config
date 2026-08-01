@@ -1,5 +1,7 @@
 //@ pragma UseQApplication
+import QtQml
 import Quickshell
+import qs.services
 import qs.modules.bar
 
 // Punto de entrada de QuickShell (Hito 004). Reemplaza waybar + swaync.
@@ -8,4 +10,12 @@ import qs.modules.bar
 // no implique tocar este archivo salvo para una línea de instanciación.
 ShellRoot {
     Bar {}
+
+    // Los singletons pragma Singleton de QML se crean perezosamente en el
+    // primer acceso — este QtObject fuerza a WorkspaceSync a existir desde
+    // el arranque, para que el hook de wallpaper+acento por workspace
+    // quede activo sin depender de que algún widget lo use.
+    QtObject {
+        Component.onCompleted: WorkspaceSync.syncTo(Hypr.activeId)
+    }
 }

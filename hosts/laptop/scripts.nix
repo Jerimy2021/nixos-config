@@ -31,8 +31,11 @@
         exit 1
     fi
 
-    # 1. Transición de cristal con SWWW
-    ${pkgs.swww}/bin/swww img "$WALLPAPER" \
+    # 1. Transición de cristal con AWWW (fork de swww; nixpkgs renombró el
+    # atributo pkgs.swww -> pkgs.awww, pero el binario resultante también
+    # pasó a llamarse "awww", no "swww" — bug preexistente detectado y
+    # corregido en Hito 004, ver commit).
+    ${pkgs.awww}/bin/awww img "$WALLPAPER" \
         --transition-type grow \
         --transition-pos 0.5,0.5 \
         --transition-step 90 \
@@ -53,6 +56,26 @@
     # 4. Refrescar la Interfaz sin parpadeos
     pkill -SIGUSR2 waybar
     ${pkgs.swaynotificationcenter}/bin/swaync-client -rs
+  '';
+
+  # 2b. WALLPAPER POR WORKSPACE (Hito 004 / QuickShell)
+  # Deliberadamente separado de set-wallpaper: esto se dispara en cada
+  # cambio de workspace (services/WorkspaceSync.qml), así que se salta
+  # pywal/matugen (lentos, y matugen ya falla en este sistema sin --prefer
+  # cuando el color fuente es ambiguo — bug preexistente, fuera de alcance
+  # de este hito) para que la transición se sienta instantánea y fluida.
+  # El acento del bar se sincroniza aparte, en QML puro (Theme.qml).
+  workspace-wallpaper = pkgs.writeShellScriptBin "workspace-wallpaper" ''
+    AWWW=${pkgs.awww}/bin/awww
+    WALLPAPER="$1"
+
+    [ -f "$WALLPAPER" ] || exit 0
+
+    "$AWWW" img "$WALLPAPER" \
+        --transition-type wipe \
+        --transition-angle 30 \
+        --transition-duration 0.65 \
+        --transition-fps 60
   '';
 
   sidepad-toggle = pkgs.writeShellScriptBin "sidepad-toggle" ''
