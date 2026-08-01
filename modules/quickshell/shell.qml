@@ -3,6 +3,7 @@ import QtQml
 import Quickshell
 import qs.services
 import qs.modules.bar
+import qs.modules.dashboard
 
 // Punto de entrada de QuickShell (Hito 004). Reemplaza waybar + swaync.
 // Estructura modular: cada pieza (barra, dashboard, notificaciones) vive en
@@ -10,6 +11,7 @@ import qs.modules.bar
 // no implique tocar este archivo salvo para una línea de instanciación.
 ShellRoot {
     Bar {}
+    Dashboard {}
 
     // Los singletons pragma Singleton de QML se crean perezosamente en el
     // primer acceso — este QtObject fuerza a WorkspaceSync a existir desde

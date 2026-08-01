@@ -12,6 +12,7 @@ Singleton {
     property string kind: "none" // none | wifi | ethernet
     property string label: "Sin red"
     property bool connected: false
+    property bool wifiEnabled: true
 
     function icon() {
         if (kind === "ethernet") return "󰈀";
@@ -22,6 +23,24 @@ Singleton {
     function refresh() {
         proc.running = false;
         proc.running = true;
+        wifiProc.running = false;
+        wifiProc.running = true;
+    }
+
+    function toggleWifi() {
+        wifiToggleProc.command = ["nmcli", "radio", "wifi", root.wifiEnabled ? "off" : "on"];
+        wifiToggleProc.running = true;
+        root.wifiEnabled = !root.wifiEnabled;
+    }
+
+    Process { id: wifiToggleProc }
+
+    Process {
+        id: wifiProc
+        command: ["nmcli", "radio", "wifi"]
+        stdout: StdioCollector {
+            onStreamFinished: root.wifiEnabled = text.trim() === "enabled"
+        }
     }
 
     Timer {

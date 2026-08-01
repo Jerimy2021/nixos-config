@@ -11,6 +11,9 @@ Singleton {
 
     property list<var> popups: []
     property list<var> history: []
+    property bool dndEnabled: false
+
+    function toggleDnd() { root.dndEnabled = !root.dndEnabled; }
 
     NotificationServer {
         id: server
@@ -22,14 +25,17 @@ Singleton {
 
         onNotification: function (notification) {
             notification.tracked = true;
-            var popupsCopy = root.popups.slice();
-            popupsCopy.push(notification);
-            root.popups = popupsCopy;
 
             var historyCopy = root.history.slice();
             historyCopy.unshift(notification);
             if (historyCopy.length > 50) historyCopy.length = 50;
             root.history = historyCopy;
+
+            if (root.dndEnabled) return;
+
+            var popupsCopy = root.popups.slice();
+            popupsCopy.push(notification);
+            root.popups = popupsCopy;
 
             dismissTimer.createObject(root, { targetNotif: notification });
         }
