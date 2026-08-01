@@ -127,6 +127,7 @@ in
     "rofi/rofi-border.rasi".source = ../../modules/ml4w/settings/rofi-border.rasi;
     "rofi/glass-window.rasi".source = ../../modules/ml4w/settings/glass-window.rasi;
     "rofi/cheatsheet.rasi".source = ../../modules/ml4w/settings/cheatsheet.rasi;
+	"rofi/projects.rasi".source = ../../modules/rofi/projects.rasi;
     "wlogout".source = ../../modules/wlogout;
     "matugen".source = ../../modules/matugen; 
     "gtk-3.0/gtk.css".source = ../../modules/gtk/gtk.css;
