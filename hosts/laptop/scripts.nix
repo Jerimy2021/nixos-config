@@ -56,36 +56,71 @@
   '';
 
   sidepad-toggle = pkgs.writeShellScriptBin "sidepad-toggle" ''
-    HYPRCTL=${pkgs.hyprland}/bin/hyprctl
-    JQ=${pkgs.jq}/bin/jq
-    ZOXIDE=${pkgs.zoxide}/bin/zoxide
-    ROFI=${pkgs.rofi}/bin/rofi
-    FOOT=${pkgs.foot}/bin/foot
-    BASH=${pkgs.bash}/bin/bash
-    ZSH=${pkgs.zsh}/bin/zsh
-    FLOCK=${pkgs.util-linux}/bin/flock
+  HYPRCTL=${pkgs.hyprland}/bin/hyprctl
+  JQ=${pkgs.jq}/bin/jq
+  ZOXIDE=${pkgs.zoxide}/bin/zoxide
+  ROFI=${pkgs.rofi}/bin/rofi
+  FOOT=${pkgs.foot}/bin/foot
+  BASH=${pkgs.bash}/bin/bash
+  ZSH=${pkgs.zsh}/bin/zsh
+  FLOCK=${pkgs.util-linux}/bin/flock
+  CLAUDE=${pkgs.claude-code}/bin/claude
 
-    clients=$("$HYPRCTL" clients -j)
-    need_claude=1
-    need_term=1
-    echo "$clients" | "$JQ" -e '.[] | select(.class=="claude-sidepad" or .initialClass=="claude-sidepad")' >/dev/null 2>&1 && need_claude=0
-    echo "$clients" | "$JQ" -e '.[] | select(.class=="term-sidepad" or .initialClass=="term-sidepad")' >/dev/null 2>&1 && need_term=0
+  clients=$("$HYPRCTL" clients -j)
+  need_claude=1
+  need_term=1
+  echo "$clients" | "$JQ" -e '.[] | select(.class=="claude-sidepad" or .initialClass=="claude-sidepad")' >/dev/null 2>&1 && need_claude=0
+  echo "$clients" | "$JQ" -e '.[] | select(.class=="term-sidepad" or .initialClass=="term-sidepad")' >/dev/null 2>&1 && need_term=0
 
-    if [ "$need_claude" -eq 1 ] || [ "$need_term" -eq 1 ]; then
-      dir=$("$ZOXIDE" query -l | "$ROFI" -dmenu -i -p '󰉋 Proyecto' -theme "$HOME/.config/rofi/projects.rasi")
-      if [ -z "$dir" ]; then dir="$HOME"; fi
+  if [ "$need_claude" -eq 1 ] || [ "$need_term" -eq 1 ]; then
+    dir=$("$ZOXIDE" query -l | "$ROFI" -dmenu -i -p '󰉋 Proyecto' -theme "$HOME/.config/rofi/projects.rasi")
+    if [ -z "$dir" ]; then dir="$HOME"; fi
 
-      if [ "$need_claude" -eq 1 ]; then
-        cmd="[workspace special:sidepad silent] $FOOT --app-id claude-sidepad -D '$dir' -e $BASH -lc 'exec 9>/tmp/claude-sidepad.lock; $FLOCK -n 9 || exit 0; npx @anthropic-ai/claude-code'"
-        "$HYPRCTL" dispatch "hl.dsp.exec_cmd([[$cmd]])"
-      fi
-
-      if [ "$need_term" -eq 1 ]; then
-        cmd="[workspace special:sidepad silent] $FOOT --app-id term-sidepad -D '$dir' -e $ZSH"
-        "$HYPRCTL" dispatch "hl.dsp.exec_cmd([[$cmd]])"
-      fi
+    if [ "$need_claude" -eq 1 ]; then
+      cmd="[workspace special:sidepad silent] $FOOT --app-id claude-sidepad -D '$dir' -e $BASH -lc 'exec 9>/tmp/claude-sidepad.lock; $FLOCK -n 9 || exit 0; $CLAUDE'"
+      "$HYPRCTL" dispatch "hl.dsp.exec_cmd([[$cmd]])"
     fi
 
-    "$HYPRCTL" dispatch 'hl.dsp.workspace.toggle_special([[sidepad]])'
+    if [ "$need_term" -eq 1 ]; then
+      cmd="[workspace special:sidepad silent] $FOOT --app-id term-sidepad -D '$dir' -e $ZSH"
+      "$HYPRCTL" dispatch "hl.dsp.exec_cmd([[$cmd]])"
+    fi
+  fi
+
+  "$HYPRCTL" dispatch 'hl.dsp.workspace.toggle_special([[sidepad]])'
+  '';
+
+  battery-notify = pkgs.writeShellScriptBin "battery-notify" ''
+    NOTIFY=${pkgs.libnotify}/bin/notify-send
+    BAT=$(${pkgs.coreutils}/bin/ls -d /sys/class/power_supply/BAT* 2>/dev/null | ${pkgs.coreutils}/bin/head -n 1)
+    if [ -z "$BAT" ]; then
+      exit 0
+    fi
+
+    notified_20=false
+    notified_15=false
+
+    while true; do
+      capacity=$(${pkgs.coreutils}/bin/cat "$BAT/capacity")
+      status=$(${pkgs.coreutils}/bin/cat "$BAT/status")
+
+      if [ "$status" = "Discharging" ]; then
+        if [ "$capacity" -le 15 ] && [ "$notified_15" = false ]; then
+          "$NOTIFY" -u critical "Batería baja" "Restante: ''${capacity}%"
+          notified_15=true
+        elif [ "$capacity" -le 20 ] && [ "$capacity" -gt 15 ] && [ "$notified_20" = false ]; then
+          "$NOTIFY" -u normal "Batería baja" "Restante: ''${capacity}%"
+          notified_20=true
+        elif [ "$capacity" -gt 20 ]; then
+          notified_20=false
+          notified_15=false
+        fi
+      else
+        notified_20=false
+        notified_15=false
+      fi
+
+      ${pkgs.coreutils}/bin/sleep 60
+    done
   '';
 }

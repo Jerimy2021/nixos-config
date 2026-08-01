@@ -92,6 +92,7 @@ in
     
     # 7. DESARROLLO
     nodejs_22
+    claude-code
 
     # 8. FUENTES E ICONOS
     nerd-fonts.jetbrains-mono
@@ -117,17 +118,33 @@ in
     mis-scripts.hypr-gamemode
     mis-scripts.set-wallpaper
 	mis-scripts.sidepad-toggle
+	mis-scripts.battery-notify
   ];
+
+  systemd.user.services.battery-notify = {
+    Unit = {
+      Description = "Notificación de batería baja";
+      PartOf = [ "graphical-session.target" ];
+      After = [ "graphical-session.target" ];
+    };
+    Service = {
+      ExecStart = "${mis-scripts.battery-notify}/bin/battery-notify";
+      Restart = "on-failure";
+    };
+    Install = {
+      WantedBy = [ "graphical-session.target" ];
+    };
+  };
 
   xdg.configFile = {
     "nvim".source = inputs.nvim-config;
     "waybar".source = ../../modules/waybar;
     "hypr".source = ../../modules/hyprland;
     "ml4w".source = ../../modules/ml4w;
-    "rofi/rofi-border.rasi".source = ../../modules/ml4w/settings/rofi-border.rasi;
-    "rofi/glass-window.rasi".source = ../../modules/ml4w/settings/glass-window.rasi;
-    "rofi/cheatsheet.rasi".source = ../../modules/ml4w/settings/cheatsheet.rasi;
-	"rofi/projects.rasi".source = ../../modules/rofi/projects.rasi;
+    "rofi/rofi-border.rasi".source = ../../modules/rofi/rofi-border.rasi;
+    "rofi/glass-window.rasi".source = ../../modules/rofi/glass-window.rasi;
+    "rofi/cheatsheet.rasi".source = ../../modules/rofi/cheatsheet.rasi;
+    "rofi/projects.rasi".source = ../../modules/rofi/projects.rasi;
     "wlogout".source = ../../modules/wlogout;
     "matugen".source = ../../modules/matugen; 
     "gtk-3.0/gtk.css".source = ../../modules/gtk/gtk.css;
@@ -282,7 +299,6 @@ in
       ll = "eza -l --icons";
       cat = "bat";
       cd = "z";
-      claude = "npx @anthropic-ai/claude-code";
       nix-rebuild-fast = "sudo nixos-rebuild switch --flake ~/system/nixos/#laptop";
     };
 

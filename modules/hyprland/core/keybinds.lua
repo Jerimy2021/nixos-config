@@ -88,6 +88,14 @@ hl.bind(mainMod .. " + Tab", hl.dsp.focus({ workspace = "m+1" }))         -- Sig
 hl.bind(mainMod .. " + SHIFT + Tab", hl.dsp.focus({ workspace = "m-1" })) -- Workspace anterior
 hl.bind(mainMod .. " + CTRL + down", hl.dsp.focus({ workspace = "empty" }))
 
+hl.bind(mainMod .. " + CTRL + U", hl.dsp.exec_cmd([==[bash -c '
+  sel=$(cat ~/.config/hypr/assets/quicklinks.txt | rofi -dmenu -i -theme ~/.config/rofi/cheatsheet.rasi -p "  Quicklinks")
+  [ -z "$sel" ] && exit 0
+  cmd=$(echo "$sel" | cut -d"|" -f2- | xargs)
+  eval "$cmd"
+']==]))
+
+
 -- ==============================================================================
 -- 5. SISTEMA, MEDIOS Y HARDWARE
 -- ==============================================================================

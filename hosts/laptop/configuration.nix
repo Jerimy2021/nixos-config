@@ -10,10 +10,11 @@
   # PERMISOS Y FLAKES
   # ==========================================
   nixpkgs.config = {
-    allowUnfree = true;
-    # Permitir dependencias de Steam
-    allowUnfreePredicate = pkg: builtins.elem (lib.getName pkg) [
-      "steam" "steam-original" "steam-unwrapped" "steam-run"
+  allowUnfree = true;
+  # Permitir dependencias de Steam + Claude Code
+  allowUnfreePredicate = pkg: builtins.elem (lib.getName pkg) [
+    "steam" "steam-original" "steam-unwrapped" "steam-run"
+    "claude-code"
     ];
   };
 

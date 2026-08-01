@@ -1,0 +1,3 @@
+UTEC Portal | firefox --new-window https://sistema-academico.utec.edu.pe/
+Correo UTEC | firefox --new-window https://mail.google.com/mail/u/0/#inbox
+Proyecto Sidepad | sidepad-toggle
