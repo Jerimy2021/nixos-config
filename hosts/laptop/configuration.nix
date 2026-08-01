@@ -39,6 +39,10 @@
   time.timeZone = "America/Lima"; 
   i18n.defaultLocale = "en_US.UTF-8";
   console.keyMap = "la-latin1";
+  services.logind.settings.Login = {
+  HandleLidSwitchDocked = "ignore";
+  HoldoffTimeoutSec = "5s";
+  };
   services.xserver = {
     enable = true;
     xkb = {

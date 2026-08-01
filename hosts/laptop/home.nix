@@ -119,6 +119,8 @@ in
     mis-scripts.set-wallpaper
 	mis-scripts.sidepad-toggle
 	mis-scripts.battery-notify
+	mis-scripts.wlogout-launch
+    mis-scripts.nm-applet-ctl
   ];
 
   systemd.user.services.battery-notify = {
