@@ -12,6 +12,9 @@ in
   home.sessionVariables = {
     TERMINAL = "foot";
     TERM = "foot";
+    # QuickShell corre sobre Qt6 en un escritorio GTK — qt6ct evita que sus
+    # ventanas (si las hubiera) se vean ajenas a la paleta del sistema.
+    QT_QPA_PLATFORMTHEME = "qt6ct";
   };
 
   # --- PAQUETES (LOS OBREROS) ---
@@ -28,6 +31,10 @@ in
     networkmanagerapplet
     blueman
     gnome-themes-extra
+
+    # QuickShell (Hito 004): motor de shell QML/Qt, reemplaza waybar+swaync
+    quickshell
+    kdePackages.qt6ct
 	
     # Thunar, Miniaturas y Visor de Imágenes
     thunar

@@ -100,6 +100,11 @@
     settings.General.Enable = "Source,Sink,Media,Socket";
   };
   services.blueman.enable = true;
+
+  # Requerido por Quickshell.Services.UPower (cápsula de batería del bar,
+  # Hito 004) — sin esto el servicio de batería nunca queda activatable en
+  # el bus de sesión.
+  services.upower.enable = true;
   
   # Activar el servidor OpenSSH
   services.openssh = {
