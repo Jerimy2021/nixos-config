@@ -119,9 +119,20 @@ hl.bind("XF86MonBrightnessDown", hl.dsp.exec_cmd("brightnessctl s 10%-"), { repe
 -- ==============================================================================
 -- 6. HERRAMIENTAS, ESTÉTICA Y SCRIPTS
 -- ==============================================================================
-hl.bind(mainMod .. " + CTRL + B", hl.dsp.exec_cmd([[bash -c 'killall -SIGUSR1 waybar || waybar &']]))
-hl.bind(mainMod .. " + SHIFT + B", hl.dsp.exec_cmd("~/.config/waybar/launch.sh"))
-hl.bind(mainMod .. " + CTRL + T", hl.dsp.exec_cmd("~/.config/waybar/themeswitcher.sh"))
+-- QuickShell recarga en caliente al guardar un .qml (settings.watchFiles,
+-- ver shell.qml), así que esto es solo para cambios estructurales que el
+-- watcher no capta bien (ids de Variants, imports nuevos, etc).
+hl.bind(mainMod .. " + CTRL + B", hl.dsp.exec_cmd([[bash -c 'pkill quickshell; sleep 0.3; qs']]))
+-- Antes abría el panel de waybar; ahora es la superficie interactiva
+-- natural del sistema, así que togglea el dashboard de QuickShell en su
+-- lugar (mismo target que la cápsula del reloj en la barra).
+hl.bind(mainMod .. " + SHIFT + B", hl.dsp.exec_cmd("quickshell ipc call uiState toggleDashboard"))
+-- CTRL+T (themeswitcher.sh de waybar) se elimina sin reemplazo: ese script
+-- rotaba entre carpetas de temas .css estáticos, algo que no tiene
+-- equivalente directo en QuickShell (el theming vivo por Theme.qml/Palette
+-- ya cubre la variación de color; un selector de "preset" completo sería
+-- una feature nueva, no una migración 1:1 — si se quiere, es un módulo
+-- futuro, no una tecla huérfana apuntando a nada).
 hl.bind(mainMod .. " + SHIFT + R", hl.dsp.exec_cmd("hyprctl reload"))
 
 -- Fondos y Shaders
