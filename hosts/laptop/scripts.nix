@@ -45,12 +45,17 @@
     LUMA=$(${pkgs.imagemagick}/bin/magick "$WALLPAPER" -resize 1x1 -colorspace Gray -format "%[fx:int(mean*255)]" info:)
 
     # 3. Extraer paleta y aplicar modo Claro/Oscuro
+    # --prefer saturation: fix de Hito 004 — sin esto, matugen aborta con
+    # "Multiple source colors found, no preference was inputted" en
+    # cualquier imagen con más de un color dominante viable (la mayoría).
+    # saturation también es la opción más coherente con la estética
+    # Hacker Pro/Cyberpunk del sistema (alta saturación, nunca pastel).
     if [ "$LUMA" -gt 140 ]; then
         ${pkgs.pywal}/bin/wal -i "$WALLPAPER" -n -q -a 32 -l
-        ${pkgs.matugen}/bin/matugen image "$WALLPAPER" --mode "light" < /dev/null
+        ${pkgs.matugen}/bin/matugen image "$WALLPAPER" --mode "light" --prefer saturation < /dev/null
     else
         ${pkgs.pywal}/bin/wal -i "$WALLPAPER" -n -q -a 32
-        ${pkgs.matugen}/bin/matugen image "$WALLPAPER" --mode "dark" < /dev/null
+        ${pkgs.matugen}/bin/matugen image "$WALLPAPER" --mode "dark" --prefer saturation < /dev/null
     fi
 
     # 4. Refrescar la Interfaz sin parpadeos
@@ -59,23 +64,53 @@
   '';
 
   # 2b. WALLPAPER POR WORKSPACE (Hito 004 / QuickShell)
-  # Deliberadamente separado de set-wallpaper: esto se dispara en cada
-  # cambio de workspace (services/WorkspaceSync.qml), así que se salta
-  # pywal/matugen (lentos, y matugen ya falla en este sistema sin --prefer
-  # cuando el color fuente es ambiguo — bug preexistente, fuera de alcance
-  # de este hito) para que la transición se sienta instantánea y fluida.
-  # El acento del bar se sincroniza aparte, en QML puro (Theme.qml).
+  # Deliberadamente separado de set-wallpaper: la transición visual (awww)
+  # corre siempre y en primer plano para sentirse instantánea, sin esperar
+  # a pywal. matugen sí corre acá, pero solo la PRIMERA vez que se ve un
+  # wallpaper dado (cacheado por ruta absoluta en palette.json) y en
+  # segundo plano — así los workspaces ya visitados siguen siendo
+  # instantáneos, y solo la primera visita paga el costo de extracción de
+  # color. services/Palette.qml (QML) lee este archivo y lo vigila con
+  # FileView.watchChanges, así que el acento de la barra se actualiza solo
+  # en cuanto matugen termina, sin bloquear el cambio de workspace.
   workspace-wallpaper = pkgs.writeShellScriptBin "workspace-wallpaper" ''
     AWWW=${pkgs.awww}/bin/awww
+    MATUGEN=${pkgs.matugen}/bin/matugen
+    JQ=${pkgs.jq}/bin/jq
+    FLOCK=${pkgs.util-linux}/bin/flock
+    MKTEMP=${pkgs.coreutils}/bin/mktemp
     WALLPAPER="$1"
+    CACHE_DIR="$HOME/.cache/quickshell"
+    PALETTE_FILE="$CACHE_DIR/palette.json"
 
     [ -f "$WALLPAPER" ] || exit 0
+    mkdir -p "$CACHE_DIR"
+    [ -f "$PALETTE_FILE" ] || echo '{}' > "$PALETTE_FILE"
 
     "$AWWW" img "$WALLPAPER" \
         --transition-type wipe \
         --transition-angle 30 \
         --transition-duration 0.65 \
         --transition-fps 60
+
+    if ! "$JQ" -e --arg w "$WALLPAPER" 'has($w)' "$PALETTE_FILE" >/dev/null 2>&1; then
+      (
+        COLOR=$("$MATUGEN" image "$WALLPAPER" \
+            --mode dark \
+            --type scheme-vibrant \
+            --prefer saturation \
+            --json hex \
+            --dry-run \
+            --quiet 2>/dev/null | "$JQ" -r '.colors.primary.dark.color // empty')
+
+        if [ -n "$COLOR" ]; then
+          exec 9>"$CACHE_DIR/palette.lock"
+          "$FLOCK" -x 9
+          TMP=$("$MKTEMP" "$CACHE_DIR/palette.XXXXXX.json")
+          "$JQ" --arg w "$WALLPAPER" --arg c "$COLOR" '.[$w] = $c' "$PALETTE_FILE" > "$TMP" && mv "$TMP" "$PALETTE_FILE"
+        fi
+      ) &
+    fi
   '';
 
   sidepad-toggle = pkgs.writeShellScriptBin "sidepad-toggle" ''

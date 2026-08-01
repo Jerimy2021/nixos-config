@@ -30,10 +30,18 @@ Singleton {
         return wallpapers[((id - 1) % n + n) % n];
     }
 
+    // Acento matugen-derivado si ya está cacheado para este wallpaper
+    // (WallpaperPalette.qml), si no el ciclo núcleo fijo — nunca bloquea el cambio
+    // de workspace esperando a matugen.
+    function applyAccent(id) {
+        var derived = WallpaperPalette.colorFor(wallpaperFor(id));
+        Theme.activeAccent = derived !== undefined ? derived : Theme.coreAccentFor(id);
+    }
+
     function syncTo(id) {
+        root.applyAccent(id);
         if (id === lastId) return;
         lastId = id;
-        Theme.activeAccent = Theme.coreAccentFor(id);
         proc.command = ["workspace-wallpaper", wallpaperFor(id)];
         proc.running = true;
     }
@@ -45,6 +53,15 @@ Singleton {
     Connections {
         target: Hypr
         function onActiveIdChanged() { root.syncTo(Hypr.activeId); }
+    }
+
+    // Si matugen termina en background *después* de que ya estemos parados
+    // en ese workspace (primer visit), esto "sube de calidad" el acento del
+    // hardcoded al derivado real sin que el usuario tenga que volver a
+    // cambiar de workspace.
+    Connections {
+        target: WallpaperPalette
+        function onCacheChanged() { root.applyAccent(Hypr.activeId); }
     }
 
     Component.onCompleted: syncTo(Hypr.activeId)
