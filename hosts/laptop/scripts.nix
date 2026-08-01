@@ -54,4 +54,31 @@
     pkill -SIGUSR2 waybar
     ${pkgs.swaynotificationcenter}/bin/swaync-client -rs
   '';
+
+  # 3. TOGGLE DE SIDEPAD (Claude Code + Terminal)
+  sidepad-toggle = pkgs.writeShellScriptBin "sidepad-toggle" ''
+    set -euo pipefail
+
+    pad_exists() {
+      ${pkgs.hyprland}/bin/hyprctl clients -j | ${pkgs.jq}/bin/jq -e --arg name "$1" \
+        '.[] | select(.class == $name or .initialClass == $name)' >/dev/null 2>&1
+    }
+
+    need_claude=0; need_term=0
+    pad_exists claude-sidepad || need_claude=1
+    pad_exists term-sidepad   || need_term=1
+
+    if [ "$need_claude" -eq 1 ] || [ "$need_term" -eq 1 ]; then
+      dir=$(${pkgs.zoxide}/bin/zoxide query -l | ${pkgs.rofi}/bin/rofi -dmenu -i -p '📂 Proyecto')
+      dir=''${dir:-$HOME}
+
+      [ "$need_claude" -eq 1 ] && ${pkgs.hyprland}/bin/hyprctl dispatch exec \
+        "[workspace special:sidepad silent] ${pkgs.foot}/bin/foot --app-id claude-sidepad -D '$dir' -e ${pkgs.bash}/bin/bash -lc 'exec 9>/tmp/claude-sidepad.lock; ${pkgs.util-linux}/bin/flock -n 9 || exit 0; npx @anthropic-ai/claude-code'"
+
+      [ "$need_term" -eq 1 ] && ${pkgs.hyprland}/bin/hyprctl dispatch exec \
+        "[workspace special:sidepad silent] ${pkgs.foot}/bin/foot --app-id term-sidepad -D '$dir' -e ${pkgs.zsh}/bin/zsh"
+    fi
+
+    ${pkgs.hyprland}/bin/hyprctl dispatch togglespecialworkspace sidepad
+  '';
 }

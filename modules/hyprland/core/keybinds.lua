@@ -148,40 +148,9 @@ hl.bind(mainMod .. " + SHIFT + Z", hl.dsp.exec_cmd("hyprctl keyword cursor:zoom_
 hl.bind(mainMod .. " + S", function() hl.dispatch(hl.dsp.workspace.toggle_special("magic")) end)
 hl.bind(mainMod .. " + SHIFT + S", function() hl.dispatch(hl.dsp.window.move({ workspace = "special:magic" })) end)
 
-local function open_sidepad()
-  local function pad_exists(name)
-    for _, w in pairs(hl.get_windows()) do
-      if (w.class and w.class:find(name, 1, true))
-        or (w.initialClass and w.initialClass:find(name, 1, true)) then
-        return true
-      end
-    end
-    return false
-  end
-
-  local need_claude = not pad_exists("claude-sidepad")
-  local need_term   = not pad_exists("term-sidepad")
-
-  if need_claude or need_term then
-    -- Lista de proyectos frecuentes (zoxide) + permite escribir path manual
-    local handle = io.popen("zoxide query -l | rofi -dmenu -i -p '📂 Proyecto'")
-    local dir = handle:read("*l")
-    handle:close()
-    if not dir or dir == "" then dir = os.getenv("HOME") end
-
-    if need_claude then
-      hl.dispatch(hl.dsp.exec_cmd(string.format(
-        [[[workspace special:sidepad silent] foot --app-id claude-sidepad -D '%s' -e bash -lc 'exec 9>/tmp/claude-sidepad.lock; flock -n 9 || exit 0; npx @anthropic-ai/claude-code']],
-        dir)))
-    end
-    if need_term then
-      hl.dispatch(hl.dsp.exec_cmd(string.format(
-        [[[workspace special:sidepad silent] foot --app-id term-sidepad -D '%s' -e bash -lc 'exec 9>/tmp/term-sidepad.lock; flock -n 9 || exit 0; zsh']],
-        dir)))
-    end
-  end
-
-  hl.dispatch(hl.dsp.workspace.toggle_special("sidepad"))
-end
-hl.bind(mainMod .. " + CTRL + right", open_sidepad)
-hl.bind(mainMod .. " + CTRL + left",  open_sidepad)
+hl.bind(mainMod .. " + CTRL + right", function()
+  hl.dispatch(hl.dsp.exec_cmd("sidepad-toggle"))
+end)
+hl.bind(mainMod .. " + CTRL + left", function()
+  hl.dispatch(hl.dsp.exec_cmd("sidepad-toggle"))
+end)

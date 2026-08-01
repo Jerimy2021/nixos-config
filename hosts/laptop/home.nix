@@ -116,6 +116,7 @@ in
     # 11. SCRIPTS NATIVOS DE NIX
     mis-scripts.hypr-gamemode
     mis-scripts.set-wallpaper
+	mis-scripts.sidepad-toggle
   ];
 
   xdg.configFile = {
