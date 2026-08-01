@@ -16,8 +16,8 @@ hl.on("hyprland.start", function()
   -- 4. MOTOR DE FONDOS DE PANTALLA (Nativo)
   hl.exec_cmd("awww-daemon --format xrgb")
 
-  -- 5. DEMONIOS DEL SISTEMA (Notificaciones, Energía y Portapapeles)
-  hl.exec_cmd("swaync")
+  -- 5. DEMONIOS DEL SISTEMA (Energía y Portapapeles — notificaciones las
+  -- maneja QuickShell/NotifServer.qml ahora, ver punto 7)
   hl.exec_cmd("hypridle")
   hl.exec_cmd("wl-paste --type text --watch cliphist store")
   hl.exec_cmd("wl-paste --type image --watch cliphist store")
@@ -26,8 +26,11 @@ hl.on("hyprland.start", function()
   hl.exec_cmd("nm-applet --indicator")
   hl.exec_cmd("blueman-applet")
   hl.exec_cmd("wlsunset -S 9:00 -s 19:00")
-  
-  -- 7. BARRAS Y WALLPAPERS
-  hl.exec_cmd("waybar")
+
+  -- 7. SHELL Y WALLPAPERS (Hito 004: QuickShell reemplaza waybar + swaync)
+  -- `qs` sin argumentos carga la config por defecto en
+  -- ~/.config/quickshell/shell.qml (enlazada por home.nix a
+  -- modules/quickshell/), tal como se probó en vivo durante el Hito 004.
+  hl.exec_cmd("qs")
   hl.exec_cmd("waypaper --random")
 end)

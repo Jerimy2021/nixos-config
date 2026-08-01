@@ -11,6 +11,10 @@ import qs.modules.notifications
 // su propio módulo bajo modules/, para que agregar widgets nuevos después
 // no implique tocar este archivo salvo para una línea de instanciación.
 ShellRoot {
+    // Recarga en caliente al guardar cualquier .qml del árbol — sin esto
+    // cada cambio de estilo/lógica requeriría matar y relanzar `qs` a mano.
+    settings.watchFiles: true
+
     Bar {}
     Dashboard {}
     NotificationPopups {}

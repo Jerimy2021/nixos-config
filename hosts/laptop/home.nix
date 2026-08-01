@@ -149,6 +149,7 @@ in
   xdg.configFile = {
     "nvim".source = inputs.nvim-config;
     "waybar".source = ../../modules/waybar;
+    "quickshell".source = ../../modules/quickshell;
     "hypr".source = ../../modules/hyprland;
     "ml4w".source = ../../modules/ml4w;
     "rofi/rofi-border.rasi".source = ../../modules/rofi/rofi-border.rasi;
