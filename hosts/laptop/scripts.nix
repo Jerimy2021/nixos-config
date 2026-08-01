@@ -58,9 +58,10 @@
         ${pkgs.matugen}/bin/matugen image "$WALLPAPER" --mode "dark" --prefer saturation < /dev/null
     fi
 
-    # 4. Refrescar la Interfaz sin parpadeos
-    pkill -SIGUSR2 waybar
-    ${pkgs.swaynotificationcenter}/bin/swaync-client -rs
+    # 4. Refrescar la interfaz — ya no hace falta (Hito 004): QuickShell lee
+    # todo por binding reactivo (FileView.watchChanges, Process, señales de
+    # Hyprland), no por una señal de refresco explícita como waybar
+    # (pkill -SIGUSR2) o swaync (swaync-client -rs), ambos retirados.
   '';
 
   # 2b. WALLPAPER POR WORKSPACE (Hito 004 / QuickShell)

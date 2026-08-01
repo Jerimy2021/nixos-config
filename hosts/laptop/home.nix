@@ -20,19 +20,19 @@ in
   # --- PAQUETES (LOS OBREROS) ---
   home.packages = with pkgs; [
     # 1. ENTORNO GRÁFICO Y TEMAS
-    waybar
     awww
     waypaper
     wlogout
     hyprlock
     hypridle
     hyprpicker
-    dunst
     networkmanagerapplet
     blueman
     gnome-themes-extra
 
-    # QuickShell (Hito 004): motor de shell QML/Qt, reemplaza waybar+swaync
+    # QuickShell (Hito 004): motor de shell QML/Qt — reemplazó waybar
+    # (paquete + modules/waybar/ eliminados) y swaync/dunst (NotifServer.qml
+    # es el único servidor de notificaciones ahora).
     quickshell
     kdePackages.qt6ct
 	
@@ -54,7 +54,6 @@ in
     wl-clipboard
     grim
     slurp
-    swaynotificationcenter
     wlsunset
     hyprshade
     grimblast         
@@ -148,10 +147,8 @@ in
 
   xdg.configFile = {
     "nvim".source = inputs.nvim-config;
-    "waybar".source = ../../modules/waybar;
     "quickshell".source = ../../modules/quickshell;
     "hypr".source = ../../modules/hyprland;
-    "ml4w".source = ../../modules/ml4w;
     "rofi/rofi-border.rasi".source = ../../modules/rofi/rofi-border.rasi;
     "rofi/glass-window.rasi".source = ../../modules/rofi/glass-window.rasi;
     "rofi/cheatsheet.rasi".source = ../../modules/rofi/cheatsheet.rasi;

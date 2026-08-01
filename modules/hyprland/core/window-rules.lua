@@ -42,7 +42,7 @@ hl.window_rule({
 hl.window_rule({ match = { class = "^(nemo)$" }, opacity = "0.90 override 0.80 override" })
 hl.window_rule({ match = { class = "^(code-oss)$" }, opacity = "0.95 override 0.85 override 1.0 override" })
 
--- --- 4. MAGIA EN LAS CAPAS (Rofi, Waybar, SwayNC) 
+-- --- 4. MAGIA EN LAS CAPAS (Rofi, QuickShell)
 hl.layer_rule({
   name = "rofi-glass",
   match = { namespace = "^(rofi)$" },
@@ -51,21 +51,13 @@ hl.layer_rule({
   animation = "popin 80%",
   xray = true
 })
+-- QuickShell (Hito 004) usa un solo namespace de layer-shell ("quickshell")
+-- para todas sus superficies — barra, dashboard y centro de notificaciones
+-- comparten esta regla. Confirmado en vivo con `hyprctl layers -j`, no
+-- asumido (era "waybar" antes de la migración).
 hl.layer_rule({
-  match = { namespace = "^(swaync-control-center)$" },
-  blur = true,
-  ignore_alpha = 0.1,
-  animation = "slide",
-  xray = true
-})
-hl.layer_rule({
-  match = { namespace = "^(swaync-notification-window)$" },
+  match = { namespace = "^(quickshell)$" },
   blur = true,
   ignore_alpha = 0.1,
   xray = true
-})
-hl.layer_rule({
-  match = { namespace = "^(waybar)$" },
-  blur = true,
-  ignore_alpha = 0
 })
