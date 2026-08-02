@@ -75,6 +75,10 @@ Variants {
                     onClicked: UiState.toggleNotifCenter()
                 }
 
+                AppLaunchers {
+                    anchors.verticalCenter: parent.verticalCenter
+                }
+
                 SystemCapsules {
                     anchors.verticalCenter: parent.verticalCenter
                 }

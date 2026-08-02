@@ -128,6 +128,7 @@ in
 	mis-scripts.sidepad-toggle
 	mis-scripts.battery-notify
     mis-scripts.nm-applet-ctl
+    mis-scripts.app-toggle
   ];
 
   systemd.user.services.battery-notify = {

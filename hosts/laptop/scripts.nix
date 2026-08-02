@@ -205,4 +205,24 @@
         ;;
     esac
   '';
+
+  # 5. LANZADOR/FOCUS DE APPS EXTERNAS (Discord, Spotify — Hito 004 follow-up 4)
+  # Genérico y parametrizado (clase de ventana + comando de lanzamiento) en
+  # vez de un script por app, mismo criterio que nm-applet-ctl. El foco por
+  # selector de ventana usa la sintaxis Lua de este fork de Hyprland
+  # (hl.dsp.focus({window=...})) — la sintaxis clásica `hyprctl dispatch
+  # focuswindow "class:^(...)$"` falla acá ("expected a dispatcher"),
+  # confirmado en vivo antes de escribir esto.
+  app-toggle = pkgs.writeShellScriptBin "app-toggle" ''
+    HYPRCTL=${pkgs.hyprland}/bin/hyprctl
+    JQ=${pkgs.jq}/bin/jq
+    CLASS="$1"
+    LAUNCH_CMD="$2"
+
+    if "$HYPRCTL" clients -j | "$JQ" -e --arg c "$CLASS" 'any(.[]; .class == $c)' >/dev/null 2>&1; then
+      "$HYPRCTL" dispatch "hl.dsp.focus({ window = [[class:^($CLASS)$]] })"
+    else
+      "$HYPRCTL" dispatch "hl.dsp.exec_cmd([[$LAUNCH_CMD]])"
+    fi
+  '';
 }

@@ -1,4 +1,5 @@
 import QtQuick
+import Quickshell.Widgets
 import qs.services
 import qs.modules.bar
 
@@ -15,6 +16,11 @@ Item {
     // -1 = sin anillo (comportamiento original); 0..1 = dibuja CircularGauge
     // detrás del icono (hoy solo la batería lo usa, ver SystemCapsules.qml).
     property real gauge: -1
+    // Ícono real (Quickshell.iconPath(...)) en vez del glifo de texto — hoy
+    // lo usan los lanzadores de apps (AppLaunchers.qml): un logo real de
+    // Discord/Spotify, no un glifo genérico de Nerd Font. Vacío = comportamiento
+    // original (glifo de texto en `icon`).
+    property string iconSource: ""
     signal clicked
 
     implicitWidth: row.implicitWidth + 20
@@ -99,8 +105,16 @@ Item {
                 progressColor: root.accent
             }
 
+            IconImage {
+                anchors.centerIn: parent
+                implicitSize: 16
+                visible: root.iconSource.length > 0
+                source: root.iconSource
+            }
+
             Text {
                 anchors.centerIn: parent
+                visible: root.iconSource.length === 0
                 text: root.icon
                 font.family: "JetBrainsMono Nerd Font"
                 font.pixelSize: 13
