@@ -214,8 +214,38 @@ Esta sesión se cortó por un bug del propio sistema de notificaciones de tareas
 
 ---
 
-## 11. Estado de Ratificación
+## 12. Addendum 3 — menú de energía, picker de wallpaper, DND con duración, más matugen
 
-Snapshot verdadero al cierre del Hito 004 (secciones 1-7) más sus dos follow-ups en la misma rama (secciones 8 y 10). Cualquier cambio posterior invalida secciones específicas y debe generar Hito 005. No modificar retroactivamente — versionar hitos.
+Cuarta sesión en la misma rama, ya con `spotify`/`discord` instalados y un `nixos-rebuild switch` real corrido por Jerimy antes de empezar (primera vez en todo Hito 004 que hay un sistema activado real detrás, no solo `nixos-rebuild build`). Dato importante descubierto al arrancar: `~/.config/quickshell` ahora apunta a un snapshot inmutable del store (de ese switch), no al working tree — así que las pruebas en vivo de esta sesión (`qs -p <repo>`) corren como una instancia **separada** de la real (compiten brevemente por el nombre DBus de notificaciones, de ahí el warning inofensivo "already registered" en cada prueba), y ninguna edición de esta sesión fue visible en el escritorio real de Jerimy durante el trabajo — solo lo será después del próximo switch.
+
+### 12.1 Los 5 puntos del pedido
+
+1. **Menú de energía nativo** (`modules/quickshell/modules/powermenu/PowerMenu.qml`) reemplaza `wlogout-launch` por completo. Dock flotante en la esquina inferior derecha, independiente del layout de la barra (que sigue arriba sin tocarse). Reusa literalmente el patrón de proximidad de `Capsule.qml` (zona `HoverHandler` más grande que el elemento + distancia normalizada al centro) pero acá el resultado controla cuánto se despliega el abanico de acciones (lock/suspend/logout/reboot/shutdown), no solo un glow. Un click en el trigger fija el estado abierto vía `UiState.powerMenuOpen`/`togglePowerMenu()` (mismo patrón de IPC que dashboard/notif center) — necesario también porque este entorno no tiene `ydotool`/`wlrctl` para sintetizar movimiento real de mouse, así que el pin por click fue la única vía de verificar la interacción en vivo. Una vez confirmado funcionando (ver §12.3), se eliminó `wlogout-launch` de `scripts.nix`, el paquete `wlogout` y su entrada `xdg.configFile` de `home.nix`, y `modules/wlogout/` completo (layout/style.css/icons). `XF86PowerOff` y `SUPER+CTRL+Q` ahora llaman `quickshell ipc call uiState togglePowerMenu`.
+2. **Picker de wallpaper** (`modules/quickshell/modules/dashboard/WallpaperPicker.qml`), grid de miniaturas de `~/Pictures/Wallpapers` con el mismo lenguaje visual que `Shortcuts.qml`. Al clickear llama `WorkspaceSync.setWallpaperForCurrent()`, no `workspace-wallpaper` directo — así el pick manual pasa por el mismo pipeline de cacheo/acento que el ciclo automático. Se encontró y corrigió un gap real en el camino: sin un mapa de overrides, un pick manual se habría revertido solo con volver a ese workspace (`wallpaperFor()` era puramente función del array fijo). `SUPER+CTRL+W` (waypaper manual) ahora abre el dashboard; `SUPER+ALT+W` (`waypaper --random`) se conserva a propósito, documentado, porque no hay equivalente de un tecleo para "aleatorio" en el picker nuevo.
+3. **DND con duración** (30m/1h/2h/hasta reiniciar): `NotifServer.qml` gana `enableDnd(durationMs)`/`disableDnd()` con un `Timer` real; `durationMs === 0` es "hasta reiniciar" (sin timer). `DndToggle.qml` reemplaza el `ToggleButton` genérico de DND en `QuickToggles.qml`: un click estando apagado despliega un acordeón horizontal de duraciones (mismo idioma `Behavior on implicitWidth` que ya usaba `Capsule.qml`), un click estando encendido apaga directo. `QuickToggles` pasó de `Row` a `Flow` porque el acordeón expandido (~200px) no cabía junto a los otros 3 toggles sin desbordar el ancho fijo del dashboard.
+4. **Acento matugen más amplio**: se auditó cada uso de colores núcleo/neón fuera de `Theme.qml` antes de tocar nada (ver diffs, grep referenciado en el commit). Se amplió `Theme.activeAccent` a los tres separadores de sección del dashboard y al borde de los chips de `Shortcuts.qml` en hover. Deliberadamente NO se tocaron los colores identidad-por-cápsula (red=azul, bluetooth=lavanda, batería=rosa/danger) ni el código de urgencia de notificaciones (crítico=magenta, bajo=verde, normal=cian) — son sistemas de significado funcional, no decoración, y atarlos al wallpaper habría sido una regresión de legibilidad, no una mejora.
+5. **Disciplina de animación**: todo lo nuevo de esta sesión usa `Theme.dur*`/`Theme.ease*` exclusivamente — mismo patrón auditado limpio en el pase anterior (§10.3), sin valores ad-hoc nuevos.
+
+### 12.2 Bugs/gaps reales encontrados en el camino (no asumidos)
+
+- `WorkspaceSync.wallpaperFor()` no soportaba overrides manuales — encontrado al razonar sobre el flujo del picker antes de escribirlo, no en runtime. Corregido con el mapa `overrides` (§12.1.2).
+- El `Row` de `QuickToggles.qml` habría desbordado silenciosamente bajo el `clip:true` del `Flickable` del dashboard apenas el DND se expandiera — detectado por cálculo de anchos antes de probar en vivo (56×4 + spacing vs. ~200px del acordeón expandido no entran en los ~300px de ancho del contenido), no por observar el bug ya ocurrido. Corregido cambiando a `Flow`.
+- Dashboard.qml terminó con dos cambios de items distintos (2 y 4) en hunks de diff adyacentes/entrelazados; separarlos en parches de git independientes no era práctico sin arriesgar un parche roto, así que el tinte de los separadores (ítem 4) quedó en el mismo commit que el picker (ítem 2), documentado explícitamente en ambos mensajes de commit.
+
+### 12.3 Verificación en vivo — qué se pudo probar y qué no
+
+- **Probado con evidencia real**: el menú de energía completo (`qs -p` + IPC `togglePowerMenu` + captura `grim` mostrando las 5 acciones desplegadas con los tintes de acento correctos); el picker de wallpaper (dashboard abierto por IPC, captura mostrando el grid con miniaturas reales cargando desde la carpeta real); el timer de DND (arnés QML standalone que importó el `NotifServer.qml` real y confirmó `enableDnd(1200)` → auto-apagado a los 1.2s, y `enableDnd(0)` → sigue encendido 3+ segundos después sin timer); namespace de layer-shell del nuevo `PowerMenu` confirmado como `"quickshell"` vía `hyprctl layers -j` (hereda el blur existente sin regla nueva). `nixos-rebuild build` pasó limpio.
+- **No verificable en este entorno**: la sensación real de "se despliega según te acercas" del menú de energía (sin `ydotool`/`wlrctl` no hay forma de sintetizar movimiento de cursor continuo) — se verificó la lógica y el resultado final vía el pin por click, pero no el gesto de aproximación en sí. Tampoco se verificó si `XF86PowerOff` con `{ locked = true }` efectivamente muestra el menú de energía sobre la pantalla de bloqueo real de hyprlock — `ext-session-lock-v1` está diseñado para bloquear otras superficies layer-shell mientras está bloqueado, así que es posible que esto tampoco haya funcionado nunca con `wlogout` (misma clase de superficie); no se intentó una prueba en vivo de esto para no repetir el incidente de pantalla bloqueada de la sesión anterior (§8.3).
+
+### 12.4 Pendientes actualizados
+
+- Confirmar visualmente con el próximo `nix-rebuild-fast` real: el menú de energía (especialmente el gesto de proximidad con mouse real), el picker de wallpaper, el acordeón de DND, y si `XF86PowerOff` realmente hace algo útil estando bloqueado.
+- El resto de pendientes de §6 y §8.4 (refactor de flake, rEFInd, lid-switch) sigue igual, sin tocar en esta sesión.
+
+---
+
+## 13. Estado de Ratificación
+
+Snapshot verdadero al cierre del Hito 004 (secciones 1-7) más sus tres follow-ups en la misma rama (secciones 8, 10 y 12). Cualquier cambio posterior invalida secciones específicas y debe generar Hito 005. No modificar retroactivamente — versionar hitos.
 
 **FIN DEL DOCUMENTO — Hito 004**
