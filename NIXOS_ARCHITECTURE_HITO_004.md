@@ -290,8 +290,71 @@ Con esa dirección, se armaron 3 pestañas con contenido real (Dashboard/Wallpap
 
 ---
 
-## 15. Estado de Ratificación
+## 16. Addendum 5 — video de referencia real, reubicación del power menu, glass real, carrusel de tabs, notificaciones con gestos
 
-Snapshot verdadero al cierre del Hito 004 (secciones 1-7) más sus cuatro follow-ups en la misma rama (secciones 8, 10, 12 y 14). Cualquier cambio posterior invalida secciones específicas y debe generar Hito 005. No modificar retroactivamente — versionar hitos.
+Sexta sesión en la misma rama. Disparador distinto a los anteriores: Jerimy proveyó un video showcase de QuickShell ("soramane", el proyecto real detrás es `caelestia-dots/shell`, GPLv3) como referencia de calidad de movimiento/interacción a alcanzar, y **más tarde** acceso de solo lectura al código fuente real (`~/reference/caelestia-shell`) que reemplazó la inferencia visual del video por lectura de QML real. Disciplina de dos fases explícita: Fase 1 (análisis, cero QML tocado, documento `NIXOS_SHELL_VIDEO_ANALYSIS.md` con extracción de frames vía ffmpeg + lectura de código real) aprobada por Jerimy antes de empezar Fase 2 (implementación). Cuatro piezas implementadas, cada una decidida explícitamente como "portar adaptado" o "restylear en el lugar" — nunca reemplazo total de `modules/quickshell/` (las piezas propias del proyecto — lanzadores de Discord/Spotify, sidepad, matugen por workspace, quicklinks — no estaban en negociación en ningún momento).
+
+### 16.1 Metodología de análisis (resumen — el detalle completo vive en `NIXOS_SHELL_VIDEO_ANALYSIS.md`)
+
+1. Contact sheet (`ffmpeg fps=1/2,scale=480:-1,tile=4x7`) para overview + 9 ráfagas de frames a resolución completa alrededor de momentos de transición, todo vía `nix shell nixpkgs#ffmpeg` (no instalado en el sistema). Produjo estimados de layout/motion/tokens explícitamente marcados como no medidos.
+2. Con acceso real al repo fuente, cada estimado se contrastó contra el código y se corrigieron explícitamente los que estaban mal (no se sobreescribió el análisis original sin decir qué cambió y por qué) — la corrección más importante: lo que el video sugería como "vidrio con blur" resultó ser, leyendo `services/Colours.qml` y `components/effects/Elevation.qml` del proyecto real, una superficie **opaca con tinte** más una **sombra de elevación real** (`RectangularShadow`/`MultiEffect`, tipos estándar de `QtQuick.Effects`, no del plugin nativo) — nunca blur de fondo generalizado. Esto cambió el enfoque del ítem de la barra (ver 16.3).
+3. Chequeo explícito de dependencia del plugin C++ nativo de Caelestia (`plugin/src/Caelestia/`, CMake+Qalculate+Pipewire+Aubio+Cava) para cada pieza portada — tabla completa en el documento de análisis §7.7. Conclusión: **ningún componente de esta ronda necesitó empaquetar el plugin nativo como derivación Nix** — cada símbolo nativo encontrado (`SessionManager.exec`, `ButtonRow`, `CUtils.clamp`, `ImageAnalyser`) tenía sustituto trivial en QML/JS puro o ya teníamos equivalente propio.
+
+### 16.2 Power menu — relocación completa, no restyle
+
+Decisión final (revisada una vez, ver el propio `NIXOS_SHELL_VIDEO_ANALYSIS.md` §7.1/§8): el trigger se movió de una `PanelWindow` flotante en la esquina inferior derecha (con expansión por proximidad, construida y ajustada en las dos rondas anteriores) a una `Capsule` más dentro de `Bar.qml`, igual que Discord/Spotify. Toda la lógica de proximidad (`proximityZone`, `HoverHandler`, distancia normalizada) se **eliminó por completo** — no coexiste con la versión nueva, no quedó código muerto. El panel de acciones ahora es un dropdown top-right, mismo patrón que Dashboard/NotificationCenter (`UiState` extendido con exclusión mutua entre los tres: abrir uno cierra los otros dos).
+
+Se agregó un paso de **confirmación por hold** (mantener presionado ~600ms, arco de progreso radial vía `Shape`/`PathAngleArc`) en cada botón de acción — requisito de Jerimy sin precedente en ningún lado consultado: ni el video (no aparece ningún power menu en los 49.4s grabados) ni el código real (`modules/session/Content.qml` de Caelestia ejecuta al instante en click/Enter, sin confirmación). Diseño propio, no adaptado.
+
+**Verificado en vivo:** capsule renderizando en la posición correcta de la barra (confirmado con captura tras cambiar temporalmente a un workspace vacío para no interrumpir el trabajo real de Jerimy — foot en fullscreen ocultaba la barra en el workspace activo), panel dropdown abriendo/cerrando vía IPC con el estilo correcto (5 botones circulares, colores por acción). **No verificable:** el gesto de hold-and-release en sí (sin `ydotool`/entrada sintética, mismo límite de siempre) — se armó y se revisó el código, no se ejecutó con un dedo real.
+
+### 16.3 Barra — tinte real + sombra de elevación, no blur
+
+El fix de la ronda anterior (§14.3.3, overlay plano a 9% de opacidad) se reemplazó por dos técnicas combinadas, elegidas tras la investigación de 16.1:
+
+1. `Theme.tintSurface(base, accent, strength)` — mezcla el hue/saturación del acento activo hacia la superficie base en espacio HSL, preservando luminosidad y alpha del original. Reemplaza el color base directamente, no es una capa encima.
+2. Sombra de elevación real vía `layer.effect: MultiEffect { shadowEnabled: true, ... }` sobre el rectángulo de superficie de la barra. La `PanelWindow` se hizo más alta que la barra visual (44px vs 38px) a propósito, para darle a la sombra margen de "sangrado" sin que la recorte el buffer de la superficie Wayland — el `exclusiveZone` real para el tiling de ventanas se mantuvo en 38.
+
+**Verificado en vivo con capturas en 2 workspaces con acentos distintos** (naranja/amarillo cálido) para confirmar que el tinte sigue a `Theme.activeAccent` y no es una coincidencia de un solo hue — se ve claramente el cambio de tono en ambos casos, y una captura de mayor altura confirmó la sombra visible debajo del borde inferior de la barra (banda oscura difusa antes del contenido de la ventana de abajo).
+
+### 16.4 Dashboard — carrusel de pestañas portado
+
+Se reemplazó el salto instantáneo (`visible: dashboardTab === N`) por el mecanismo real de `caelestia-dots/shell` (`modules/dashboard/Content.qml`): un `Flickable` con las 3 pestañas puestas en fila dentro de una `Row`, `contentX` animado hacia la posición de la pestaña activa. No se portó su sistema de `Loader` con activación diferida por `visibleArea` (nuestras 3 pestañas son livianas) ni el swipe manual (fuera de alcance esta ronda, `interactive: false` — solo el click en la tab bar dispara la animación). Comentario de atribución (URL + GPLv3) directamente sobre el bloque adaptado, según acuerdo explícito de esta ronda.
+
+**Verificado en vivo:** las 3 pestañas (Dashboard/Wallpapers/Media) renderizan correctamente tras el slide, sin sangrado de contenido entre paneles, probado vía IPC (`setDashboardTab`) en una copia aislada con offset de posición.
+
+### 16.5 Notificaciones — gestos portados, modelo de reemplazo confirmado (no stacking)
+
+Se portaron 3 gestos individuales de `Notification.qml` de Caelestia, adaptados: arrastre vertical para expandir/colapsar el cuerpo completo (antes truncado a 3 líneas sin forma de ver el resto), swipe horizontal para descartar, y pausa del timer de auto-dismiss mientras el mouse está encima. Se **descartó explícitamente** su modelo de `ListView` apilado — Jerimy pidió una sola tarjeta visible, reemplazo por crossfade cuando llega una nueva (ni cola ni conteo de pendientes). Implementado con dos slots `Loader` que se turnan como "frente" cada vez que cambia la última notificación de `NotifServer.popups`.
+
+`NotifServer.qml` se extendió con un registro `{notif, timer}` (antes el `Timer` de auto-dismiss se creaba sin guardar referencia, así que no había forma de pausarlo desde afuera) — expone `pauseDismiss`/`resumeDismiss` por notificación puntual.
+
+### 16.6 Bugs y hallazgos reales de esta sesión
+
+- **El "vidrio" del video no es blur** (ver 16.1) — hallazgo de investigación, no de verificación en vivo, pero cambió una decisión de implementación real (16.3).
+- **El power menu real de Caelestia SÍ vive en la bar** (`modules/bar/components/Power.qml`) — confirmado leyendo el código, contradice el estimado de la Fase 1 de "sin evidencia ni a favor ni en contra" (el video simplemente no lo mostró en los 49.4s grabados, pero el código sí lo tiene).
+- **Los iconos por-app en los indicadores de workspace también existen de verdad** en el proyecto real (`Workspace.qml`, gateado por un flag de config) — corrección a la Fase 1, que decía "no tengo referencia real para esa opción". Sigue **diferido, no implementado esta ronda** (decisión explícita de Jerimy: alcance ya suficiente).
+- **Bug de identidad en `property list<var>` con objetos JS planos.** Al armar un harness de prueba para inyectar notificaciones falsas (objetos JS literales, no `Notification` reales de `Quickshell.Services.Notifications`), se descubrió que comparaciones por referencia (`===`) contra esos objetos fallan después de pasar por un roundtrip de `property list<var>` — hasta la función `dismissPopup` ya existente (sin tocar en esta sesión) falla con el mismo objeto falso. Diagnosticado como artefacto del harness de prueba, no un bug real: los objetos `Notification` reales son punteros a QObject de C++, que sí preservan identidad a través de `list<var>`. Confirma que `pauseDismiss`/`resumeDismiss` nuevos deberían funcionar correctamente contra notificaciones reales (mismo patrón de comparación que `dismissPopup`, ya probado en producción), pero **no se pudo confirmar con una notificación D-Bus real** sin arriesgar registrar la instancia de prueba como servidor de notificaciones del sistema real (`org.freedesktop.Notifications` es un nombre único en el bus — una instancia de prueba registrándose ahí competiría con la producción). Limitación honesta, no una verificación forzada.
+- **nix-daemon con locks huérfanos.** A mitad de sesión, tres builds de `nixos-rebuild build` lanzados en paralelo por error (uno quedó corriendo en background mientras se lanzaba el siguiente sin confirmar que el anterior había terminado) dejaron **workers de `nix-daemon` huérfanos** (propiedad de `root`, en estado de espera) que bloquearon toda build posterior indefinidamente (0% CPU, sin avance, minutos de espera). No se pudo limpiar (`systemctl restart nix-daemon` requiere `sudo`, sin contraseña interactiva disponible en este entorno, mismo límite que en Hito 004 original §5). **Se resolvió sin bloquear el resto de la sesión**: dado que `nixos-rebuild build` nunca valida sintaxis/semántica QML (solo evalúa el lado Nix — rutas, opciones de home-manager), el resto de esta sesión se verificó exclusivamente con el método ya establecido (`qs -p <copia-aislada>` + revisión de logs + capturas), sin depender de que el build de Nix termine. **Pendiente real para Jerimy:** correr `systemctl restart nix-daemon` (o simplemente esperar/reiniciar) antes de su próximo `nixos-rebuild switch` — los procesos huérfanos no deberían impedirlo pero vale la pena confirmarlo con una build limpia de su lado.
+
+### 16.7 Verificación en vivo — qué se pudo y qué no
+
+- **Probado con evidencia real:** las 4 piezas, cada una con captura de pantalla y/o log de IPC, en copias aisladas con offset de posición para no confundir instancia real vs de prueba (mismo método de §14.1). El tinte de la barra se probó específicamente en 2 acentos distintos para descartar coincidencia de un solo hue.
+- **No verificable en este entorno (límite ya conocido, no nuevo):** el gesto de hold-to-confirm del power menu, el drag-to-expand y el swipe-to-dismiss de notificaciones — todos requieren entrada de mouse real sostenida/con movimiento, sin `ydotool`/`wlrctl` disponible.
+- **No verificable por una restricción específica de esta sesión:** la interacción real de hover-pausa-timer contra una notificación D-Bus genuina, por el riesgo de contaminar el registro `org.freedesktop.Notifications` de producción con una instancia de prueba — verificado por revisión de código contra un patrón ya probado (`dismissPopup`) en su lugar.
+- **Wallpaper drift recurrente** (mismo problema de siempre, ver §14.1 y rondas anteriores): cada instancia de prueba nueva revierte el wallpaper del workspace activo al mapeo por defecto (los overrides manuales del picker viven solo en memoria del proceso real). Restaurado manualmente a `kaneki.png` después de cada tanda de pruebas.
+
+### 16.8 Pendientes actualizados
+
+- Confirmar visualmente con el próximo `nix-rebuild-fast` real: las 4 piezas de este addendum, especialmente el gesto de hold-to-confirm del power menu y los gestos de notificaciones (drag/swipe) con dedo/mouse real.
+- Indicadores de workspace por-app: diferido, con referencia real ya documentada en `NIXOS_SHELL_VIDEO_ANALYSIS.md` §7.4 para cuando se retome.
+- `nix-daemon` con workers huérfanos — ver 16.6, pendiente de que Jerimy lo revise con `sudo` de su lado.
+- El resto de pendientes de §6, §8.4, §12.4 y §14.7 sigue igual.
+
+---
+
+## 17. Estado de Ratificación
+
+Snapshot verdadero al cierre del Hito 004 (secciones 1-7) más sus cinco follow-ups en la misma rama (secciones 8, 10, 12, 14 y 16). Cualquier cambio posterior invalida secciones específicas y debe generar Hito 005. No modificar retroactivamente — versionar hitos.
 
 **FIN DEL DOCUMENTO — Hito 004**
