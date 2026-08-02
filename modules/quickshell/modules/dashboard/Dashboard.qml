@@ -119,75 +119,106 @@ Variants {
                     anchors.bottom: parent.bottom
                     clip: true
 
-                    // --- Pestaña "Dashboard": toggles rápidos, accesos, calendario ---
+                    // Carrusel horizontal (Hito 004 follow-up 6, ver
+                    // NIXOS_SHELL_VIDEO_ANALYSIS.md §7.3) — reemplaza el
+                    // salto instantáneo (visible: dashboardTab === N) por un
+                    // slide animado. Mecanismo adaptado de
+                    // caelestia-dots/shell (GPLv3,
+                    // https://github.com/caelestia-dots/shell,
+                    // modules/dashboard/Content.qml): un Flickable con las
+                    // pestañas puestas en fila y contentX animado hacia la
+                    // pestaña activa. No se porta su sistema de Loader con
+                    // activación diferida por visibleArea — nuestras 3
+                    // pestañas son livianas, activarlas todas de una no es
+                    // un problema de performance real hoy. Tampoco se
+                    // habilita swipe manual (interactive: false) — fuera de
+                    // alcance de esta ronda, solo el click en la tab anima.
                     Flickable {
+                        id: carousel
                         anchors.fill: parent
-                        visible: UiState.dashboardTab === 0
-                        contentHeight: dashboardTabContent.implicitHeight
-                        clip: true
+                        interactive: false
+                        contentWidth: tabsRow.implicitWidth
+                        contentHeight: height
+                        contentX: UiState.dashboardTab * width
 
-                        Column {
-                            id: dashboardTabContent
-                            width: parent.width
-                            spacing: 20
+                        Behavior on contentX {
+                            NumberAnimation { duration: Theme.durMed; easing.type: Theme.easeOutCubic }
+                        }
 
-                            QuickToggles { width: parent.width }
+                        Row {
+                            id: tabsRow
 
-                            Rectangle { width: parent.width; height: 1; color: Theme.withAlpha(Theme.activeAccent, 0.18); Behavior on color { ColorAnimation { duration: Theme.durSlow } } }
+                            // --- Pestaña "Dashboard": toggles rápidos, accesos, calendario ---
+                            Flickable {
+                                width: carousel.width
+                                height: carousel.height
+                                contentHeight: dashboardTabContent.implicitHeight
+                                clip: true
 
-                            Column {
-                                width: parent.width
-                                spacing: 8
-                                Text {
-                                    text: "ACCESOS"
-                                    color: Theme.textMuted
-                                    font.family: "JetBrainsMono Nerd Font"
-                                    font.pixelSize: 10
-                                    font.bold: true
+                                Column {
+                                    id: dashboardTabContent
+                                    width: parent.width
+                                    spacing: 20
+
+                                    QuickToggles { width: parent.width }
+
+                                    Rectangle { width: parent.width; height: 1; color: Theme.withAlpha(Theme.activeAccent, 0.18); Behavior on color { ColorAnimation { duration: Theme.durSlow } } }
+
+                                    Column {
+                                        width: parent.width
+                                        spacing: 8
+                                        Text {
+                                            text: "ACCESOS"
+                                            color: Theme.textMuted
+                                            font.family: "JetBrainsMono Nerd Font"
+                                            font.pixelSize: 10
+                                            font.bold: true
+                                        }
+                                        Shortcuts { width: parent.width }
+                                    }
+
+                                    Rectangle { width: parent.width; height: 1; color: Theme.withAlpha(Theme.activeAccent, 0.18); Behavior on color { ColorAnimation { duration: Theme.durSlow } } }
+
+                                    Calendar { width: parent.width }
                                 }
-                                Shortcuts { width: parent.width }
                             }
 
-                            Rectangle { width: parent.width; height: 1; color: Theme.withAlpha(Theme.activeAccent, 0.18); Behavior on color { ColorAnimation { duration: Theme.durSlow } } }
+                            // --- Pestaña "Wallpapers": picker de miniaturas (Hito 004 follow-up 3) ---
+                            Flickable {
+                                width: carousel.width
+                                height: carousel.height
+                                contentHeight: wallpaperTabContent.implicitHeight
+                                clip: true
 
-                            Calendar { width: parent.width }
-                        }
-                    }
+                                Column {
+                                    id: wallpaperTabContent
+                                    width: parent.width
+                                    spacing: 8
 
-                    // --- Pestaña "Wallpapers": picker de miniaturas (Hito 004 follow-up 3) ---
-                    Flickable {
-                        anchors.fill: parent
-                        visible: UiState.dashboardTab === 1
-                        contentHeight: wallpaperTabContent.implicitHeight
-                        clip: true
-
-                        Column {
-                            id: wallpaperTabContent
-                            width: parent.width
-                            spacing: 8
-
-                            Text {
-                                text: "FONDOS"
-                                color: Theme.textMuted
-                                font.family: "JetBrainsMono Nerd Font"
-                                font.pixelSize: 10
-                                font.bold: true
+                                    Text {
+                                        text: "FONDOS"
+                                        color: Theme.textMuted
+                                        font.family: "JetBrainsMono Nerd Font"
+                                        font.pixelSize: 10
+                                        font.bold: true
+                                    }
+                                    WallpaperPicker { width: parent.width }
+                                }
                             }
-                            WallpaperPicker { width: parent.width }
-                        }
-                    }
 
-                    // --- Pestaña "Media": mezclador de volumen por dispositivo ---
-                    Flickable {
-                        anchors.fill: parent
-                        visible: UiState.dashboardTab === 2
-                        contentHeight: mediaTabContent.implicitHeight
-                        clip: true
+                            // --- Pestaña "Media": mezclador de volumen por dispositivo ---
+                            Flickable {
+                                width: carousel.width
+                                height: carousel.height
+                                contentHeight: mediaTabContent.implicitHeight
+                                clip: true
 
-                        Column {
-                            id: mediaTabContent
-                            width: parent.width
-                            VolumeMixer { width: parent.width }
+                                Column {
+                                    id: mediaTabContent
+                                    width: parent.width
+                                    VolumeMixer { width: parent.width }
+                                }
+                            }
                         }
                     }
                 }
