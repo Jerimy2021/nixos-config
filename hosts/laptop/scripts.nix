@@ -183,20 +183,7 @@
     done
   '';
 
-  # 4. WLOGOUT CON MÁRGENES DINÁMICOS (según resolución/escala del monitor)
-  wlogout-launch = pkgs.writeShellScriptBin "wlogout-launch" ''
-    HYPRCTL=${pkgs.hyprland}/bin/hyprctl
-    JQ=${pkgs.jq}/bin/jq
-    WLOGOUT=${pkgs.wlogout}/bin/wlogout
-
-    res_h=$("$HYPRCTL" -j monitors | "$JQ" '.[] | select(.focused==true) | .height')
-    h_scale=$("$HYPRCTL" -j monitors | "$JQ" '.[] | select(.focused==true) | .scale' | ${pkgs.gnused}/bin/sed 's/\.//')
-    w_margin=$((res_h * 27 / h_scale))
-
-    "$WLOGOUT" -b 5 -T "$w_margin" -B "$w_margin"
-  '';
-
-  # 5. TOGGLE DE NM-APPLET
+  # 4. TOGGLE DE NM-APPLET
   nm-applet-ctl = pkgs.writeShellScriptBin "nm-applet-ctl" ''
     PGREP=${pkgs.procps}/bin/pgrep
     KILLALL=${pkgs.psmisc}/bin/killall

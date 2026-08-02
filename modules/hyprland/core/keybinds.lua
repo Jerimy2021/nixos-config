@@ -96,9 +96,14 @@ hl.bind(mainMod .. " + CTRL + U", hl.dsp.exec_cmd([==[bash -c 'sel=$(cat ~/.conf
 -- { repeating = true } permite dejar el botón pulsado.
 
 hl.bind("XF86ScreenSaver", hl.dsp.exec_cmd("hyprlock"), { locked = true })
-hl.bind("XF86PowerOff", hl.dsp.exec_cmd("wlogout -b 5"), { locked = true })
+-- wlogout-launch se retiró por completo (Hito 004 follow-up 3): PowerMenu.qml
+-- de QuickShell lo reemplaza (lock/suspend/logout/reboot/shutdown en un
+-- flyout que además se despliega solo al acercar el mouse, ver
+-- modules/quickshell/modules/powermenu/PowerMenu.qml). Mismo target que el
+-- toggle del dashboard: IPC hacia UiState.
+hl.bind("XF86PowerOff", hl.dsp.exec_cmd("quickshell ipc call uiState togglePowerMenu"), { locked = true })
 hl.bind(mainMod .. " + CTRL + L", hl.dsp.exec_cmd("hyprlock"))
-hl.bind(mainMod .. " + CTRL + Q", hl.dsp.exec_cmd("wlogout -b 5"))
+hl.bind(mainMod .. " + CTRL + Q", hl.dsp.exec_cmd("quickshell ipc call uiState togglePowerMenu"))
 
 -- Volumen
 hl.bind("XF86AudioRaiseVolume", hl.dsp.exec_cmd("wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%+"), { repeating = true, locked = true }) --

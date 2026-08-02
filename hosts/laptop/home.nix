@@ -22,7 +22,6 @@ in
     # 1. ENTORNO GRÁFICO Y TEMAS
     awww
     waypaper
-    wlogout
     hyprlock
     hypridle
     hyprpicker
@@ -128,7 +127,6 @@ in
     mis-scripts.workspace-wallpaper
 	mis-scripts.sidepad-toggle
 	mis-scripts.battery-notify
-	mis-scripts.wlogout-launch
     mis-scripts.nm-applet-ctl
   ];
 
@@ -155,8 +153,7 @@ in
     "rofi/glass-window.rasi".source = ../../modules/rofi/glass-window.rasi;
     "rofi/cheatsheet.rasi".source = ../../modules/rofi/cheatsheet.rasi;
     "rofi/projects.rasi".source = ../../modules/rofi/projects.rasi;
-    "wlogout".source = ../../modules/wlogout;
-    "matugen".source = ../../modules/matugen; 
+    "matugen".source = ../../modules/matugen;
     "gtk-3.0/gtk.css".source = ../../modules/gtk/gtk.css;
     "gtk-global/base.css".source = ../../modules/gtk-global/base.css;
     "thunar/thunar.css".source = ../../modules/thunar/thunar.css;
