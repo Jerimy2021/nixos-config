@@ -82,6 +82,20 @@ Variants {
                 SystemCapsules {
                     anchors.verticalCenter: parent.verticalCenter
                 }
+
+                // Hito 004 follow-up 6: trigger del menú de energía movido
+                // acá desde un dock flotante propio (ver
+                // NIXOS_SHELL_VIDEO_ANALYSIS.md §7.1) — icono dedicado en la
+                // barra, no anidado en ningún dropdown, igual que pide el
+                // requisito original. El panel (PowerMenu.qml) se despliega
+                // como dropdown top-right, mismo patrón que Dashboard/
+                // NotificationCenter.
+                Capsule {
+                    icon: "󰐥"
+                    accent: Theme.danger
+                    active: UiState.powerMenuOpen
+                    onClicked: UiState.togglePowerMenu()
+                }
             }
         }
     }

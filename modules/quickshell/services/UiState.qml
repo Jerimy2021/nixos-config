@@ -23,6 +23,7 @@ Singleton {
 
     function toggleDashboard() {
         root.notifCenterOpen = false;
+        root.powerMenuOpen = false;
         root.dashboardOpen = !root.dashboardOpen;
     }
 
@@ -32,16 +33,24 @@ Singleton {
 
     function toggleNotifCenter() {
         root.dashboardOpen = false;
+        root.powerMenuOpen = false;
         root.notifCenterOpen = !root.notifCenterOpen;
     }
 
+    // Hito 004 follow-up 6: el trigger del menú de energía ahora vive en la
+    // barra igual que dashboard/notifCenter (ver PowerMenu.qml), así que
+    // comparte la misma exclusión mutua — los tres paneles anclan en la
+    // misma esquina top-right y nunca deberían verse superpuestos.
     function togglePowerMenu() {
+        root.dashboardOpen = false;
+        root.notifCenterOpen = false;
         root.powerMenuOpen = !root.powerMenuOpen;
     }
 
     function closeAll() {
         root.dashboardOpen = false;
         root.notifCenterOpen = false;
+        root.powerMenuOpen = false;
     }
 
     // Permite disparar los toggles desde fuera de QuickShell (keybinds de
