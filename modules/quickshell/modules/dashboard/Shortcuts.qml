@@ -28,12 +28,17 @@ Flow {
             radius: 16
             color: hover.containsMouse ? Theme.surfaceHover : Theme.surfaceFaint
             border.width: 1
-            border.color: Theme.surfaceBorder
+            // Hito 004 follow-up 3: el borde recoge el acento matugen-derivado
+            // al pasar el mouse en vez de quedarse en gris fijo — la misma
+            // lógica de "aplicar el acento más ampliamente" que los
+            // separadores del dashboard, acá como micro-interacción.
+            border.color: hover.containsMouse ? Theme.activeAccent : Theme.surfaceBorder
 
             scale: hover.containsMouse ? 1.08 : 1
             transformOrigin: Item.Center
 
             Behavior on color { ColorAnimation { duration: Theme.durFast } }
+            Behavior on border.color { ColorAnimation { duration: Theme.durMed } }
             Behavior on scale { NumberAnimation { duration: Theme.durFast; easing.type: Theme.easeOutBack } }
 
             Row {
