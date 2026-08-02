@@ -244,8 +244,54 @@ Cuarta sesión en la misma rama, ya con `spotify`/`discord` instalados y un `nix
 
 ---
 
-## 13. Estado de Ratificación
+## 14. Addendum 4 — correcciones visuales sobre feedback en vivo del escritorio real
 
-Snapshot verdadero al cierre del Hito 004 (secciones 1-7) más sus tres follow-ups en la misma rama (secciones 8, 10 y 12). Cualquier cambio posterior invalida secciones específicas y debe generar Hito 005. No modificar retroactivamente — versionar hitos.
+Quinta sesión en la misma rama. A diferencia de los follow-ups anteriores, el disparador acá no fue un pedido de features nuevas sino **feedback visual de Jerimy mirando su propio escritorio real** después del primer `nixos-rebuild switch` verdadero de todo Hito 004 (ver inicio de §12). Cuatro correcciones puntuales sobre piezas ya construidas.
+
+### 14.1 Descubrimiento importante de infraestructura de pruebas
+
+`~/.config/quickshell` ahora apunta a un snapshot inmutable del store (por el switch real). Esto significa que cada `qs -p <repo>` de esta sesión corre como una instancia **separada** de la real, y ambas pueden renderizar superficies en la MISMA posición de pantalla simultáneamente (la barra ocupa siempre 0,0-1366x38; el PowerMenu siempre la esquina inferior derecha) — un screenshot en ese caso puede mostrar la superficie de la instancia real (vieja) por encima de la de prueba (nueva), dando la falsa impresión de que un fix no funcionó. Pasó de verdad en el ítem 1 (ver 14.2) y de nuevo casi pasa en el ítem 3. Solución aplicada de acá en adelante: para cualquier verificación visual de una superficie que comparta posición con algo ya renderizado por la instancia real, se corre la prueba con un offset temporal (`margins` cambiados solo en la copia de scratch, nunca en el archivo real) para que ambas queden visualmente distinguibles en la misma captura.
+
+### 14.2 Incidente — se mató la instancia real de producción por accidente
+
+Durante la limpieza de un debug harness para el ítem 1, un `pkill -9 quickshell` (sin `-f`, pensado para matar solo instancias de prueba) mató también la instancia real de producción (autostart de Jerimy), no solo la de prueba — porque el patrón hace match por NOMBRE de proceso, y la real también se llama `quickshell`. Se detectó de inmediato (`pgrep quickshell` quedó vacío) y se relanzó con la invocación exacta de autostart (`qs` sin argumentos, dejando que resuelva `~/.config/quickshell` solo), confirmado con una captura de la barra real ya funcionando de nuevo antes de seguir con cualquier otra cosa. Mismo tipo de error que ya se había documentado en §8.3 de otra forma (matar sin querer algo que sí estaba en uso) — la lección concreta esta vez: con una instancia real persistente corriendo, cualquier `pkill`/`kill -9` por nombre es peligroso; de acá en adelante todo kill de instancia de prueba en esta rama se hace por PID capturado (`$!`), nunca por nombre.
+
+### 14.3 Los 4 puntos del feedback
+
+1. **Trigger del PowerMenu siempre visible.** La lógica de proximidad (`win._amount`) ya era correcta — el bug era que el `Rectangle` del trigger se dibujaba a opacidad/color/borde completos sin importar `_amount`. Ahora `opacity`/`scale` del trigger derivan de `_amount` (mismo mecanismo Behavior-driven que ya animaba el despliegue del abanico), y en reposo queda un punto de 8px en el mismo centro en vez de invisibilidad total (una hotzone 100% transparente sería indescubrible para alguien que no sepa que esa esquina es interactiva). El hitbox de click sigue siendo el mismo tamaño aunque esté en opacidad 0.
+2. **Picker de wallpaper sobrecargando el dashboard.** Resuelto con pestañas reales (Dashboard/Wallpapers/Media) — ver §14.4 para el proceso de esa decisión, que necesitó una pregunta directa a Jerimy porque el pedido original asumía tabs que no existían en el repo.
+3. **Fondo de la barra sin tinte de acento.** Antes solo la línea de 2px de abajo usaba `Theme.activeAccent`; el resto era `Theme.surface` plano. Se agregó una capa `Rectangle` a opacidad 0.09 con el acento activo, superpuesta sobre la base oscura (no reemplazándola) — sigue siendo vidrio oscuro con tinte, no una barra de color.
+4. **Lanzadores reales de Discord/Spotify.** `AppLaunchers.qml`, reusando `Capsule.qml` de verdad (se le agregó una prop `iconSource` opcional que cambia el glifo de texto por un `Quickshell.Widgets.IconImage` real vía `Quickshell.iconPath()`). Un click enfoca la ventana si ya existe o la lanza si no, vía un script nuevo `app-toggle CLASE COMANDO` (scripts.nix) que usa la sintaxis Lua de este fork (`hl.dsp.focus({window = "class:^(...)$"})`) — confirmado en vivo que la sintaxis clásica `hyprctl dispatch focuswindow` falla acá.
+
+### 14.4 Cómo se resolvió la ambigüedad del ítem 2 (tabs)
+
+El pedido original decía "dale su propia pestaña junto a Dashboard/Media/Performance/Workspaces (revisá cómo están armadas esas pestañas y seguí el mismo patrón)" — pero un grep completo del árbol (`TabBar`, `tabIndex`, `currentTab`, `Media`, `Performance`) no encontró nada: el dashboard era una sola columna vertical sin ningún sistema de pestañas. En vez de asumir cuál de las dos lecturas posibles era la correcta (¿construir un sistema de tabs entero, con el riesgo de inventar contenido para "Performance"/"Workspaces" que no existe, o es un malentendido y alcanza con separar el picker a otra superficie?), se preguntó directamente. Jerimy eligió construir el sistema de tabs real.
+
+Con esa dirección, se armaron 3 pestañas con contenido real (Dashboard/Wallpapers/Media) y se documentó explícitamente por qué NO se inventaron "Performance" (no hay ningún widget de CPU/GPU/memoria construido en todo Hito 004 — sería una pestaña vacía) ni "Workspaces" (ya vive en la barra, una pestaña duplicada no aportaría nada) — ver commit `3956db8` y §14.3.2. De paso, esto permitió cerrar un pendiente real de la sesión de animación (dos rondas atrás, §10.3): el indicador deslizante de pestañas, documentado ahí como "no aplica, no hay tabs" — ahora sí aplica, y `TabBar.qml` lo implementa con `Behavior on x`.
+
+### 14.5 Bugs reales encontrados por verificación en vivo (no asumidos)
+
+- **Batería/bluetooth**: ninguno nuevo esta sesión (ya cubiertos en §10).
+- **Spotify — clase de ventana real distinta a la declarada.** El `.desktop` de spotify declara `StartupWMClass=spotify`, pero lanzando la app de verdad y leyendo `hyprctl clients -j`, la clase real es `Spotify` (con mayúscula). Si se hubiera confiado en el `.desktop` sin probar, la detección de "¿ya está corriendo?" y el re-foco habrían fallado en silencio siempre. También el ícono correcto es `spotify-client`, no `spotify` (`Quickshell.hasThemeIcon("spotify")` da `false`).
+- **Quickshell.Hyprland no expone lista de clientes por QML.** Su archivo de introspección (`.qmltypes`) viene vacío — no hay forma de confirmar qué propiedades expone sin probar en vivo. Se resolvió consultando `hyprctl clients -j` desde `Hypr.qml` (mismo patrón que `sidepad-toggle` ya usaba fuera de QML), no asumiendo una API que no se pudo verificar.
+- **Sintaxis de foco por ventana bajo el motor Lua.** `hyprctl dispatch focuswindow "class:^(...)$"` (sintaxis clásica) fallá con "expected a dispatcher"; la forma que sí funciona es `hyprctl dispatch "hl.dsp.focus({ window = [[class:^(...)$]] })"` — confirmado con un window real (firefox) antes de escribir el script `app-toggle`.
+
+### 14.6 Verificación en vivo — qué se pudo y qué no
+
+- **Probado con evidencia real:** las 4 correcciones, cada una con captura de pantalla y/o log de eventos reales. El launcher de apps se probó lanzando y cerrando Discord y Spotify de verdad (no solo el script en aislado): instancia única al lanzar, re-foco (no duplicado) al repetir, y el borde "activo" de la cápsula encendiéndose en vivo al abrirse la app real. `nixos-rebuild build` pasó limpio (con `--option substitute false` por una falla de DNS/nix-daemon no relacionada, ver más abajo).
+- **No verificable en este entorno:** igual que en §12.3, la sensación real de "aparece según te acercas" del trigger del PowerMenu no se pudo probar con movimiento de mouse real (sigue sin `ydotool`/`wlrctl`).
+- **Incidente ajeno detectado, no causado por esta sesión:** a mitad de sesión, `nixos-rebuild build` falló con `cache.nixos.org` sin resolver DNS y el nix-daemon se cayó (systemd lo reinició solo). `getent hosts cache.nixos.org` seguía sin resolver al momento de escribir esto. No se investigó a fondo por estar fuera de alcance de este hito, pero vale la pena que Jerimy lo revise por separado — con `--option substitute false` el build igual pasó limpio, así que no bloqueó esta sesión.
+
+### 14.7 Pendientes actualizados
+
+- Confirmar visualmente con el próximo `nix-rebuild-fast` real: las 4 correcciones de este addendum, en especial el trigger del PowerMenu (proximidad real) y las 3 pestañas del dashboard.
+- Investigar por separado (fuera de alcance de Hito 004) la falla de resolución DNS de `cache.nixos.org` / el crash del nix-daemon — ver §14.6.
+- El resto de pendientes de §6, §8.4 y §12.4 sigue igual.
+
+---
+
+## 15. Estado de Ratificación
+
+Snapshot verdadero al cierre del Hito 004 (secciones 1-7) más sus cuatro follow-ups en la misma rama (secciones 8, 10, 12 y 14). Cualquier cambio posterior invalida secciones específicas y debe generar Hito 005. No modificar retroactivamente — versionar hitos.
 
 **FIN DEL DOCUMENTO — Hito 004**
