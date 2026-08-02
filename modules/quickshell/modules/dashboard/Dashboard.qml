@@ -7,6 +7,14 @@ import qs.modules.dashboard
 // Dropdown del dashboard (Hito 004 / Item 3): perfil, toggles rápidos,
 // accesos a carpetas, calendario y mezclador de volumen. Se abre desde el
 // reloj/capsula de la barra (ver Bar.qml -> UiState.toggleDashboard()).
+//
+// Hito 004 follow-up 5: antes todo esto era una sola columna vertical
+// dentro de un Flickable — el picker de wallpapers agregado en el follow-up
+// anterior la sobrecargaba, empujando el calendario hacia abajo. Ahora hay
+// pestañas (Dashboard/Wallpapers/Media, ver TabBar.qml) y cada una tiene su
+// propio Flickable independiente, así el scroll de una no afecta a las
+// otras. ProfileHeader queda fuera de las pestañas (identidad/saludo, no es
+// contenido específico de ninguna).
 Variants {
     model: Quickshell.screens
 
@@ -71,60 +79,117 @@ Variants {
                 anchors.fill: parent
             }
 
-            Flickable {
+            Item {
                 anchors.fill: parent
                 anchors.margins: 18
-                contentHeight: content.implicitHeight
-                clip: true
 
-                Column {
-                    id: content
+                ProfileHeader {
+                    id: profileHeader
+                    anchors.top: parent.top
                     width: parent.width
-                    spacing: 20
+                }
 
-                    ProfileHeader {
-                        width: parent.width
-                    }
+                TabBar {
+                    id: tabBar
+                    anchors.top: profileHeader.bottom
+                    anchors.topMargin: 14
+                    width: parent.width
+                    tabs: ["Dashboard", "Wallpapers", "Media"]
+                    currentIndex: UiState.dashboardTab
+                    onTabClicked: index => UiState.setDashboardTab(index)
+                }
 
-                    QuickToggles { width: parent.width }
+                Rectangle {
+                    id: tabDivider
+                    anchors.top: tabBar.bottom
+                    anchors.topMargin: 8
+                    width: parent.width
+                    height: 1
+                    color: Theme.withAlpha(Theme.activeAccent, 0.18)
 
-                    Rectangle { width: parent.width; height: 1; color: Theme.withAlpha(Theme.activeAccent, 0.18); Behavior on color { ColorAnimation { duration: Theme.durSlow } } }
+                    Behavior on color { ColorAnimation { duration: Theme.durSlow } }
+                }
 
-                    Column {
-                        width: parent.width
-                        spacing: 8
-                        Text {
-                            text: "ACCESOS"
-                            color: Theme.textMuted
-                            font.family: "JetBrainsMono Nerd Font"
-                            font.pixelSize: 10
-                            font.bold: true
+                Item {
+                    id: tabContent
+                    anchors.top: tabDivider.bottom
+                    anchors.topMargin: 14
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    anchors.bottom: parent.bottom
+                    clip: true
+
+                    // --- Pestaña "Dashboard": toggles rápidos, accesos, calendario ---
+                    Flickable {
+                        anchors.fill: parent
+                        visible: UiState.dashboardTab === 0
+                        contentHeight: dashboardTabContent.implicitHeight
+                        clip: true
+
+                        Column {
+                            id: dashboardTabContent
+                            width: parent.width
+                            spacing: 20
+
+                            QuickToggles { width: parent.width }
+
+                            Rectangle { width: parent.width; height: 1; color: Theme.withAlpha(Theme.activeAccent, 0.18); Behavior on color { ColorAnimation { duration: Theme.durSlow } } }
+
+                            Column {
+                                width: parent.width
+                                spacing: 8
+                                Text {
+                                    text: "ACCESOS"
+                                    color: Theme.textMuted
+                                    font.family: "JetBrainsMono Nerd Font"
+                                    font.pixelSize: 10
+                                    font.bold: true
+                                }
+                                Shortcuts { width: parent.width }
+                            }
+
+                            Rectangle { width: parent.width; height: 1; color: Theme.withAlpha(Theme.activeAccent, 0.18); Behavior on color { ColorAnimation { duration: Theme.durSlow } } }
+
+                            Calendar { width: parent.width }
                         }
-                        Shortcuts { width: parent.width }
                     }
 
-                    Rectangle { width: parent.width; height: 1; color: Theme.withAlpha(Theme.activeAccent, 0.18); Behavior on color { ColorAnimation { duration: Theme.durSlow } } }
+                    // --- Pestaña "Wallpapers": picker de miniaturas (Hito 004 follow-up 3) ---
+                    Flickable {
+                        anchors.fill: parent
+                        visible: UiState.dashboardTab === 1
+                        contentHeight: wallpaperTabContent.implicitHeight
+                        clip: true
 
-                    Column {
-                        width: parent.width
-                        spacing: 8
-                        Text {
-                            text: "FONDOS"
-                            color: Theme.textMuted
-                            font.family: "JetBrainsMono Nerd Font"
-                            font.pixelSize: 10
-                            font.bold: true
+                        Column {
+                            id: wallpaperTabContent
+                            width: parent.width
+                            spacing: 8
+
+                            Text {
+                                text: "FONDOS"
+                                color: Theme.textMuted
+                                font.family: "JetBrainsMono Nerd Font"
+                                font.pixelSize: 10
+                                font.bold: true
+                            }
+                            WallpaperPicker { width: parent.width }
                         }
-                        WallpaperPicker { width: parent.width }
                     }
 
-                    Rectangle { width: parent.width; height: 1; color: Theme.withAlpha(Theme.activeAccent, 0.18); Behavior on color { ColorAnimation { duration: Theme.durSlow } } }
+                    // --- Pestaña "Media": mezclador de volumen por dispositivo ---
+                    Flickable {
+                        anchors.fill: parent
+                        visible: UiState.dashboardTab === 2
+                        contentHeight: mediaTabContent.implicitHeight
+                        clip: true
 
-                    Calendar { width: parent.width }
-
-                    Rectangle { width: parent.width; height: 1; color: Theme.withAlpha(Theme.activeAccent, 0.18); Behavior on color { ColorAnimation { duration: Theme.durSlow } } }
-
-                    VolumeMixer { width: parent.width }
+                        Column {
+                            id: mediaTabContent
+                            width: parent.width
+                            VolumeMixer { width: parent.width }
+                        }
+                    }
                 }
             }
         }

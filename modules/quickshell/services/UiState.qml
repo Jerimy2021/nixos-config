@@ -14,10 +14,20 @@ Singleton {
     // energía es un widget tipo "dock" flotante en otra esquina, no compite
     // por espacio ni exclusividad con los paneles top-right (ver PowerMenu.qml).
     property bool powerMenuOpen: false
+    // Pestaña activa del dashboard (Hito 004 follow-up 5: Dashboard/
+    // Wallpapers/Media, ver Dashboard.qml + TabBar.qml). Vive acá y no como
+    // property local del PanelWindow por el mismo motivo que el resto de
+    // este singleton: un solo lugar para el estado de UI compartido, y de
+    // paso queda testeable/operable por IPC igual que los demás toggles.
+    property int dashboardTab: 0
 
     function toggleDashboard() {
         root.notifCenterOpen = false;
         root.dashboardOpen = !root.dashboardOpen;
+    }
+
+    function setDashboardTab(index) {
+        root.dashboardTab = index;
     }
 
     function toggleNotifCenter() {
@@ -42,6 +52,7 @@ Singleton {
         function toggleDashboard(): void { root.toggleDashboard(); }
         function toggleNotifCenter(): void { root.toggleNotifCenter(); }
         function togglePowerMenu(): void { root.togglePowerMenu(); }
+        function setDashboardTab(index: int): void { root.setDashboardTab(index); }
         function closeAll(): void { root.closeAll(); }
     }
 }
