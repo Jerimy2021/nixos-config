@@ -28,6 +28,22 @@ Variants {
             anchors.fill: parent
             color: Theme.surface
 
+            // Hito 004 follow-up 4: antes solo la línea de abajo cargaba el
+            // acento — el resto de la barra era Theme.surface plano, así que
+            // el cambio de workspace/wallpaper apenas se notaba fuera de esa
+            // línea de 2px. Esta capa tiñe TODA la superficie con el acento
+            // activo a baja opacidad, superpuesta sobre el vidrio oscuro (no
+            // en vez de él) — sigue siendo "superficie oscura con tinte", no
+            // "barra de color", y no toca la transparencia/blur del
+            // Rectangle base ni del layer_rule de window-rules.lua.
+            Rectangle {
+                anchors.fill: parent
+                color: Theme.activeAccent
+                opacity: 0.09
+
+                Behavior on color { ColorAnimation { duration: Theme.durSlow } }
+            }
+
             Rectangle {
                 anchors.left: parent.left
                 anchors.right: parent.right
