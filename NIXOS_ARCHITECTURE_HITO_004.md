@@ -175,8 +175,47 @@ hyprctl dispatch "hl.dsp.exec_cmd([[hyprlock]])"
 
 ---
 
-## 9. Estado de Ratificación
+## 10. Addendum 2 — dos bugs reales y pase de calidad de animación
 
-Snapshot verdadero al cierre del Hito 004 (secciones 1-7) más su follow-up en la misma rama (sección 8). Cualquier cambio posterior invalida secciones específicas y debe generar Hito 005. No modificar retroactivamente — versionar hitos.
+Tercera sesión en la misma rama. Alcance: dos bugs reportados por Jerimy sobre el uso real de la barra (batería, bluetooth) y un pase de pulido de movimiento/interacción sobre lo ya construido en §1-8, sin tocar el layout estructural (la barra sigue arriba, sin dock ni auto-hide).
+
+### 10.1 Bug — batería mostraba "1%"
+
+Causa real, confirmada en vivo con una config QML de prueba apuntando al `UPower.displayDevice` real: `UPowerDevice.percentage` en Quickshell 0.3.0 es una fracción `0.0-1.0` (62% real → `percentage = 0.62`), no `0-100` como decía el comentario original en `Battery.qml`. `Math.round(0.62) = 1` — de ahí el "1%" fantasma en cualquier batería por encima del 50%. Fix: escalar `× 100` antes de redondear (`services/Battery.qml`).
+
+De paso, `icon()` ya reflejaba nivel + estado de carga desde la sesión anterior (tramos de carga + ícono distinto en fully-charged/charging) — no hizo falta reescribirlo. Lo que sí se agregó es un **anillo de progreso real** detrás del ícono (ver §10.3).
+
+### 10.2 Bug — el toggle de bluetooth "no hacía nada"
+
+Diagnóstico en vivo antes de tocar código: se instrumentó el `BluetoothStatus.qml` real (no una copia) con un `ShellRoot` de prueba que llama `toggle()` y escucha `onPoweredChanged` — el wiring **ya funcionaba** (`true → false → true` confirmado). El bug real no estaba en QuickShell: el adaptador estaba rfkill soft-blocked, y en ese estado BlueZ rechaza `Powered=true` en silencio. Se confirmó de forma concluyente corriendo `bluetoothctl power on` directamente (sin QuickShell de por medio) — falló idéntico: `org.bluez.Error.Failed`. Un click que no cambia nada visualmente es indistinguible de un handler roto; de ahí el reporte.
+
+Se intentó primero leer un estado `blocked` en `BluetoothAdapter` (existe en el qmltypes de `Quickshell.Bluetooth`, pero pertenece a `BluetoothDevice`, no al adapter — error de lectura del propio autor de este cambio, corregido tras un warning en vivo de "Unable to assign [undefined] to bool"). Como no hay señal QML para detectar rfkill, la solución robusta implementada es: `toggle()` para encender ahora corre `rfkill unblock bluetooth` (vía `Process`, paquete `util-linux` ya en el sistema) y solo entonces pone `adapter.enabled = true` en el `onExited`. Desbloquear un adaptador ya desbloqueado es no-op, así que no hay costo en el caso común. Verificado en vivo el ciclo completo: `rfkill block` → toggle() → `rfkill list` confirma `Soft blocked: no` y `bluetoothctl show` confirma `Powered: yes`.
+
+### 10.3 Pase de animación
+
+Referencia dada: la config pública "soramane" — el pedido explícito fue "se siente genérico, en la referencia se nota la suavidad cuando el mouse pasa cerca", no una lista de features nuevas porque sí.
+
+- **Anillo circular (batería).** Componente nuevo `modules/bar/CircularGauge.qml` (`QtQuick.Shapes` + `PathAngleArc`, extremos redondeados vía `ShapePath.RoundCap`, valor animado con `Behavior + NumberAnimation`, tope en `359.9°` porque a `360°` exactos el arco colapsa visualmente por el solape de los caps redondeados — confirmado con captura de pantalla real vía `grim`, no asumido). `Capsule.qml` gana una prop opcional `gauge: -1..1` (sigue siendo la misma cápsula genérica de red/bluetooth/batería/reloj — solo la batería la usa hoy, ver `SystemCapsules.qml`).
+- **Tabs/segmented control.** No se tocó — el dashboard no tiene tabs, no hay nada que animar acá. Documentado en vez de inventar UI nueva fuera de alcance.
+- **Hover con scale.** `Workspaces.qml` (pastillas de workspace, antes sin ninguna reacción a hover) y `Shortcuts.qml` (chips de carpetas del dashboard) ahora escalan suavemente (`Easing.OutBack`, `Theme.durFast`) al pasar el mouse — antes solo cambiaban de color.
+- **Proximidad ("wakes up as you approach").** Implementado a nivel de `Capsule.qml`: cada cápsula tiene una zona de detección invisible más grande que su propio tamaño visual (`HoverHandler` sobre un `Item` +60px/+40px), y el glow de fondo interpola su opacidad según la distancia real del cursor al centro, no solo un binario dentro/fuera. No se implementó como auto-hide de la barra completa — el brief pidió explícitamente mantener el layout estructural intacto (barra arriba, sin reubicación), así que el efecto se aplicó localmente por widget en vez de re-arquitecturar el `PanelWindow`.
+- **Auditoría de consistencia.** `grep -rn "duration:"` y `grep -rn "easing.type:"` sobre todo `modules/quickshell/` — el 100% de usos preexistentes ya referenciaba `Theme.dur*`/`Theme.ease*`, ningún valor ad-hoc que consolidar. Los widgets nuevos de este pase siguen el mismo patrón.
+
+### 10.4 Límites de verificación de este pase
+
+- El ciclo completo de bluetooth (block → toggle → unblock real) y la fracción de batería se verificaron con datos reales del hardware, no simulados.
+- El anillo circular se verificó visualmente con capturas `grim` reales, incluyendo con datos de batería en vivo (52%, ícono + anillo rosa correctos).
+- La animación de proximidad (interpolación continua por distancia del cursor) **no se pudo verificar con movimiento real de mouse** — no hay `ydotool`/`wlrctl`/`dotool` instalados en este sistema para sintetizar movimiento de puntero, y `hyprctl` no expone un dispatcher para mover el cursor. Se verificó que el QML parsea y corre sin errores (`HoverHandler`, `PointerHandler.point.position` disponibles y funcionando en Quickshell 0.3.0), pero la sensación real de "se despierta según te acercas" queda pendiente de confirmación visual por Jerimy con su propio mouse.
+- `nixos-rebuild build` pasó limpio (solo warnings preexistentes de versión Home Manager/Nixpkgs, no relacionados a este cambio).
+
+### 10.5 Nota sobre el commit de este pase
+
+Esta sesión se cortó por un bug del propio sistema de notificaciones de tareas en background (mecanismo ajeno a este repo) mientras `nixos-rebuild build` corría. Un mecanismo de recuperación externo autogeneró un commit `wip: cambios pendientes al momento del corte por bug de notificación` (`0892988`) con todo el estado del working tree en ese momento **y lo empujó a `origin/hito-04-quickshell` antes de que esta sesión pudiera continuar** — no fue un `git commit`/`git push` intencional de esta sesión, y para cuando se detectó ya era historia compartida (reescribirla habría significado force-push sobre una rama remota, algo que no se hace sin confirmación explícita). Ese commit mezcla, sin querer, un cambio de `hosts/laptop/home.nix` ajeno a este pase (`vivid generate modus-operandi` → `lava`, ya pendiente en el working tree antes de que arrancara esta sesión) junto con los fixes de batería/bluetooth y el pase de animación descritos arriba. El contenido en sí (diffs) es correcto y fue verificado en vivo antes del corte; lo único atípico es el mecanismo y el agrupamiento del commit, no el código.
+
+---
+
+## 11. Estado de Ratificación
+
+Snapshot verdadero al cierre del Hito 004 (secciones 1-7) más sus dos follow-ups en la misma rama (secciones 8 y 10). Cualquier cambio posterior invalida secciones específicas y debe generar Hito 005. No modificar retroactivamente — versionar hitos.
 
 **FIN DEL DOCUMENTO — Hito 004**
