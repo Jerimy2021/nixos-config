@@ -95,6 +95,8 @@ in
     wtype
     qalculate-gtk
     wl-clip-persist
+    spotify
+    discord
     
     # 7. DESARROLLO
     nodejs_22
