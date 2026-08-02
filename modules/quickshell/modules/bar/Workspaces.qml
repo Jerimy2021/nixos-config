@@ -21,6 +21,9 @@ Row {
             width: 30
             height: 26
 
+            scale: slotHover.containsMouse ? 1.25 : 1
+            Behavior on scale { NumberAnimation { duration: Theme.durFast; easing.type: Theme.easeOutBack } }
+
             Rectangle {
                 id: pill
                 anchors.centerIn: parent
@@ -50,7 +53,9 @@ Row {
             }
 
             MouseArea {
+                id: slotHover
                 anchors.fill: parent
+                hoverEnabled: true
                 cursorShape: Qt.PointingHandCursor
                 onClicked: Hypr.focusWorkspace(slot.wsId)
             }

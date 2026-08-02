@@ -35,6 +35,9 @@ Row {
         value: Battery.present ? (Battery.percent + "%") : ""
         active: Battery.charging
         accent: Battery.percent <= 15 && !Battery.charging ? Theme.danger : Theme.pink
+        // Anillo de carga real detrás del icono — Hito 004 follow-up: prioriza
+        // claridad visual del nivel sobre precisión del número exacto.
+        gauge: Battery.present ? Battery.percent / 100 : -1
     }
 
     Capsule {

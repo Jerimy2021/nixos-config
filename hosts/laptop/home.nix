@@ -321,8 +321,8 @@ in
         source ~/.p10k.zsh 
         eval "$(zoxide init zsh)"
 
-        export LS_COLORS="$(vivid generate modus-operandi)"
-        export EZA_COLORS="$(vivid generate modus-operandi)"
+        export LS_COLORS="$(vivid generate lava)"
+        export EZA_COLORS="$(vivid generate lava)"
         typeset -A ZSH_HIGHLIGHT_STYLES 
         ZSH_HIGHLIGHT_STYLES[command]='fg=cyan,bold' 
         ZSH_HIGHLIGHT_STYLES[alias]='fg=magenta,bold' 

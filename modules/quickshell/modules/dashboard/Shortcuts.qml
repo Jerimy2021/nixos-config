@@ -30,7 +30,11 @@ Flow {
             border.width: 1
             border.color: Theme.surfaceBorder
 
+            scale: hover.containsMouse ? 1.08 : 1
+            transformOrigin: Item.Center
+
             Behavior on color { ColorAnimation { duration: Theme.durFast } }
+            Behavior on scale { NumberAnimation { duration: Theme.durFast; easing.type: Theme.easeOutBack } }
 
             Row {
                 anchors.centerIn: parent
