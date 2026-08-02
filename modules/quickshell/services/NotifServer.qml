@@ -13,7 +13,33 @@ Singleton {
     property list<var> history: []
     property bool dndEnabled: false
 
-    function toggleDnd() { root.dndEnabled = !root.dndEnabled; }
+    // Duración de DND (Hito 004 follow-up 3): durationMs > 0 arma un timer
+    // que lo apaga solo; durationMs === 0 significa "hasta reiniciar" (sin
+    // timer, persiste hasta togglearlo a mano o hasta que qs se relance).
+    function enableDnd(durationMs) {
+        dndTimer.stop();
+        root.dndEnabled = true;
+        if (durationMs > 0) {
+            dndTimer.interval = durationMs;
+            dndTimer.start();
+        }
+    }
+
+    function disableDnd() {
+        dndTimer.stop();
+        root.dndEnabled = false;
+    }
+
+    // Compat: alterna DND sin duración (equivalente a "hasta reiniciar").
+    // El picker real (DndToggle.qml) llama enableDnd/disableDnd directo.
+    function toggleDnd() {
+        if (root.dndEnabled) root.disableDnd(); else root.enableDnd(0);
+    }
+
+    Timer {
+        id: dndTimer
+        onTriggered: root.dndEnabled = false
+    }
 
     NotificationServer {
         id: server

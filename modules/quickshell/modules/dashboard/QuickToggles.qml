@@ -1,8 +1,13 @@
 import QtQuick
 import qs.services
 
-// Fila de toggles rápidos: wifi, bluetooth, no-molestar, mute.
-Row {
+// Fila de toggles rápidos: wifi, bluetooth, no-molestar, mute. Flow en vez
+// de Row: DndToggle puede expandirse a ~200px por su acordeón de
+// duraciones, y en el ancho fijo del dashboard eso no cabe junto a los
+// otros 3 toggles sin reflow — Flow los baja de línea en vez de recortarlos
+// (el Flickable del dashboard tiene clip:true, así que un overflow de Row
+// se vería directamente cortado, no desbordado visible).
+Flow {
     id: root
     spacing: 10
 
@@ -64,12 +69,9 @@ Row {
         onClicked: BluetoothStatus.toggle()
     }
 
-    ToggleButton {
-        icon: NotifServer.dndEnabled ? "󰂛" : "󰂚"
-        active: NotifServer.dndEnabled
-        accent: Theme.neonMagenta
-        onClicked: NotifServer.toggleDnd()
-    }
+    // DND es un componente propio (no ToggleButton genérico): necesita el
+    // acordeón de duraciones, ver DndToggle.qml.
+    DndToggle {}
 
     ToggleButton {
         icon: Volume.muted ? "󰝟" : "󰕾"
