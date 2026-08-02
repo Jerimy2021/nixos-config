@@ -86,9 +86,9 @@ Variants {
                         width: parent.width
                     }
 
-                    QuickToggles {}
+                    QuickToggles { width: parent.width }
 
-                    Rectangle { width: parent.width; height: 1; color: Theme.surfaceBorder }
+                    Rectangle { width: parent.width; height: 1; color: Theme.withAlpha(Theme.activeAccent, 0.18); Behavior on color { ColorAnimation { duration: Theme.durSlow } } }
 
                     Column {
                         width: parent.width
@@ -103,11 +103,26 @@ Variants {
                         Shortcuts { width: parent.width }
                     }
 
-                    Rectangle { width: parent.width; height: 1; color: Theme.surfaceBorder }
+                    Rectangle { width: parent.width; height: 1; color: Theme.withAlpha(Theme.activeAccent, 0.18); Behavior on color { ColorAnimation { duration: Theme.durSlow } } }
+
+                    Column {
+                        width: parent.width
+                        spacing: 8
+                        Text {
+                            text: "FONDOS"
+                            color: Theme.textMuted
+                            font.family: "JetBrainsMono Nerd Font"
+                            font.pixelSize: 10
+                            font.bold: true
+                        }
+                        WallpaperPicker { width: parent.width }
+                    }
+
+                    Rectangle { width: parent.width; height: 1; color: Theme.withAlpha(Theme.activeAccent, 0.18); Behavior on color { ColorAnimation { duration: Theme.durSlow } } }
 
                     Calendar { width: parent.width }
 
-                    Rectangle { width: parent.width; height: 1; color: Theme.surfaceBorder }
+                    Rectangle { width: parent.width; height: 1; color: Theme.withAlpha(Theme.activeAccent, 0.18); Behavior on color { ColorAnimation { duration: Theme.durSlow } } }
 
                     VolumeMixer { width: parent.width }
                 }

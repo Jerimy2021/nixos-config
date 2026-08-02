@@ -25,9 +25,31 @@ Singleton {
 
     property int lastId: -1
 
+    // Elecciones manuales desde el picker del dashboard (Hito 004 follow-up
+    // 3): mapa workspace-id -> ruta, en memoria (se resetea con el proceso
+    // qs, no se persiste a disco — no se pidió sobrevivir un restart). Sin
+    // esto, un pick manual se vería un instante y luego "revertiría" al
+    // ciclo fijo apenas se cambiara de workspace y se volviera.
+    property var overrides: ({})
+
     function wallpaperFor(id) {
+        if (root.overrides[id]) return root.overrides[id];
         var n = wallpapers.length;
         return wallpapers[((id - 1) % n + n) % n];
+    }
+
+    // Llamado por WallpaperPicker.qml. Reusa syncTo() en vez de disparar su
+    // propio Process para no duplicar la ruta de aplicar+cachear paleta.
+    function setWallpaperForCurrent(path) {
+        var id = Hypr.activeId;
+        var copy = Object.assign({}, root.overrides);
+        copy[id] = path;
+        root.overrides = copy;
+        // syncTo() no hace nada si id === lastId (ya "sincronizado"); acá el
+        // id no cambió pero SÍ cambió a qué wallpaper mapea, así que hay que
+        // forzar que pase el guard.
+        root.lastId = -1;
+        root.syncTo(id);
     }
 
     // Acento matugen-derivado si ya está cacheado para este wallpaper
