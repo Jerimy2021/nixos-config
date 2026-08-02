@@ -34,6 +34,22 @@ Singleton {
         return Qt.rgba(c.r, c.g, c.b, a);
     }
 
+    // Hito 004 follow-up 6 (ver NIXOS_SHELL_VIDEO_ANALYSIS.md §7.6): mezcla
+    // el hue/saturación de `accent` hacia `base` en espacio HSL, preservando
+    // la luminosidad (y el alpha) de `base` — así el resultado sigue siendo
+    // una "superficie oscura", nunca "una barra de color". Reemplaza la capa
+    // de opacidad plana que usábamos antes (Rectangle semitransparente
+    // encima) por un tinte real horneado en el color de superficie mismo,
+    // que es la técnica que encontramos en el proyecto de referencia real
+    // (services/Colours.qml de caelestia-dots/shell, función alterColour())
+    // — sin su término wallLuminance, que depende del plugin nativo
+    // ImageAnalyser que decidimos no adoptar (ver §7.5/§C).
+    function tintSurface(base, accent, strength) {
+        var s = Math.max(0, Math.min(1, strength));
+        var mixed = Qt.hsla(accent.hslHue, Math.min(1, accent.hslSaturation * s + 0.05), base.hslLightness, 1);
+        return Qt.rgba(mixed.r, mixed.g, mixed.b, base.a);
+    }
+
     readonly property color danger: "#f38ba8"
     readonly property color warn: "#f9e2af"
     readonly property color ok: "#a6e3a1"

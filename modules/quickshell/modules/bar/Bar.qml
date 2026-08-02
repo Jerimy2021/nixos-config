@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Effects
 import Quickshell
 import qs.services
 import qs.modules.bar
@@ -20,28 +21,50 @@ Variants {
             right: true
             top: true
         }
-        implicitHeight: 38
-        exclusiveZone: implicitHeight
+        // Hito 004 follow-up 6 (ver NIXOS_SHELL_VIDEO_ANALYSIS.md §7.6): la
+        // ventana es más alta que la barra visual (44 vs 38) a propósito —
+        // esos 6px extra son el margen donde puede "sangrar" la sombra de
+        // elevación sin que la recorte el propio buffer de la superficie
+        // Wayland (un layer-shell surface se recorta exacto a su tamaño, no
+        // hay overflow visual posible fuera de sus propios píxeles). La
+        // reserva real de espacio para el tiling de ventanas (exclusiveZone)
+        // sigue siendo 38 — la sombra se dibuja sobre lo que sea que haya
+        // debajo, no reserva espacio propio.
+        implicitHeight: 44
+        exclusiveZone: 38
         color: "transparent"
 
         Rectangle {
-            anchors.fill: parent
-            color: Theme.surface
+            id: surface
+            anchors.top: parent.top
+            anchors.left: parent.left
+            anchors.right: parent.right
+            height: 38
 
-            // Hito 004 follow-up 4: antes solo la línea de abajo cargaba el
-            // acento — el resto de la barra era Theme.surface plano, así que
-            // el cambio de workspace/wallpaper apenas se notaba fuera de esa
-            // línea de 2px. Esta capa tiñe TODA la superficie con el acento
-            // activo a baja opacidad, superpuesta sobre el vidrio oscuro (no
-            // en vez de él) — sigue siendo "superficie oscura con tinte", no
-            // "barra de color", y no toca la transparencia/blur del
-            // Rectangle base ni del layer_rule de window-rules.lua.
-            Rectangle {
-                anchors.fill: parent
-                color: Theme.activeAccent
-                opacity: 0.09
+            // Antes: Theme.surface plano + una capa Rectangle semitransparente
+            // encima con el acento a 9% de opacidad. Investigar el proyecto de
+            // referencia real (caelestia-dots/shell, services/Colours.qml)
+            // reveló que su "vidrio" no es transparencia/blur — es un tinte
+            // horneado en el color de superficie mismo (opaco), con la
+            // separación "flotante" lograda por sombra de elevación, no por
+            // blur. Este color ya es el resultado del tinte — no hay capa
+            // extra encima (ver Theme.tintSurface()).
+            color: Theme.tintSurface(Theme.surface, Theme.activeAccent, 0.6)
+            Behavior on color { ColorAnimation { duration: Theme.durSlow } }
 
-                Behavior on color { ColorAnimation { duration: Theme.durSlow } }
+            // Sombra de elevación real (RectangularShadow-equivalente vía
+            // MultiEffect, ambos tipos estándar de QtQuick.Effects, sin
+            // dependencia del plugin nativo de Caelestia — confirmado en
+            // NIXOS_SHELL_VIDEO_ANALYSIS.md §7.6/§7.7). Es la técnica real
+            // que separa visualmente la bar del escritorio en el proyecto de
+            // referencia, no un blur de fondo.
+            layer.enabled: true
+            layer.effect: MultiEffect {
+                shadowEnabled: true
+                shadowColor: Qt.rgba(0, 0, 0, 0.55)
+                shadowBlur: 0.5
+                shadowVerticalOffset: 3
+                shadowHorizontalOffset: 0
             }
 
             Rectangle {
