@@ -145,6 +145,23 @@ Variants {
             }
         }
 
+        // Estado de reposo (Hito 004 follow-up 4): un punto mínimo, no un
+        // botón renderizado — el trigger completo de abajo se desvanece a 0
+        // opacidad cuando _amount es 0, así que sin esto no habría NADA
+        // visible en la esquina para saber dónde acercarse. Ancla en el
+        // mismo centro que `trigger` (no en sus propios anchors) para que la
+        // transición punto->botón sea concéntrica.
+        Rectangle {
+            anchors.centerIn: trigger
+            width: 8
+            height: 8
+            radius: 4
+            color: Theme.activeAccent
+            opacity: (1 - win._amount) * 0.7
+
+            Behavior on opacity { NumberAnimation { duration: Theme.durMed; easing.type: Theme.easeOutCubic } }
+        }
+
         Rectangle {
             id: trigger
             anchors.right: parent.right
@@ -156,7 +173,16 @@ Variants {
             border.width: 1.4
             border.color: Theme.withAlpha(Theme.activeAccent, UiState.powerMenuOpen ? 0.9 : 0.45)
 
-            scale: triggerHover.containsMouse ? 1.1 : 1
+            // El botón completo solo se "materializa" con la proximidad —
+            // misma lógica Behavior-driven que ya anima el despliegue del
+            // abanico (win._amount), no una regla nueva. El MouseArea de
+            // abajo sigue teniendo el mismo tamaño de hotzone aunque el
+            // dibujo esté en 0 opacidad, así que el punto de reposo sigue
+            // siendo clickeable para fijar el menú sin acercarse primero.
+            opacity: win._amount
+            scale: (triggerHover.containsMouse ? 1.1 : 1) * (0.5 + win._amount * 0.5)
+
+            Behavior on opacity { NumberAnimation { duration: Theme.durMed; easing.type: Theme.easeOutCubic } }
             Behavior on scale { NumberAnimation { duration: Theme.durFast; easing.type: Theme.easeOutBack } }
             Behavior on border.color { ColorAnimation { duration: Theme.durMed } }
 
