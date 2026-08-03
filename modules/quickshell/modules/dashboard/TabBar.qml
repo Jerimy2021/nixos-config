@@ -21,7 +21,7 @@ Item {
     Row {
         id: tabRow
         anchors.fill: parent
-        spacing: 4
+        spacing: 2
 
         Repeater {
             model: root.tabs
@@ -35,10 +35,25 @@ Item {
                 height: tabRow.height
 
                 Text {
-                    anchors.centerIn: parent
+                    // Hito 004 follow-up 8: con 5 pestañas en vez de 3,
+                    // "Performance"/"Workspaces" no entraban en el slot
+                    // disponible (~57px) — antes este Text no tenía un
+                    // width propio (solo anchors.centerIn), así que
+                    // dibujaba a su ancho natural sin recorte y las
+                    // etiquetas vecinas terminaban superpuestas
+                    // (confirmado en vivo, captura mostraba "Dashboard"
+                    // pegado a "Wallpapers"). Ahora el Text respeta el
+                    // ancho real del slot (elide como red de seguridad,
+                    // no como solución primaria) y bajó de tamaño/spacing
+                    // para que las 5 etiquetas quepan sin elidir en el
+                    // caso común.
+                    width: parent.width
+                    horizontalAlignment: Text.AlignHCenter
+                    anchors.verticalCenter: parent.verticalCenter
+                    elide: Text.ElideRight
                     text: tabItem.modelData
                     font.family: "JetBrainsMono Nerd Font"
-                    font.pixelSize: 11
+                    font.pixelSize: 8
                     font.bold: root.currentIndex === tabItem.index
                     color: root.currentIndex === tabItem.index ? Theme.activeAccent : Theme.textMuted
 

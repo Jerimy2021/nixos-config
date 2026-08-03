@@ -85,6 +85,7 @@ Variants {
                 case 1: return wallpaperTabContent.implicitHeight;
                 case 2: return mediaTabContent.implicitHeight;
                 case 3: return perfTabContent.implicitHeight;
+                case 4: return wsTabContent.implicitHeight;
                 default: return 0;
                 }
             }
@@ -154,7 +155,7 @@ Variants {
                     anchors.top: profileHeader.bottom
                     anchors.topMargin: 14
                     width: parent.width
-                    tabs: ["Dashboard", "Wallpapers", "Media", "Performance"]
+                    tabs: ["Dashboard", "Wallpapers", "Media", "Performance", "Workspaces"]
                     currentIndex: UiState.dashboardTab
                     onTabClicked: index => UiState.setDashboardTab(index)
                 }
@@ -300,6 +301,29 @@ Variants {
                                         font.bold: true
                                     }
                                     PerformanceGauges { width: parent.width }
+                                }
+                            }
+
+                            // --- Pestaña "Workspaces": apps por workspace (Hito 004 follow-up 8) ---
+                            Flickable {
+                                width: carousel.width
+                                height: carousel.height
+                                contentHeight: wsTabContent.implicitHeight
+                                clip: true
+
+                                Column {
+                                    id: wsTabContent
+                                    width: parent.width
+                                    spacing: 8
+
+                                    Text {
+                                        text: "WORKSPACES"
+                                        color: Theme.textMuted
+                                        font.family: "JetBrainsMono Nerd Font"
+                                        font.pixelSize: 10
+                                        font.bold: true
+                                    }
+                                    WorkspacesOverview { width: parent.width }
                                 }
                             }
                         }
