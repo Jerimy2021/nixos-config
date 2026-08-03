@@ -387,8 +387,83 @@ Fix aplicado a ambos paneles:
 
 ---
 
-## 19. Estado de Ratificación
+## 20. Addendum 7 — pestañas Performance y Workspaces, `SystemStats.qml`
 
-Snapshot verdadero al cierre del Hito 004 (secciones 1-7) más sus seis follow-ups en la misma rama (secciones 8, 10, 12, 14, 16 y 18). Cualquier cambio posterior invalida secciones específicas y debe generar Hito 005. No modificar retroactivamente — versionar hitos.
+Octava sesión en la misma rama. Extiende el carrusel de 3 a 5 pestañas. Implementado y commiteado en dos piezas separadas, cada una verificada en vivo antes de la siguiente.
+
+### 20.1 Performance — `SystemStats.qml` + `PerformanceGauges.qml`
+
+Nuevo servicio `SystemStats.qml` (mismo patrón de `Network.qml`: `Timer` de 6s + `Process` + `StdioCollector`, parseando JSON) contra un script nuevo `system-stats` (`hosts/laptop/scripts.nix`), no contra lógica inline en QML — toda la parte frágil (encontrar el hwmon correcto, tolerar que la GPU no responda) queda en un solo lugar auditable y probable a mano (`system-stats` desde una terminal).
+
+**Decisiones reales, no supuestas:**
+- **CPU vía sysfs (`/sys/class/hwmon`), no `lm_sensors`.** Se verificó en vivo que `sensors` ni siquiera está instalado, pero el kernel de esta laptop (i5-1035G1) ya carga el driver `coretemp` y expone "Package id 0" directo en `/sys/class/hwmon/hwmonN/temp1_input` — leerlo da el mismo número que `sensors` daría, sin agregar una dependencia nueva a `home.packages`. El índice `hwmonN` no es estable entre reinicios (depende de qué más registre hwmon antes), así que el script busca por el archivo `name`, nunca asume `hwmon4`.
+- **GPU real, hallazgo real:** `nvidia-smi` existe y la GPU NVIDIA discreta está presente, pero **falla en vivo** ("couldn't communicate with the NVIDIA driver") porque está en PRIME render-offload puro — nada la ha "despertado" todavía. Esto no es un error a esconder: se trata como `null`/"N/A" explícitamente, sin forzar que la GPU se encienda solo para leer su temperatura.
+- **Memoria:** `/proc/meminfo` (`MemTotal`/`MemAvailable`), verificado contra `free -h` a mano (mismos ~47-49% en varias corridas).
+
+`PerformanceGauges.qml` reusa `CircularGauge.qml` (antes solo detrás del icono de batería) para 3 gauges (CPU/GPU/RAM) con umbrales de color (`Theme.ok`/`warn`/`danger` según ratio) — bloques explícitos, no `Repeater` sobre un modelo (mismo criterio que `SystemCapsules.qml`).
+
+### 20.2 Workspaces — `Hypr.qml` extendido, `WorkspacesOverview.qml`
+
+`Hypr.qml` pasó de guardar solo `runningClasses` (lista plana de clases) a guardar los clientes crudos (`property var clients`) y derivar `runningClasses` de ahí (`readonly property`, sin duplicar estado) más una función nueva `classesByWorkspace(wsId)` que agrupa por `workspace.id` — exactamente el mecanismo que `NIXOS_SHELL_VIDEO_ANALYSIS.md` §7.4 ya había scopeado contra `caelestia-dots/shell` en una ronda anterior, usado ahora. Se agregó `movewindow` al set de eventos que disparan `refreshClients()` — antes solo importaba `openwindow`/`closewindow` porque la lista global de clases no cambia si una ventana cambia de workspace, pero `classesByWorkspace()` sí necesita saberlo.
+
+`WorkspacesOverview.qml`: lista de 10 filas (workspaces 1-10, rango **confirmado en vivo** contra `modules/hyprland/core/keybinds.lua` — el bucle liga `SUPER+1..9` y `SUPER+0` está mapeado aparte a workspace 10 — no se asumió "1-9" a ciegas). Cada fila muestra los iconos de las apps corriendo ahí (`Quickshell.iconPath(class)`, con `Quickshell.hasThemeIcon()` como guardia y una inicial como fallback si no hay icono de tema). Click opcional enfoca el workspace (`Hypr.focusWorkspace`). El scratchpad especial `magic` (`SUPER+S`) queda fuera a propósito — es un concepto distinto (scratchpad, no navegación numerada).
+
+### 20.3 Bug real encontrado durante la verificación en vivo (no del código, del método de prueba)
+
+Al probar la pestaña Workspaces con altura dinámica (ver §18.2 sección "chrome"/`activeContentHeight`, extendida esta ronda para 5 casos), una copia de prueba con offset vertical grande (`margins.top: 400`, para separarla visualmente de la instancia real) hizo que el panel — ahora más alto por el contenido de 10 filas — se recortara contra el borde inferior de la pantalla (768px de alto real, panel posicionado a partir de y=476 con 560px de alto pedido: 476+560=1036 > 768). Un `Rectangle` magenta de control puesto en `anchors.bottom: parent.bottom` no aparecía en ninguna captura, confirmando que el recorte era del compositor por límite de pantalla, no un bug de la altura calculada (`card.height` sí llegaba a 560, confirmado con texto de depuración). Se repitió la prueba con el offset normal (`margins.top: 0`, la posición real de producción) y las 10 filas + el marcador de control aparecieron completas. **Lección para pruebas futuras:** un offset de aislamiento visual grande puede exceder el alto real de pantalla y producir un falso positivo de "el contenido no crece" — verificar primero con `hyprctl monitors -j` cuánto espacio vertical real queda antes de elegir un offset.
+
+### 20.4 Verificación en vivo
+
+- Ambas piezas probadas en copias aisladas (`qs -p <copia>` con `system-stats` inyectado en `PATH` para simular el script sin necesitar `nixos-rebuild switch`), capturas confirmando números reales (`sensors`-equivalente, `free -h`, `nvidia-smi` — los tres contrastados a mano).
+- Geometría de la pestaña Workspaces confirmada con las 10 filas completas tras corregir el falso positivo de §20.3.
+- Sin errores/warnings en el log de `qs` en ninguna de las dos rondas de prueba.
+- **Nota sobre el flujo de commits de esta sesión:** el primer commit (Performance) fue creado por Jerimy mismo desde una sesión en paralelo, tomando el estado de trabajo ya preparado y verificado — no por este asistente. El segundo commit (Workspaces) sí se creó acá, sobre ese mismo estado base.
+
+---
+
+## 21. Addendum 8 — dashboard centrado y con ancho dinámico por pestaña
+
+Novena sesión en la misma rama. Disparador: comparación directa contra capturas del proyecto de referencia (`~/reference/caelestia-shell`) — el dashboard real está centrado bajo la barra y su ancho se adapta al contenido de la pestaña activa (`modules/dashboard/Content.qml`, `nonAnimWidth`), mientras el nuestro seguía ranclado a la derecha con 336px fijos para las 5 pestañas por igual, dejando Dashboard/Performance visiblemente apretadas.
+
+### 21.1 Centrado — adaptado, no portado el mecanismo real
+
+El mecanismo real de centrado de Caelestia (`modules/drawers/ContentWindow.qml`) es una única `StyledWindow` de pantalla completa con máscaras de click-through por `Region` y un sistema de deformación de "blobs" (`BlobGroup`/`BlobInvertedRect`) — pensado para su arquitectura de UNA ventana con TODOS los paneles como hijos transformados, radicalmente distinta a la nuestra (una `PanelWindow` por feature, patrón usado en las 8 rondas anteriores de este hito). Portar eso literalmente habría significado reescribir toda la arquitectura del shell — fuera de alcance y en contra de la regla ya establecida ("no reemplazar `modules/quickshell/` por el de ellos").
+
+Lo que sí se adaptó: su idea de fondo (`Wrapper.qml`: `content.anchors.horizontalCenter: parent.horizontalCenter`, donde `parent` es un área de ancho completo). En nuestra arquitectura eso se logra reanclando la `PanelWindow` de `Dashboard.qml` a ancho completo (`anchors.left/right/top: true`, igual que `Bar.qml`) y centrando la tarjeta interna (`card.anchors.horizontalCenter: parent.horizontalCenter`) en vez de anclarla a la derecha. Mismo resultado visual (dropdown centrado bajo la barra) con el patrón de ventana que ya usamos, sin inventar un tercer sistema.
+
+### 21.2 Ancho dinámico por pestaña — mismo mecanismo que la altura, extendido a ancho
+
+Se agregó `card.activeContentWidth` (switch sobre `UiState.dashboardTab`, exactamente como `activeContentHeight` ya hacía desde el follow-up 6) y `card.targetWidth = clamp(320, 760, activeContentWidth + 36)`, con `Behavior on width` nueva. Solo las pestañas Dashboard (caso 0) y Performance (caso 3) reportan un ancho realmente *bottom-up* esta ronda — Wallpapers/Media/Workspaces se quedan con 336px fijos (no estaban en el alcance pedido, y darles ancho bottom-up real habría requerido reescribir `WallpaperPicker`/`VolumeMixer`/`WorkspacesOverview`, que hoy dependen de que se les imponga un ancho desde afuera, igual que el `Calendar.qml` de la pestaña Dashboard — ver más abajo).
+
+**El carrusel necesitó un cambio real, no cosmético.** `contentX: UiState.dashboardTab * width` asumía que las 5 pestañas medían lo mismo — dejó de ser cierto en cuanto Dashboard/Performance pasaron a tener un ancho propio. Adaptado de la misma idea de `Content.qml` (su `Flickable` ata `contentX` a `currentItem.x`, la posición real que el `Row` interno ya le asignó a la pestaña activa según la suma acumulada de anchos/spacing de las anteriores): cada `Flickable` de pestaña ahora reporta su propio ancho natural (`width: xxxContent.implicitWidth`, ya no `carousel.width` forzado) y `carousel.contentX` es un switch que devuelve el `.x` (asignado automáticamente por el `Row` contenedor) de la pestaña activa.
+
+### 21.3 Restructuración de contenido — de columna apretada a tarjetas lado a lado
+
+**Pestaña Dashboard:** la columna vertical única (`QuickToggles` + divisor + `Shortcuts` + divisor + `Calendar`, todo en 336px) se reemplazó por un `Row` de 2 tarjetas de ancho fijo (280px "Accesos rápidos" con `QuickToggles`+`Shortcuts`, 300px "Calendario"), idea tomada de `modules/dashboard/Dash.qml` de la referencia (su `GridLayout` de 6 celdas con `Layout.preferredWidth` por celda) — **no copiada literal**: nosotros no tenemos weather ni user-con-foto-de-perfil, así que son 2 tarjetas, no 6. Ambas tarjetas comparten la misma altura (`Math.max(quickAccessCol.implicitHeight, calendarCol.implicitHeight) + 40`, sin `QtQuick.Layouts` — no se agregó esa dependencia solo por esta alineación, un cálculo manual alcanza).
+
+**Por qué solo 2 tarjetas y por qué tienen ancho fijo, no bottom-up real:** `Calendar.qml`, `QuickToggles.qml` y `Shortcuts.qml` son fundamentalmente *top-down* — su `Grid`/`Flow` interno necesita que se le imponga un ancho desde afuera para decidir dónde envolver filas/columnas (`(root.width-24)/7` en `Calendar.qml`, por ejemplo). No tienen forma de reportar un `implicitWidth` propio sin que alguien les diga primero cuánto espacio tienen. Se les da entonces un ancho FIJO deliberado (280/300, elegido para verse generoso, no calculado), y es el `Row` de 2 tarjetas — cuyos hijos SÍ tienen ancho fijo — el que reporta un `implicitWidth` bottom-up real (280+300+20 de spacing = 600) hacia `card.activeContentWidth`. Esto coincide con cómo la referencia misma resuelve el mismo problema: `Dash.qml` mezcla `Layout.preferredWidth: Tokens.sizes.dashboard.userWidth` (constante fija) con `Layout.fillWidth: true` (llenar lo que quede) — no todo es medido bottom-up ahí tampoco.
+
+**Pestaña Performance:** `PerformanceGauges.qml` tenía spacing 0 entre los 3 gauges y cada columna a `parent.width/3` — division exacta sin ningún respiro, la causa real de la sensación "apretada". Se cambió a columnas de ancho fijo (104px, gauge de 92px adentro, subido de 76) con `spacing: 36` entre ellas — números de proporción inspirados en los tokens reales de Caelestia (`plugin/src/Caelestia/Config/tokens.hpp`: `perfUsageShapeSize: 100`, `spacing.extraLarge: 28`), sin importar esos tokens como dependencia — solo como referencia de qué se siente "airoso" a esa escala.
+
+### 21.4 Verificación en vivo
+
+- **Centrado confirmado** vía `hyprctl layers -j` (ventana a ancho completo, x=0) + captura de pantalla (la tarjeta se ve centrada horizontalmente bajo la barra en las 3 pestañas probadas).
+- **Ancho dinámico por pestaña confirmado**: Dashboard ≈636px, Performance ≈420px, Workspaces ≈372px en capturas consecutivas del mismo proceso de prueba — el panel visiblemente se angosta/ensancha al cambiar de pestaña, sin quedar pegado a un solo ancho.
+- **Costura con la barra reverificada tras el cambio** (§18.2 seguía siendo válida, pero había que confirmar que centrar+ensanchar no la rompiera): captura de la costura superior con la pestaña Dashboard activa (la más ancha) — mismo tinte, esquinas superiores cuadradas, sin línea ni hueco, igual que antes de esta ronda.
+- **Carrusel probado en las 3 pestañas afectadas por el cambio de mecanismo** (Dashboard/Performance/Workspaces) vía IPC (`setDashboardTab`) — cada una aterriza en la posición correcta, sin quedar a mitad de camino ni mostrar contenido de la pestaña vecina.
+- Sin errores/warnings en el log de `qs`.
+- **Hallazgo del método, no del código** (ver también §20.3, mismo tipo de problema en la ronda anterior): un `hyprctl layers` devolvió por un momento la geometría del dashboard de PRODUCCIÓN (proceso real de Jerimy, pid distinto) en vez de la copia de prueba, porque **el dashboard real de Jerimy estaba abierto en simultáneo** durante la verificación — su propio `MouseArea` de clic-afuera-para-cerrar de la copia de prueba cubre una región grande de pantalla real y no se puede descartar que un clic suyo de paso haya cerrado la copia de prueba en algún momento (se reabrió sin problema). No se detectó ningún efecto sobre el dashboard REAL de Jerimy — su propia sesión no fue tocada por los archivos de esta copia aislada.
+- Wallpaper restaurado a `kaneki.png` tras las pruebas.
+
+### 21.5 Pendientes
+
+- `PowerMenu.qml`, `NotificationCenter.qml`: no tocados esta ronda (el pedido fue específicamente sobre `Dashboard.qml`). Si en el futuro se pide centrar/anchar dinámicamente esos paneles también, este mismo mecanismo (`activeContentWidth`/`targetWidth`/`Behavior on width`) es directamente reutilizable.
+- Wallpapers/Media/Workspaces siguen en 336px fijo — candidatas a su propio tratamiento de "tarjetas" si se pide en una ronda futura, mismo motivo que Dashboard/Performance (hoy están igual de apretadas, simplemente no eran parte del pedido de esta ronda).
+
+---
+
+## 22. Estado de Ratificación
+
+Snapshot verdadero al cierre del Hito 004 (secciones 1-7) más sus ocho follow-ups en la misma rama (secciones 8, 10, 12, 14, 16, 18, 20 y 21). Cualquier cambio posterior invalida secciones específicas y debe generar Hito 005. No modificar retroactivamente — versionar hitos.
 
 **FIN DEL DOCUMENTO — Hito 004**

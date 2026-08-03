@@ -18,25 +18,35 @@ Column {
         return Theme.ok;
     }
 
+    // Hito 004 follow-up 9: antes width:parent.width + cada columna a
+    // parent.width/3 — con 0 spacing, los 3 gauges tocaban los bordes de su
+    // tercio sin ningún respiro entre sí. Ahora cada columna tiene un ancho
+    // fijo propio (bottom-up, no depende del ancho del panel) y el Row
+    // reporta su implicitWidth real (3*columnas + spacing) — ese ancho es
+    // justamente lo que ahora ensancha el panel para esta pestaña (ver
+    // Dashboard.qml card.activeContentWidth case 3). Números de espaciado
+    // inspirados en los tokens reales de caelestia-dots/shell
+    // (plugin/src/Caelestia/Config/tokens.hpp: perfUsageShapeSize=100,
+    // spacing.extraLarge=28) — no importados como dependencia, solo usados
+    // como referencia de proporción para que se sienta igual de "airoso".
     Row {
-        width: parent.width
-        spacing: 0
+        spacing: 36
 
         // --- CPU ---
         Column {
-            width: parent.width / 3
-            spacing: 8
+            width: 104
+            spacing: 10
 
             Item {
-                width: 76
-                height: 76
+                width: 92
+                height: 92
                 anchors.horizontalCenter: parent.horizontalCenter
 
                 readonly property real ratio: Math.min(1, SystemStats.cpuTempC / 100)
 
                 CircularGauge {
                     anchors.fill: parent
-                    thickness: 5
+                    thickness: 6
                     value: parent.ratio
                     progressColor: root.ratioColor(parent.ratio)
                 }
@@ -46,7 +56,7 @@ Column {
                     text: Math.round(SystemStats.cpuTempC) + "°"
                     color: Theme.textPrimary
                     font.family: "JetBrainsMono Nerd Font"
-                    font.pixelSize: 15
+                    font.pixelSize: 17
                     font.bold: true
                 }
             }
@@ -56,25 +66,25 @@ Column {
                 text: "CPU"
                 color: Theme.textMuted
                 font.family: "JetBrainsMono Nerd Font"
-                font.pixelSize: 10
+                font.pixelSize: 11
             }
         }
 
         // --- GPU ---
         Column {
-            width: parent.width / 3
-            spacing: 8
+            width: 104
+            spacing: 10
 
             Item {
-                width: 76
-                height: 76
+                width: 92
+                height: 92
                 anchors.horizontalCenter: parent.horizontalCenter
 
                 readonly property real ratio: SystemStats.gpuAvailable ? Math.min(1, SystemStats.gpuTempC / 100) : 0
 
                 CircularGauge {
                     anchors.fill: parent
-                    thickness: 5
+                    thickness: 6
                     value: parent.ratio
                     trackColor: Theme.surfaceBorder
                     progressColor: SystemStats.gpuAvailable ? root.ratioColor(parent.ratio) : Theme.textMuted
@@ -90,7 +100,7 @@ Column {
                     text: SystemStats.gpuAvailable ? (Math.round(SystemStats.gpuTempC) + "°") : "N/A"
                     color: SystemStats.gpuAvailable ? Theme.textPrimary : Theme.textMuted
                     font.family: "JetBrainsMono Nerd Font"
-                    font.pixelSize: SystemStats.gpuAvailable ? 15 : 11
+                    font.pixelSize: SystemStats.gpuAvailable ? 17 : 12
                     font.bold: true
                 }
             }
@@ -100,25 +110,25 @@ Column {
                 text: "GPU"
                 color: Theme.textMuted
                 font.family: "JetBrainsMono Nerd Font"
-                font.pixelSize: 10
+                font.pixelSize: 11
             }
         }
 
         // --- RAM ---
         Column {
-            width: parent.width / 3
-            spacing: 8
+            width: 104
+            spacing: 10
 
             Item {
-                width: 76
-                height: 76
+                width: 92
+                height: 92
                 anchors.horizontalCenter: parent.horizontalCenter
 
                 readonly property real ratio: Math.min(1, SystemStats.memUsedPercent / 100)
 
                 CircularGauge {
                     anchors.fill: parent
-                    thickness: 5
+                    thickness: 6
                     value: parent.ratio
                     progressColor: root.ratioColor(parent.ratio)
                 }
@@ -128,7 +138,7 @@ Column {
                     text: Math.round(SystemStats.memUsedPercent) + "%"
                     color: Theme.textPrimary
                     font.family: "JetBrainsMono Nerd Font"
-                    font.pixelSize: 15
+                    font.pixelSize: 17
                     font.bold: true
                 }
             }
@@ -138,7 +148,7 @@ Column {
                 text: "RAM"
                 color: Theme.textMuted
                 font.family: "JetBrainsMono Nerd Font"
-                font.pixelSize: 10
+                font.pixelSize: 11
             }
         }
     }
