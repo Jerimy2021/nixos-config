@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Effects
 import Quickshell
 import Quickshell.Wayland
 import qs.services
@@ -21,7 +22,10 @@ Variants {
             right: true
         }
         margins {
-            top: 44
+            // Hito 004 follow-up 7 (ver Dashboard.qml, mismo fix y misma
+            // aclaración sobre cómo Hyprland mide este margin — 0 queda
+            // pegado exacto al borde real de la barra, no 38).
+            top: 0
             right: 10
         }
         implicitWidth: 340
@@ -46,22 +50,43 @@ Variants {
 
         Rectangle {
             id: card
+            readonly property int fullHeight: 436
+
             width: 316
-            height: 436
+            height: win.shown ? fullHeight : 0
             anchors.top: parent.top
             anchors.right: parent.right
-            anchors.margins: 4
+            anchors.rightMargin: 4
+            clip: true
+
             radius: 22
-            color: Theme.surfaceElevated
-            border.width: 1.4
-            border.color: Theme.withAlpha(Theme.neonMagenta, 0.35)
+            // Mismo razonamiento que Dashboard.qml: esquinas superiores
+            // cuadradas + sin gap + sin borde propio en el tope, para que la
+            // silueta continúe la de la barra en vez de leerse como tarjeta
+            // aparte.
+            topLeftRadius: 0
+            topRightRadius: 0
+            // Mismo tinte que Bar.qml/Dashboard.qml en vez de
+            // Theme.surfaceElevated, para que coincida en la costura. La
+            // identidad magenta de notificaciones se conserva en las
+            // NotificationCard (borde de urgencia) y en la cápsula de la
+            // barra — no hace falta repetirla como borde de todo el panel.
+            color: Theme.tintSurface(Theme.surface, Theme.activeAccent, 0.6)
 
             opacity: win.shown ? 1 : 0
-            scale: win.shown ? 1 : 0.9
-            transformOrigin: Item.TopRight
 
+            Behavior on height { NumberAnimation { duration: Theme.durMed; easing.type: Theme.easeOutCubic } }
             Behavior on opacity { NumberAnimation { duration: Theme.durMed; easing.type: Theme.easeOutCubic } }
-            Behavior on scale { NumberAnimation { duration: Theme.durMed; easing.type: Theme.easeOutBack } }
+            Behavior on color { ColorAnimation { duration: Theme.durSlow } }
+
+            layer.enabled: true
+            layer.effect: MultiEffect {
+                shadowEnabled: true
+                shadowColor: Qt.rgba(0, 0, 0, 0.55)
+                shadowBlur: 0.5
+                shadowVerticalOffset: 3
+                shadowHorizontalOffset: 0
+            }
 
             MouseArea { anchors.fill: parent }
 

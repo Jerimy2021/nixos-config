@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Effects
 import Quickshell
 import Quickshell.Wayland
 import qs.services
@@ -30,7 +31,15 @@ Variants {
             right: true
         }
         margins {
-            top: 44
+            // Hito 004 follow-up 7: antes 44, dejaba un hueco visible entre
+            // el borde real de la barra y esta tarjeta — se leía como "una
+            // ventana aparte", no como "la barra se extiende". OJO: este
+            // margin NO se mide desde el borde de pantalla — Hyprland ya
+            // arranca el área utilizable justo después de la exclusiveZone
+            // de Bar.qml (38), así que margin 0 = pegado exacto al borde
+            // real de la barra (confirmado en vivo con hyprctl layers,
+            // comparando la geometría del panel contra la de la barra).
+            top: 0
             right: 10
         }
         implicitWidth: 360
@@ -56,23 +65,51 @@ Variants {
 
         Rectangle {
             id: card
+            readonly property int fullHeight: 536
+
             width: 336
-            height: 536
+            height: win.shown ? fullHeight : 0
             anchors.top: parent.top
             anchors.right: parent.right
-            anchors.margins: 4
+            anchors.rightMargin: 4
+            clip: true
+
             radius: 22
-            color: Theme.surfaceElevated
-            border.width: 1.4
-            border.color: Theme.withAlpha(Theme.activeAccent, 0.4)
+            // Esquinas superiores cuadradas a propósito (Qt 6.7+,
+            // confirmado 6.11.1 en uso — ver NIXOS_SHELL_VIDEO_ANALYSIS.md
+            // §7.6/§7.7): con el hueco cerrado (margin top:38) y sin borde
+            // propio en el tope, la silueta de esta tarjeta continúa
+            // directo la silueta rectangular de la barra en vez de leerse
+            // como una tarjeta redondeada flotando aparte.
+            topLeftRadius: 0
+            topRightRadius: 0
+            // Mismo tinte que Bar.qml (Theme.tintSurface) en vez de
+            // Theme.surfaceElevated — para que el color coincida exacto en
+            // la costura donde esta tarjeta toca el fondo de la barra.
+            color: Theme.tintSurface(Theme.surface, Theme.activeAccent, 0.6)
 
             opacity: win.shown ? 1 : 0
-            scale: win.shown ? 1 : 0.9
-            transformOrigin: Item.TopRight
 
+            Behavior on height { NumberAnimation { duration: Theme.durMed; easing.type: Theme.easeOutCubic } }
             Behavior on opacity { NumberAnimation { duration: Theme.durMed; easing.type: Theme.easeOutCubic } }
-            Behavior on scale { NumberAnimation { duration: Theme.durMed; easing.type: Theme.easeOutBack } }
-            Behavior on border.color { ColorAnimation { duration: Theme.durSlow } }
+            Behavior on color { ColorAnimation { duration: Theme.durSlow } }
+
+            // Sin borde propio (antes 1.4px acento) ni sombra separada: un
+            // borde en las 4 caras habría dibujado una línea justo en la
+            // costura con la barra. Elevación solo por sombra (misma técnica
+            // que Bar.qml, MultiEffect estándar de QtQuick.Effects) —
+            // shadowVerticalOffset positivo hace que se note en los bordes
+            // izquierdo/derecho/inferior y sea prácticamente invisible en el
+            // borde superior, que es justo la costura que debe leerse como
+            // una sola forma continua con la barra.
+            layer.enabled: true
+            layer.effect: MultiEffect {
+                shadowEnabled: true
+                shadowColor: Qt.rgba(0, 0, 0, 0.55)
+                shadowBlur: 0.5
+                shadowVerticalOffset: 3
+                shadowHorizontalOffset: 0
+            }
 
             MouseArea {
                 // absorbe clicks para que no cierren el panel al tocar dentro

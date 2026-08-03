@@ -45,8 +45,19 @@ Row {
         icon: "󰥔"
         value: Qt.formatDateTime(now.date, "hh:mm")
         accent: Theme.activeAccent
-        active: false
+        active: UiState.dashboardOpen
         onClicked: UiState.toggleDashboard()
+
+        // Hito 004 follow-up 7: acercar el mouse al reloj abre el dashboard
+        // sin click (pedido original de una ronda anterior, nunca
+        // implementado — sin razón documentada en contra en
+        // NIXOS_SHELL_VIDEO_ANALYSIS.md ni en el historial de commits, así
+        // que se implementa directo). Solo abre en el flanco de entrada del
+        // hover — cerrar sigue siendo click-afuera o el mismo toggle de
+        // teclado (SUPER+SHIFT+B), sin lógica de cierre por salida de hover
+        // acá para no pelear con una apertura por teclado que el mouse
+        // nunca pidió.
+        onHoveredChanged: if (hovered) UiState.openDashboard()
 
         SystemClock {
             id: now

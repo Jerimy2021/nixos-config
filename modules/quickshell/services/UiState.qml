@@ -10,9 +10,10 @@ Singleton {
 
     property bool dashboardOpen: false
     property bool notifCenterOpen: false
-    // Independiente de dashboard/notifCenter a propósito: el menú de
-    // energía es un widget tipo "dock" flotante en otra esquina, no compite
-    // por espacio ni exclusividad con los paneles top-right (ver PowerMenu.qml).
+    // Hito 004 follow-up 6: el menú de energía dejó de ser un dock flotante
+    // en otra esquina — ahora ancla top-right igual que dashboard/
+    // notifCenter (ver PowerMenu.qml/Bar.qml), así que comparte la misma
+    // exclusión mutua que los otros dos.
     property bool powerMenuOpen: false
     // Pestaña activa del dashboard (Hito 004 follow-up 5: Dashboard/
     // Wallpapers/Media, ver Dashboard.qml + TabBar.qml). Vive acá y no como
@@ -25,6 +26,16 @@ Singleton {
         root.notifCenterOpen = false;
         root.powerMenuOpen = false;
         root.dashboardOpen = !root.dashboardOpen;
+    }
+
+    // Hito 004 follow-up 7: apertura por proximidad del reloj (ver
+    // SystemCapsules.qml) — a diferencia de toggleDashboard(), esto solo
+    // ABRE, nunca cierra, para no pelear con una apertura por teclado que
+    // el hover del mouse no inició.
+    function openDashboard() {
+        root.notifCenterOpen = false;
+        root.powerMenuOpen = false;
+        root.dashboardOpen = true;
     }
 
     function setDashboardTab(index) {

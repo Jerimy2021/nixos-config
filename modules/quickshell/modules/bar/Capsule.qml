@@ -21,6 +21,10 @@ Item {
     // Discord/Spotify, no un glifo genérico de Nerd Font. Vacío = comportamiento
     // original (glifo de texto en `icon`).
     property string iconSource: ""
+    // Hito 004 follow-up 7: expone el hover del MouseArea propio para que
+    // quien use esta cápsula pueda reaccionar a "el mouse se acercó" sin
+    // reimplementar su propio HoverHandler (ver SystemCapsules.qml, reloj).
+    readonly property alias hovered: mouseArea.containsMouse
     signal clicked
 
     implicitWidth: row.implicitWidth + 20
