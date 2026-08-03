@@ -206,6 +206,71 @@
     esac
   '';
 
+  # 6. ESTADÍSTICAS DEL SISTEMA PARA LA PESTAÑA "PERFORMANCE" DEL DASHBOARD
+  # (Hito 004 follow-up 8). Toda la lógica frágil (buscar el hwmon correcto,
+  # tolerar que la GPU no responda) vive acá, auditable/testeable a mano con
+  # `system-stats` desde una terminal — no como strings de shell sueltas
+  # dentro del QML.
+  system-stats = pkgs.writeShellScriptBin "system-stats" ''
+    JQ=${pkgs.jq}/bin/jq
+    AWK=${pkgs.gawk}/bin/awk
+
+    # CPU: temperatura de paquete real vía sysfs (hwmon), no lm_sensors.
+    # Confirmado en vivo (Hito 004 follow-up 8): el kernel de esta laptop ya
+    # carga el driver "coretemp" (i5-1035G1) y expone "Package id 0" — leerlo
+    # directo de /sys da el mismo número que `sensors` daría, sin agregar
+    # lm_sensors a home.packages solo para esto. El índice hwmonN no es
+    # estable entre reinicios (depende de qué más registre hwmon antes), así
+    # que se busca por el archivo "name", nunca se asume "hwmon4".
+    cpu_temp="null"
+    for d in /sys/class/hwmon/hwmon*; do
+      [ -f "$d/name" ] || continue
+      if [ "$(cat "$d/name")" = "coretemp" ]; then
+        pkg_file=""
+        for lf in "$d"/temp*_label; do
+          [ -f "$lf" ] || continue
+          if [ "$(cat "$lf")" = "Package id 0" ]; then
+            pkg_file="''${lf%_label}_input"
+            break
+          fi
+        done
+        [ -z "$pkg_file" ] && pkg_file="$d/temp1_input"
+        if [ -f "$pkg_file" ]; then
+          cpu_temp=$("$AWK" -v r="$(cat "$pkg_file")" 'BEGIN{printf "%.1f", r/1000}')
+        fi
+        break
+      fi
+    done
+
+    # GPU: NVIDIA discreta en PRIME render-offload puro (no es el renderer
+    # por defecto). Confirmado en vivo: `nvidia-smi` puede fallar con
+    # "couldn't communicate with the NVIDIA driver" aun con la GPU presente
+    # y el binario instalado, cuando nada la despertó todavía vía
+    # __NV_PRIME_RENDER_OFFLOAD=1 — no es un error real del sistema, es el
+    # estado normal de una GPU en offload puro sin nada renderizando ahí en
+    # este momento. Se trata como "no disponible" (null), no se fuerza a la
+    # GPU a encenderse solo para leer su temperatura.
+    gpu_temp="null"
+    if command -v nvidia-smi >/dev/null 2>&1; then
+      raw=$(nvidia-smi --query-gpu=temperature.gpu --format=csv,noheader 2>/dev/null | tr -dc '0-9')
+      [ -n "$raw" ] && gpu_temp="$raw"
+    fi
+
+    mem_total_kb=$("$AWK" '/^MemTotal:/{print $2}' /proc/meminfo)
+    mem_avail_kb=$("$AWK" '/^MemAvailable:/{print $2}' /proc/meminfo)
+    mem_used_pct=$("$AWK" -v t="$mem_total_kb" -v a="$mem_avail_kb" 'BEGIN{ printf "%.1f", (t>0)?(t-a)/t*100:0 }')
+    mem_used_gib=$("$AWK" -v t="$mem_total_kb" -v a="$mem_avail_kb" 'BEGIN{printf "%.1f", (t-a)/1048576}')
+    mem_total_gib=$("$AWK" -v t="$mem_total_kb" 'BEGIN{printf "%.1f", t/1048576}')
+
+    "$JQ" -n \
+      --argjson cpuTempC "$cpu_temp" \
+      --argjson gpuTempC "$gpu_temp" \
+      --argjson memUsedPercent "$mem_used_pct" \
+      --argjson memUsedGiB "$mem_used_gib" \
+      --argjson memTotalGiB "$mem_total_gib" \
+      '{cpuTempC:$cpuTempC, gpuTempC:$gpuTempC, memUsedPercent:$memUsedPercent, memUsedGiB:$memUsedGiB, memTotalGiB:$memTotalGiB}'
+  '';
+
   # 5. LANZADOR/FOCUS DE APPS EXTERNAS (Discord, Spotify — Hito 004 follow-up 4)
   # Genérico y parametrizado (clase de ventana + comando de lanzamiento) en
   # vez de un script por app, mismo criterio que nm-applet-ctl. El foco por

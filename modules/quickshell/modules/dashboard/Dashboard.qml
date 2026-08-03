@@ -65,10 +65,33 @@ Variants {
 
         Rectangle {
             id: card
-            readonly property int fullHeight: 536
+
+            // Hito 004 follow-up 8: antes una constante fija (536, tuneada a
+            // ojo para que la pestaña Dashboard entrara sin scroll). Con 5
+            // pestañas de altura bien distinta (Performance son 3 gauges
+            // cortos, Workspaces puede ser una lista de 10 filas) una sola
+            // constante o dejaba hueco vacío de sobra o forzaba scroll
+            // innecesario. Ahora se calcula: "chrome" compartido (perfil +
+            // tab bar + divisor + márgenes, medido en vivo vía las propias
+            // implicitHeight de esos ítems, no hardcodeado) más la altura
+            // natural del contenido de LA PESTAÑA ACTIVA — así el Behavior
+            // on height que ya existía (antes solo para abrir/cerrar) anima
+            // también el cambio al levantarse/bajar entre pestañas de altura
+            // distinta, sin necesidad de tocar ese Behavior.
+            readonly property real chromeHeight: profileHeader.height + 14 + tabBar.height + 8 + 1 + 14 + 36
+            readonly property real activeContentHeight: {
+                switch (UiState.dashboardTab) {
+                case 0: return dashboardTabContent.implicitHeight;
+                case 1: return wallpaperTabContent.implicitHeight;
+                case 2: return mediaTabContent.implicitHeight;
+                case 3: return perfTabContent.implicitHeight;
+                default: return 0;
+                }
+            }
+            readonly property real targetHeight: Math.max(260, Math.min(560, chromeHeight + activeContentHeight))
 
             width: 336
-            height: win.shown ? fullHeight : 0
+            height: win.shown ? targetHeight : 0
             anchors.top: parent.top
             anchors.right: parent.right
             anchors.rightMargin: 4
@@ -131,7 +154,7 @@ Variants {
                     anchors.top: profileHeader.bottom
                     anchors.topMargin: 14
                     width: parent.width
-                    tabs: ["Dashboard", "Wallpapers", "Media"]
+                    tabs: ["Dashboard", "Wallpapers", "Media", "Performance"]
                     currentIndex: UiState.dashboardTab
                     onTabClicked: index => UiState.setDashboardTab(index)
                 }
@@ -254,6 +277,29 @@ Variants {
                                     id: mediaTabContent
                                     width: parent.width
                                     VolumeMixer { width: parent.width }
+                                }
+                            }
+
+                            // --- Pestaña "Performance": gauges de CPU/GPU/RAM (Hito 004 follow-up 8) ---
+                            Flickable {
+                                width: carousel.width
+                                height: carousel.height
+                                contentHeight: perfTabContent.implicitHeight
+                                clip: true
+
+                                Column {
+                                    id: perfTabContent
+                                    width: parent.width
+                                    spacing: 8
+
+                                    Text {
+                                        text: "RENDIMIENTO"
+                                        color: Theme.textMuted
+                                        font.family: "JetBrainsMono Nerd Font"
+                                        font.pixelSize: 10
+                                        font.bold: true
+                                    }
+                                    PerformanceGauges { width: parent.width }
                                 }
                             }
                         }
