@@ -73,6 +73,34 @@ Variants {
             onClicked: UiState.closeAll()
         }
 
+        // Hito 004 follow-up 10: auto-cierre por salida de hover, además
+        // del click-afuera de arriba (que se mantiene tal cual, es un
+        // fallback real — ej. quien navega con teclado y nunca mueve el
+        // mouse). La región "adentro" es bar+card combinados (ver
+        // UiState.barHovered/dashboardCardHovered) — sin esto, el instante
+        // en que el cursor cruza el hueco de 0px entre barra y tarjeta
+        // (que sí puede parpadear un frame por cómo entregan eventos los
+        // dos HoverHandler por separado) cerraría el panel apenas se abrió
+        // por hover. El Timer de gracia absorbe eso y además evita el
+        // cierre por simplemente "pasar de largo" un instante sobre el
+        // borde — 200ms: bastante para no sentirse nervioso, poco para no
+        // sentirse pegado.
+        readonly property bool hoveringDashboard: UiState.barHovered || UiState.dashboardCardHovered
+
+        onHoveringDashboardChanged: {
+            if (win.hoveringDashboard) {
+                closeGrace.stop();
+            } else if (win.shown) {
+                closeGrace.restart();
+            }
+        }
+
+        Timer {
+            id: closeGrace
+            interval: 200
+            onTriggered: if (!win.hoveringDashboard) UiState.closeAll();
+        }
+
         Rectangle {
             id: card
 
@@ -177,6 +205,18 @@ Variants {
             MouseArea {
                 // absorbe clicks para que no cierren el panel al tocar dentro
                 anchors.fill: parent
+            }
+
+            // Hito 004 follow-up 10: alimenta UiState.dashboardCardHovered
+            // (ver win.hoveringDashboard arriba). Target es `card` mismo,
+            // no `parent`/toda la ventana — la ventana (`win`) es más alta
+            // que la tarjeta visible cuando está cerrada (implicitHeight:560
+            // fijo, ver arriba), así que hoverear ese espacio invisible no
+            // debería contar como "adentro".
+            HoverHandler {
+                id: cardHover
+                target: card
+                onHoveredChanged: UiState.dashboardCardHovered = hovered
             }
 
             Item {
