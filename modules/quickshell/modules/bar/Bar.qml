@@ -52,25 +52,32 @@ Variants {
             color: Theme.tintSurface(Theme.surface, Theme.activeAccent, 0.6)
             Behavior on color { ColorAnimation { duration: Theme.durSlow } }
 
-            // Hito 004 follow-up 10: trigger de apertura del dashboard por
-            // hover, movido acá desde la cápsula del reloj (ver
-            // SystemCapsules.qml) — cubre TODA la barra en vez de un centro
-            // arbitrario. Se probaron ambas en vivo: una franja central no
-            // tiene ningún elemento visual que la sugiera (workspaces a la
-            // izquierda, cápsulas a la derecha, el medio está vacío), así
-            // que hoverearla se sentía como encontrar un punto ciego. La
-            // barra entera sí es un target obvio — es la superficie que ya
-            // se ve como "la barra", no hace falta adivinar dónde. Reusa
-            // HoverHandler, mismo mecanismo que ya usa Capsule.qml
-            // (proximityHover) en vez de inventar un tercer sistema de hover.
-            // `UiState.barHovered` alimenta además el auto-cierre por salida
-            // de hover del dashboard (ver Dashboard.qml).
-            HoverHandler {
-                id: barHover
-                target: surface
-                onHoveredChanged: {
-                    UiState.barHovered = hovered;
-                    if (hovered) UiState.openDashboard();
+            // Hito 004 follow-up 14: trigger de apertura del dashboard por
+            // hover, angostado a una franja central chica — el follow-up 10
+            // anterior lo había puesto sobre TODA la barra ("no hay nada en
+            // el medio que lo sugiera, mejor toda la barra"), pero en uso
+            // real resultó demasiado sensible: cualquier paso del mouse
+            // hacia las cápsulas de la derecha o los pills de workspace de
+            // la izquierda abría el dashboard sin querer. Vuelta a una
+            // franja central (200px, ver hotzone), esta vez SÍ con algo que
+            // la sugiera: nada todavía la marca visualmente, pero al ser
+            // angosta y central deja de competir con el resto de la barra
+            // (que sigue siendo clickeable/hovereable para lo suyo sin
+            // disparar el dashboard de paso).
+            Item {
+                id: hoverHotzone
+                width: 200
+                height: parent.height
+                anchors.horizontalCenter: parent.horizontalCenter
+                anchors.top: parent.top
+
+                HoverHandler {
+                    id: barHover
+                    target: hoverHotzone
+                    onHoveredChanged: {
+                        UiState.barHovered = hovered;
+                        if (hovered) UiState.openDashboard();
+                    }
                 }
             }
 
