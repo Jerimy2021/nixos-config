@@ -9,17 +9,18 @@ Row {
     id: root
     spacing: 8
 
+    // Hito 004 follow-up 19: antes `nmApplet.startDetached()` — spawneaba
+    // un ícono de bandeja externo (nm-applet --indicator), ni siquiera una
+    // lista, solo OTRO tray icon aparte del shell. Ahora abre
+    // NetworkMenu.qml, una lista QML real de redes disponibles vía
+    // Quickshell.Networking (D-Bus/NetworkManager real — ver NetworkMenu.qml
+    // para el detalle de por qué esto resultó posible).
     Capsule {
         icon: Network.icon()
         value: Network.connected ? Network.label : ""
-        active: Network.connected
+        active: Network.connected || UiState.networkMenuOpen
         accent: Theme.blue
-        onClicked: nmApplet.startDetached()
-
-        Process {
-            id: nmApplet
-            command: ["nm-applet-ctl", "toggle"]
-        }
+        onClicked: UiState.toggleNetworkMenu()
     }
 
     // Hito 004 follow-up 17: cápsula HDMI, oculta por completo cuando no

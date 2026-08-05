@@ -24,6 +24,9 @@ Singleton {
     // Hito 004 follow-up 17: control de salida HDMI (ver HdmiMenu.qml) —
     // mismo patrón de exclusión mutua que los otros paneles top-anchored.
     property bool hdmiMenuOpen: false
+    // Hito 004 follow-up 19: selector de redes WiFi (ver NetworkMenu.qml)
+    // — mismo patrón de exclusión mutua.
+    property bool networkMenuOpen: false
     // Pestaña activa del dashboard (Hito 004 follow-up 5: Dashboard/
     // Wallpapers/Media, ver Dashboard.qml + TabBar.qml). Vive acá y no como
     // property local del PanelWindow por el mismo motivo que el resto de
@@ -47,6 +50,7 @@ Singleton {
         root.powerMenuOpen = false;
         root.wallpaperPickerOpen = false;
         root.hdmiMenuOpen = false;
+        root.networkMenuOpen = false;
         root.dashboardOpen = !root.dashboardOpen;
     }
 
@@ -59,6 +63,7 @@ Singleton {
         root.powerMenuOpen = false;
         root.wallpaperPickerOpen = false;
         root.hdmiMenuOpen = false;
+        root.networkMenuOpen = false;
         root.dashboardOpen = true;
     }
 
@@ -82,6 +87,7 @@ Singleton {
         root.powerMenuOpen = false;
         root.wallpaperPickerOpen = false;
         root.hdmiMenuOpen = false;
+        root.networkMenuOpen = false;
         root.notifCenterOpen = !root.notifCenterOpen;
     }
 
@@ -94,6 +100,7 @@ Singleton {
         root.notifCenterOpen = false;
         root.wallpaperPickerOpen = false;
         root.hdmiMenuOpen = false;
+        root.networkMenuOpen = false;
         root.powerMenuOpen = !root.powerMenuOpen;
     }
 
@@ -105,6 +112,7 @@ Singleton {
         root.notifCenterOpen = false;
         root.powerMenuOpen = false;
         root.hdmiMenuOpen = false;
+        root.networkMenuOpen = false;
         root.wallpaperPickerOpen = !root.wallpaperPickerOpen;
     }
 
@@ -115,7 +123,19 @@ Singleton {
         root.notifCenterOpen = false;
         root.powerMenuOpen = false;
         root.wallpaperPickerOpen = false;
+        root.networkMenuOpen = false;
         root.hdmiMenuOpen = !root.hdmiMenuOpen;
+    }
+
+    // Hito 004 follow-up 19: ver NetworkMenu.qml, disparado por la cápsula
+    // de red en SystemCapsules.qml (antes spawneaba nm-applet --indicator).
+    function toggleNetworkMenu() {
+        root.dashboardOpen = false;
+        root.notifCenterOpen = false;
+        root.powerMenuOpen = false;
+        root.wallpaperPickerOpen = false;
+        root.hdmiMenuOpen = false;
+        root.networkMenuOpen = !root.networkMenuOpen;
     }
 
     function closeAll() {
@@ -124,6 +144,7 @@ Singleton {
         root.powerMenuOpen = false;
         root.wallpaperPickerOpen = false;
         root.hdmiMenuOpen = false;
+        root.networkMenuOpen = false;
     }
 
     // Permite disparar los toggles desde fuera de QuickShell (keybinds de
@@ -136,6 +157,7 @@ Singleton {
         function togglePowerMenu(): void { root.togglePowerMenu(); }
         function toggleWallpaperPicker(): void { root.toggleWallpaperPicker(); }
         function toggleHdmiMenu(): void { root.toggleHdmiMenu(); }
+        function toggleNetworkMenu(): void { root.toggleNetworkMenu(); }
         function setDashboardTab(index: int): void { root.setDashboardTab(index); }
         function openDashboardTab(index: int): void { root.openDashboardTab(index); }
         function closeAll(): void { root.closeAll(); }
