@@ -352,11 +352,44 @@ Variants {
                                     readonly property real cardHeight: Math.max(quickAccessCol.implicitHeight, calendarCol.implicitHeight) + 40
 
                                     // Tarjeta 1: toggles rápidos + accesos a carpetas
+                                    //
+                                    // Hito 004 follow-up 11: pase estético
+                                    // (pedido explícito: "más color, más
+                                    // glow/acento, uso más rico de
+                                    // Theme.activeAccent" — el layout de
+                                    // tarjetas del follow-up anterior ya
+                                    // estaba aprobado, esto es solo
+                                    // terminado visual encima). Antes:
+                                    // Theme.surfaceFaint plano, sin borde,
+                                    // sin sombra propia — se leía funcional
+                                    // pero chato. Ahora: borde sutil
+                                    // acentuado + sombra coloreada con
+                                    // Theme.activeAccent en vez de negro
+                                    // (misma técnica MultiEffect que ya usa
+                                    // `card`/Bar.qml, solo recoloreada) —
+                                    // el "glow" es literalmente esa sombra
+                                    // con blur alto y offset 0, no un
+                                    // elemento nuevo.
                                     Rectangle {
+                                        id: quickAccessCard
                                         width: 280
                                         height: dashboardTabContent.cardHeight
                                         radius: 18
-                                        color: Theme.surfaceFaint
+                                        color: Theme.withAlpha(Theme.activeAccent, 0.10)
+                                        border.width: 1.2
+                                        border.color: Theme.withAlpha(Theme.activeAccent, 0.4)
+
+                                        Behavior on color { ColorAnimation { duration: Theme.durSlow } }
+                                        Behavior on border.color { ColorAnimation { duration: Theme.durSlow } }
+
+                                        layer.enabled: true
+                                        layer.effect: MultiEffect {
+                                            shadowEnabled: true
+                                            shadowColor: Theme.withAlpha(Theme.activeAccent, 0.55)
+                                            shadowBlur: 0.8
+                                            shadowVerticalOffset: 0
+                                            shadowHorizontalOffset: 0
+                                        }
 
                                         Column {
                                             id: quickAccessCol
@@ -366,29 +399,46 @@ Variants {
 
                                             QuickToggles { width: parent.width }
 
-                                            Rectangle { width: parent.width; height: 1; color: Theme.withAlpha(Theme.activeAccent, 0.18); Behavior on color { ColorAnimation { duration: Theme.durSlow } } }
+                                            Rectangle { width: parent.width; height: 1; color: Theme.withAlpha(Theme.activeAccent, 0.35); Behavior on color { ColorAnimation { duration: Theme.durSlow } } }
 
                                             Column {
                                                 width: parent.width
                                                 spacing: 8
                                                 Text {
                                                     text: "ACCESOS"
-                                                    color: Theme.textMuted
+                                                    color: Theme.activeAccent
                                                     font.family: "JetBrainsMono Nerd Font"
                                                     font.pixelSize: 10
                                                     font.bold: true
+
+                                                    Behavior on color { ColorAnimation { duration: Theme.durSlow } }
                                                 }
                                                 Shortcuts { width: parent.width }
                                             }
                                         }
                                     }
 
-                                    // Tarjeta 2: calendario
+                                    // Tarjeta 2: calendario (mismo tratamiento que la Tarjeta 1)
                                     Rectangle {
+                                        id: calendarCard
                                         width: 300
                                         height: dashboardTabContent.cardHeight
                                         radius: 18
-                                        color: Theme.surfaceFaint
+                                        color: Theme.withAlpha(Theme.activeAccent, 0.10)
+                                        border.width: 1.2
+                                        border.color: Theme.withAlpha(Theme.activeAccent, 0.4)
+
+                                        Behavior on color { ColorAnimation { duration: Theme.durSlow } }
+                                        Behavior on border.color { ColorAnimation { duration: Theme.durSlow } }
+
+                                        layer.enabled: true
+                                        layer.effect: MultiEffect {
+                                            shadowEnabled: true
+                                            shadowColor: Theme.withAlpha(Theme.activeAccent, 0.55)
+                                            shadowBlur: 0.8
+                                            shadowVerticalOffset: 0
+                                            shadowHorizontalOffset: 0
+                                        }
 
                                         Column {
                                             id: calendarCol
