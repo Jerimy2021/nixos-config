@@ -1,0 +1,67 @@
+; Hito 004 follow-up 18 (migración Thunar -> Dolphin+Kvantum). Encontrado en
+; vivo: Kvantum solo no alcanza para que Dolphin calce exacto con la
+; paleta de Theme.qml — las apps KDE (Dolphin incluida) pintan su chrome
+; nativo (sidebar, selección, header de columnas) vía KColorScheme
+; (kdeglobals), una capa PARALELA al QPalette que expone el estilo Qt
+; (Kvantum). Confirmado con captura real: con Kvantum solo, el resultado
+; era gris oscuro genérico, no nuestra paleta — recién con este archivo
+; además el sidebar/selección/etc. usan los colores reales de Theme.qml.
+; Formato real de kdeglobals: RGB decimal separado por comas, no hex.
+;
+; #0A0A12 = 10,10,18   (Theme.surface)
+; #0D0D16 = 13,13,22   (Theme.surfaceElevated)
+; #15151F = 21,21,31   (botones, un paso más claro)
+; #F1E6FF = 241,230,255 (Theme.textPrimary)
+; #B8AECF = 184,174,207 (Theme.textMuted)
+; #CBA6F7 = 203,166,247 (Theme.lavender / Theme.activeAccent por defecto)
+; #89B4FA = 137,180,250 (Theme.blue)
+;
+; Pendiente honesto (no resuelto esta ronda): verificado en vivo que la
+; vista "Detalles" (lista, no íconos) de Dolphin no siempre respeta este
+; fondo oscuro — se vio blanca en una prueba real pese a que la vista de
+; íconos sí calcaba bien. No se investigó más a fondo qué sección exacta
+; de kdeglobals (o si es directamente el propio Kvantum) controla ese caso
+; particular — candidato real para una ronda futura si molesta en uso real.
+
+[General]
+ColorScheme=NixCyber
+Name=NixCyber
+widgetStyle=kvantum
+
+[Colors:Window]
+BackgroundNormal=10,10,18
+ForegroundNormal=241,230,255
+ForegroundInactive=184,174,207
+
+[Colors:View]
+BackgroundNormal=13,13,22
+BackgroundAlternate=18,18,28
+ForegroundNormal=241,230,255
+ForegroundInactive=184,174,207
+
+[Colors:Selection]
+BackgroundNormal=203,166,247
+ForegroundNormal=10,10,18
+DecorationFocus=203,166,247
+DecorationHover=137,180,250
+
+[Colors:Button]
+BackgroundNormal=21,21,31
+ForegroundNormal=241,230,255
+
+[Colors:Tooltip]
+BackgroundNormal=13,13,22
+ForegroundNormal=241,230,255
+
+[Colors:Header]
+BackgroundNormal=13,13,22
+ForegroundNormal=241,230,255
+
+[WM]
+activeBackground=10,10,18
+activeForeground=241,230,255
+inactiveBackground=13,13,22
+inactiveForeground=184,174,207
+
+[KDE]
+widgetStyle=kvantum

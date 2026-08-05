@@ -1,0 +1,96 @@
+; Tema Kvantum hecho a mano para Dolphin (Hito 004 follow-up 18 — migración
+; Thunar → Dolphin+Kvantum). Sin archivo .svg propio a propósito: sin un
+; .svg, Kvantum dibuja con su renderer genérico (rectángulos/formas
+; estándar de Qt) coloreado enteramente por [GeneralColors]/[Hacks] de
+; abajo — evita tener que armar un tema Kvantum completo con SVG desde cero
+; (semanas de trabajo real en Kvantum, fuera de alcance de esta ronda) sin
+; sacrificar precisión de color: cada valor de acá es exactamente el mismo
+; hex que usa Theme.qml (services/Theme.qml), no una aproximación.
+;
+; Se evaluó usar el paquete `catppuccin-kvantum` de nixpkgs (evitaría
+; mantener esto a mano) — descartado: esa derivación solo empaqueta la
+; variante "frappe-blue" (fondo gris-azulado más claro, acento azul), y
+; nuestra paleta real es Mocha-como-oscuro (#0A0A12, casi negro) con acento
+; lavanda por defecto (Theme.activeAccent = lavender) — la variante
+; empaquetada no calza. Estructura de [%General] tomada como referencia de
+; KvArcDark (tema flat incluido en qtstyleplugin-kvantum) por ser el más
+; cercano en espíritu a "flat, minimalista, esquinas suaves" — los valores
+; de color son 100% propios, no copiados de esa referencia.
+
+[%General]
+author=Hito 004
+comment=Tema plano a medida de Theme.qml — sin SVG, renderer genérico
+alt_mnemonic=true
+left_tabs=false
+attach_active_tab=true
+spread_progressbar=true
+composite=true
+menu_shadow_depth=5
+menu_separator_height=6
+tooltip_shadow_depth=6
+splitter_width=4
+scroll_width=9
+scroll_arrows=false
+slider_width=6
+slider_handle_width=16
+slider_handle_length=16
+check_size=14
+progressbar_thickness=6
+menubar_mouse_tracking=true
+toolbutton_style=1
+click_behavior=0
+translucent_windows=false
+blurring=false
+small_icon_size=16
+large_icon_size=32
+button_icon_size=16
+toolbar_icon_size=22
+combo_as_lineedit=true
+animate_states=true
+combo_menu=true
+layout_spacing=6
+layout_margin=9
+scrollbar_in_view=true
+transient_scrollbar=true
+submenu_overlap=3
+tooltip_delay=-1
+
+[GeneralColors]
+; Theme.surface / Theme.surfaceElevated
+window.color=#0A0A12
+base.color=#0D0D16
+alt.base.color=#12121C
+; Theme.surfaceHover-ish (levemente más claro que el botón base)
+button.color=#15151F
+light.color=#22222E
+mid.light.color=#1A1A24
+dark.color=#000000
+mid.color=#08080D
+; Theme.activeAccent (default = lavender) — el acento real vive
+; dinámicamente en QuickShell (Theme.activeAccent cambia por wallpaper);
+; Dolphin/Qt no tienen ese mecanismo reactivo, así que acá queda fijo en
+; el valor por defecto de Theme.qml.
+highlight.color=#CBA6F7
+inactive.highlight.color=#CBA6F7
+; Theme.textPrimary / Theme.textMuted
+text.color=#F1E6FF
+window.text.color=#F1E6FF
+button.text.color=#F1E6FF
+disabled.text.color=#B8AECF
+tooltip.text.color=#F1E6FF
+; Texto oscuro sobre el highlight lavanda claro — mejor contraste que
+; blanco sobre lavanda.
+highlight.text.color=#0A0A12
+; Theme.blue / Theme.lavender
+link.color=#89B4FA
+link.visited.color=#CBA6F7
+progress.indicator.text.color=#0A0A12
+
+[Hacks]
+transparent_ip_frame=true
+transparent_menutitle=true
+merge_menubar_with_toolbar=true
+lxqtmainmenu_iconsize=16
+respect_DE=true
+kcapacitybar_as_progressbar=true
+opaque_colorview=false

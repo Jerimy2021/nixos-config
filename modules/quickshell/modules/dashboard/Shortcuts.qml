@@ -67,7 +67,8 @@ Flow {
                 hoverEnabled: true
                 cursorShape: Qt.PointingHandCursor
                 onClicked: {
-                    opener.command = ["thunar", "/home/jerimy/" + chip.modelData.path];
+                    // Hito 004 follow-up 18: thunar -> dolphin.
+                    opener.command = ["dolphin", "/home/jerimy/" + chip.modelData.path];
                     opener.running = true;
                 }
             }

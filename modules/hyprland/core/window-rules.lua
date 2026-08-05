@@ -31,9 +31,13 @@ hl.window_rule({
 })
 
 hl.window_rule({ match = { class = "^(foot)$" }, opacity = "0.80 override 0.70 override 1.0 override" })
+-- Hito 004 follow-up 18: thunar -> dolphin. Clase real verificada en vivo
+-- (lanzado en la sesión real, `hyprctl clients -j` contra la ventana
+-- resultante) antes de asumir "org.kde.dolphin" a ciegas — ver
+-- NIXOS_ARCHITECTURE_HITO_004.md para el valor confirmado.
 hl.window_rule({
-  name = "thunar-float",
-  match = { class = "^(thunar)$" },
+  name = "dolphin-float",
+  match = { class = "^(org.kde.dolphin)$" },
   float = true,
   size = "60% 70%",
   center = true,

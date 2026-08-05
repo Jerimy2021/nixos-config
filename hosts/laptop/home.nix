@@ -15,6 +15,13 @@ in
     # QuickShell corre sobre Qt6 en un escritorio GTK — qt6ct evita que sus
     # ventanas (si las hubiera) se vean ajenas a la paleta del sistema.
     QT_QPA_PLATFORMTHEME = "qt6ct";
+    # Hito 004 follow-up 18 (migración Thunar -> Dolphin+Kvantum): Kvantum
+    # es el motor de estilo real (paleta a medida de Theme.qml, ver
+    # modules/kvantum/NixCyber/), pero Qt solo lo aplica si algo fuerza el
+    # style plugin — sin esto, Dolphin renderiza con el estilo Qt genérico
+    # (Fusion) e ignora Kvantum por completo aunque esté instalado y
+    # configurado.
+    QT_STYLE_OVERRIDE = "kvantum";
   };
 
   # --- PAQUETES (LOS OBREROS) ---
@@ -35,11 +42,23 @@ in
     quickshell
     kdePackages.qt6ct
 	
-    # Thunar, Miniaturas y Visor de Imágenes
-    thunar
-    tumbler
-    thunar-archive-plugin
-    ffmpegthumbnailer
+    # Dolphin + Kvantum (Hito 004 follow-up 18 — antes Thunar, ver
+    # NIXOS_ARCHITECTURE_HITO_004.md). kio-extras/ffmpegthumbs/
+    # kdegraphics-thumbnailers son el equivalente KIO de lo que tumbler+
+    # ffmpegthumbnailer+webp-pixbuf-loader+poppler_gi hacían para Thunar
+    # (miniaturas de video/imagen/pdf) — Dolphin no usa el stack de
+    # miniaturas de GTK (tumbler), tiene el suyo propio vía KIO. ark
+    # reemplaza thunar-archive-plugin (extraer/comprimir desde el
+    # explorador). kimageformats amplía los formatos de imagen que Qt
+    # entiende nativamente (necesario para que el visor integrado de
+    # Dolphin abra más que jpg/png).
+    kdePackages.dolphin
+    kdePackages.kio-extras
+    kdePackages.ark
+    kdePackages.ffmpegthumbs
+    kdePackages.kdegraphics-thumbnailers
+    kdePackages.kimageformats
+    kdePackages.qtstyleplugin-kvantum
     webp-pixbuf-loader
     poppler_gi
     papirus-icon-theme
@@ -160,7 +179,25 @@ in
     "matugen".source = ../../modules/matugen;
     "gtk-3.0/gtk.css".source = ../../modules/gtk/gtk.css;
     "gtk-global/base.css".source = ../../modules/gtk-global/base.css;
-    "thunar/thunar.css".source = ../../modules/thunar/thunar.css;
+    # Hito 004 follow-up 18: Thunar -> Dolphin+Kvantum. El tema vive en
+    # ~/.config/Kvantum/<nombre>/ (una carpeta por tema, convención de
+    # Kvantum) — acá solo se instala el nuestro (NixCyber), no se toca
+    # ningún tema de fábrica de qtstyleplugin-kvantum. kvantum.kvconfig es
+    # el selector global: le dice a Kvantum qué carpeta usar.
+    "Kvantum/NixCyber/NixCyber.kvconfig".source = ../../modules/kvantum/NixCyber/NixCyber.kvconfig;
+    "Kvantum/kvantum.kvconfig".text = ''
+      [General]
+      theme=NixCyber
+    '';
+    # Encontrado en vivo probando esto: Kvantum solo (el style plugin de
+    # Qt) no alcanza para que Dolphin calce con Theme.qml — las apps KDE
+    # pintan su chrome nativo (sidebar, selección, header de columnas) vía
+    # KColorScheme (kdeglobals), una capa PARALELA al QPalette que expone
+    # el estilo Qt. Sin este archivo, el resultado medido fue gris oscuro
+    # genérico, no nuestra paleta — ver el archivo para el detalle de qué
+    # se probó y qué quedó pendiente (la vista de detalles/lista no calca
+    # el fondo oscuro en todos los casos, gap real no resuelto esta ronda).
+    "kdeglobals".source = ../../modules/kvantum/kdeglobals;
   };
   
   dconf.settings = {
@@ -246,6 +283,12 @@ in
         "image/gif" = "imv.desktop";
         "image/webp" = "imv.desktop";
         "image/svg+xml" = "imv.desktop";
+
+        # Hito 004 follow-up 18: Thunar -> Dolphin. inode/directory es el
+        # mimetype que xdg-open y otras apps consultan para "abrir esta
+        # carpeta con el explorador de archivos" — sin esto, quedaría sin
+        # default explícito tras sacar Thunar.
+        "inode/directory" = "org.kde.dolphin.desktop";
       };
     };
   };
