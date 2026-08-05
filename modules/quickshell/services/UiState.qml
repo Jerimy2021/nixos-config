@@ -61,6 +61,17 @@ Singleton {
         root.dashboardTab = index;
     }
 
+    // Hito 004 follow-up 14: atajo directo a una pestaña específica del
+    // dashboard (pedido puntual: SUPER+SHIFT+W → Workspaces, ver
+    // keybinds.lua) — abre Y cambia de pestaña en un solo golpe de tecla,
+    // en vez de necesitar togglear el dashboard y despues clickear la tab
+    // a mano. Genérico por índice (no "openWorkspacesTab" hardcodeado) por
+    // si en el futuro se quiere un atajo directo a otra pestaña.
+    function openDashboardTab(index) {
+        root.openDashboard();
+        root.dashboardTab = index;
+    }
+
     function toggleNotifCenter() {
         root.dashboardOpen = false;
         root.powerMenuOpen = false;
@@ -106,6 +117,7 @@ Singleton {
         function togglePowerMenu(): void { root.togglePowerMenu(); }
         function toggleWallpaperPicker(): void { root.toggleWallpaperPicker(); }
         function setDashboardTab(index: int): void { root.setDashboardTab(index); }
+        function openDashboardTab(index: int): void { root.openDashboardTab(index); }
         function closeAll(): void { root.closeAll(); }
     }
 }

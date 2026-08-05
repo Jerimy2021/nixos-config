@@ -132,6 +132,13 @@ hl.bind(mainMod .. " + CTRL + B", hl.dsp.exec_cmd([[bash -c 'pkill quickshell; s
 -- natural del sistema, así que togglea el dashboard de QuickShell en su
 -- lugar (mismo target que la cápsula del reloj en la barra).
 hl.bind(mainMod .. " + SHIFT + B", hl.dsp.exec_cmd("quickshell ipc call uiState toggleDashboard"))
+-- Hito 004 follow-up 14: atajo directo a la pestaña Workspaces del
+-- dashboard (índice 3 en el orden actual Dashboard/Media/Performance/
+-- Workspaces, ver TabBar.qml/Dashboard.qml) — abre el dashboard YA en esa
+-- pestaña en un solo golpe, sin pasar por togglear + clickear la tab a
+-- mano. SUPER+SHIFT+W, libre (no colisiona con SUPER+CTRL+W del wallpaper
+-- picker) y con mnemónico obvio (W de Workspaces).
+hl.bind(mainMod .. " + SHIFT + W", hl.dsp.exec_cmd("quickshell ipc call uiState openDashboardTab 3"))
 -- CTRL+T (themeswitcher.sh de waybar) se elimina sin reemplazo: ese script
 -- rotaba entre carpetas de temas .css estáticos, algo que no tiene
 -- equivalente directo en QuickShell (el theming vivo por Theme.qml/Palette
