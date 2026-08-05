@@ -21,7 +21,7 @@ Item {
     Row {
         id: tabRow
         anchors.fill: parent
-        spacing: 2
+        spacing: 3
 
         Repeater {
             model: root.tabs
@@ -44,16 +44,28 @@ Item {
                     // (confirmado en vivo, captura mostraba "Dashboard"
                     // pegado a "Wallpapers"). Ahora el Text respeta el
                     // ancho real del slot (elide como red de seguridad,
-                    // no como solución primaria) y bajó de tamaño/spacing
-                    // para que las 5 etiquetas quepan sin elidir en el
-                    // caso común.
+                    // no como solución primaria).
+                    //
+                    // Hito 004 follow-up 11: 8px quedó chico en vivo — casi
+                    // ilegible a la distancia normal de uso. Probado primero
+                    // a 11px/spacing 4: colisionó — "Performance"/
+                    // "Workspaces" volvieron a elidir en las pestañas de
+                    // ancho fijo (Wallpapers/Media/Workspaces, 336px de
+                    // entonces, slot real ~64px con 5 tabs). Confirmado en
+                    // vivo con capturas por pestaña que 10px/spacing 3 sí
+                    // entra sin elidir SUMADO al ancho fijo compartido
+                    // subiendo 336→380 (ver Dashboard.qml
+                    // card.activeContentWidth default + los 3 Column de
+                    // contenido) — ese ensanche también sirve al pedido de
+                    // "más grande" para esas pestañas. elide sigue de red de
+                    // seguridad, no como solución primaria.
                     width: parent.width
                     horizontalAlignment: Text.AlignHCenter
                     anchors.verticalCenter: parent.verticalCenter
                     elide: Text.ElideRight
                     text: tabItem.modelData
                     font.family: "JetBrainsMono Nerd Font"
-                    font.pixelSize: 8
+                    font.pixelSize: 10
                     font.bold: root.currentIndex === tabItem.index
                     color: root.currentIndex === tabItem.index ? Theme.activeAccent : Theme.textMuted
 

@@ -140,14 +140,26 @@ Variants {
             // Dashboard (case 0) y Performance (case 3) reportan un ancho
             // realmente bottom-up esta ronda (Row de tarjetas de ancho fijo,
             // ver más abajo) — Wallpapers/Media/Workspaces no se tocan este
-            // round y se quedan con el ancho fijo de siempre (336) para no
+            // round y se quedan con el ancho fijo de siempre para no
             // introducir una dependencia circular con su propio
             // width:parent.width interno.
+            //
+            // Hito 004 follow-up 11: ese fijo subió de 336 a 380 (ver los 3
+            // Column de contenido más abajo, misma cifra) — consecuencia
+            // directa de subir el tamaño de letra de TabBar (ver
+            // TabBar.qml): a 336px el slot por tab no alcanzaba para
+            // "Performance"/"Workspaces" al tamaño nuevo sin elidir
+            // (confirmado en vivo). IMPORTANTE: subir solo este switch sin
+            // subir también los 3 Column de abajo reabre un bug de bleed —
+            // `card` se ensancha pero el contenido interno se queda angosto,
+            // y el viewport del carrusel (que sigue el ancho de `card`)
+            // termina revelando la pestaña vecina en el espacio sobrante
+            // (confirmado en vivo, capturado antes de corregirlo).
             readonly property real activeContentWidth: {
                 switch (UiState.dashboardTab) {
                 case 0: return dashboardTabContent.implicitWidth;
                 case 3: return perfTabContent.implicitWidth;
-                default: return 336;
+                default: return 380;
                 }
             }
             readonly property real targetWidth: Math.max(320, Math.min(760, activeContentWidth + 36))
@@ -404,7 +416,7 @@ Variants {
 
                                 Column {
                                     id: wallpaperTabContent
-                                    width: 336
+                                    width: 380
                                     spacing: 8
 
                                     Text {
@@ -428,7 +440,7 @@ Variants {
 
                                 Column {
                                     id: mediaTabContent
-                                    width: 336
+                                    width: 380
                                     VolumeMixer { width: parent.width }
                                 }
                             }
@@ -472,7 +484,7 @@ Variants {
 
                                 Column {
                                     id: wsTabContent
-                                    width: 336
+                                    width: 380
                                     spacing: 8
 
                                     Text {
