@@ -22,6 +22,17 @@ Singleton {
     // paso queda testeable/operable por IPC igual que los demás toggles.
     property int dashboardTab: 0
 
+    // Hito 004 follow-up 10: estado de hover combinado bar+card, usado por
+    // el auto-cierre por salida de hover del dashboard (ver Dashboard.qml
+    // `hoveringDashboard` + Timer de gracia). Viven acá y no como property
+    // local de cada panel por el mismo motivo que dashboardTab: Bar.qml y
+    // Dashboard.qml no se conocen entre sí directamente, así que necesitan
+    // un lugar común. Asignación directa desde afuera (mismo patrón que
+    // Theme.activeAccent en WorkspaceSync.qml), no funciones dedicadas —
+    // es solo un booleano de hover, no una acción con lógica propia.
+    property bool barHovered: false
+    property bool dashboardCardHovered: false
+
     function toggleDashboard() {
         root.notifCenterOpen = false;
         root.powerMenuOpen = false;

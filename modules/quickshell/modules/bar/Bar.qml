@@ -52,6 +52,28 @@ Variants {
             color: Theme.tintSurface(Theme.surface, Theme.activeAccent, 0.6)
             Behavior on color { ColorAnimation { duration: Theme.durSlow } }
 
+            // Hito 004 follow-up 10: trigger de apertura del dashboard por
+            // hover, movido acá desde la cápsula del reloj (ver
+            // SystemCapsules.qml) — cubre TODA la barra en vez de un centro
+            // arbitrario. Se probaron ambas en vivo: una franja central no
+            // tiene ningún elemento visual que la sugiera (workspaces a la
+            // izquierda, cápsulas a la derecha, el medio está vacío), así
+            // que hoverearla se sentía como encontrar un punto ciego. La
+            // barra entera sí es un target obvio — es la superficie que ya
+            // se ve como "la barra", no hace falta adivinar dónde. Reusa
+            // HoverHandler, mismo mecanismo que ya usa Capsule.qml
+            // (proximityHover) en vez de inventar un tercer sistema de hover.
+            // `UiState.barHovered` alimenta además el auto-cierre por salida
+            // de hover del dashboard (ver Dashboard.qml).
+            HoverHandler {
+                id: barHover
+                target: surface
+                onHoveredChanged: {
+                    UiState.barHovered = hovered;
+                    if (hovered) UiState.openDashboard();
+                }
+            }
+
             // Sombra de elevación real (RectangularShadow-equivalente vía
             // MultiEffect, ambos tipos estándar de QtQuick.Effects, sin
             // dependencia del plugin nativo de Caelestia — confirmado en
