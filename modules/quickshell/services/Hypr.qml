@@ -50,13 +50,19 @@ Singleton {
     // Hito 004 follow-up 8: agrupa los clientes por workspace en vez de
     // aplanarlos a una lista global — usado por WorkspacesOverview.qml
     // (pestaña "Workspaces" del dashboard, ver NIXOS_SHELL_VIDEO_ANALYSIS.md
-    // §7.4, que ya scopeaba esto contra caelestia-dots/shell). Devuelve solo
-    // las clases, no los objetos de cliente completos — es todo lo que la
-    // vista necesita para resolver Quickshell.iconPath(class).
-    function classesByWorkspace(wsId) {
+    // §7.4, que ya scopeaba esto contra caelestia-dots/shell).
+    //
+    // Hito 004 follow-up 11: antes devolvía solo las clases (strings) — el
+    // título de cada ventana ya venía en `hyprctl clients -j` sin usarse
+    // (campo "title", confirmado en vivo), y esta ronda pide mostrarlo junto
+    // al ícono. Ahora devuelve {class, title} por cliente en vez de solo la
+    // clase — WorkspacesOverview.qml sigue resolviendo el ícono con
+    // Quickshell.iconPath(class) igual que antes, y ahora también puede
+    // mostrar el título sin un segundo recorrido de `clients`.
+    function clientsByWorkspace(wsId) {
         return root.clients
             .filter(function (c) { return c.workspace && c.workspace.id === wsId; })
-            .map(function (c) { return c.class; });
+            .map(function (c) { return { class: c.class, title: c.title || c.class }; });
     }
 
     function refreshClients() {
@@ -89,10 +95,17 @@ Singleton {
             // Hito 004 follow-up 8: "movewindow" se agrega a este segundo
             // if — antes solo importaba para refrescar la lista global de
             // clases (que no cambia si una ventana cambia de workspace),
-            // pero classesByWorkspace() sí necesita saberlo para que
+            // pero clientsByWorkspace() sí necesita saberlo para que
             // WorkspacesOverview.qml no muestre una ventana en el workspace
             // viejo después de moverla con SUPER+SHIFT+N.
-            if (n === "openwindow" || n === "closewindow" || n === "movewindow") {
+            //
+            // Hito 004 follow-up 11: "windowtitlev2" se agrega ahora que
+            // WorkspacesOverview.qml muestra el título (antes solo la
+            // clase, que no cambia en la vida de una ventana) — sin esto,
+            // cambiar de pestaña en un browser/terminal con multiplexor
+            // dejaría el título viejo pegado hasta el próximo open/close/
+            // move de cualquier ventana.
+            if (n === "openwindow" || n === "closewindow" || n === "movewindow" || n === "windowtitlev2") {
                 root.refreshClients();
             }
         }
