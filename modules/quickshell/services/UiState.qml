@@ -21,6 +21,9 @@ Singleton {
     // dashboard/notifCenter/powerMenu: los cuatro paneles top-anchored
     // nunca deberían verse superpuestos.
     property bool wallpaperPickerOpen: false
+    // Hito 004 follow-up 17: control de salida HDMI (ver HdmiMenu.qml) —
+    // mismo patrón de exclusión mutua que los otros paneles top-anchored.
+    property bool hdmiMenuOpen: false
     // Pestaña activa del dashboard (Hito 004 follow-up 5: Dashboard/
     // Wallpapers/Media, ver Dashboard.qml + TabBar.qml). Vive acá y no como
     // property local del PanelWindow por el mismo motivo que el resto de
@@ -43,6 +46,7 @@ Singleton {
         root.notifCenterOpen = false;
         root.powerMenuOpen = false;
         root.wallpaperPickerOpen = false;
+        root.hdmiMenuOpen = false;
         root.dashboardOpen = !root.dashboardOpen;
     }
 
@@ -54,6 +58,7 @@ Singleton {
         root.notifCenterOpen = false;
         root.powerMenuOpen = false;
         root.wallpaperPickerOpen = false;
+        root.hdmiMenuOpen = false;
         root.dashboardOpen = true;
     }
 
@@ -76,6 +81,7 @@ Singleton {
         root.dashboardOpen = false;
         root.powerMenuOpen = false;
         root.wallpaperPickerOpen = false;
+        root.hdmiMenuOpen = false;
         root.notifCenterOpen = !root.notifCenterOpen;
     }
 
@@ -87,6 +93,7 @@ Singleton {
         root.dashboardOpen = false;
         root.notifCenterOpen = false;
         root.wallpaperPickerOpen = false;
+        root.hdmiMenuOpen = false;
         root.powerMenuOpen = !root.powerMenuOpen;
     }
 
@@ -97,7 +104,18 @@ Singleton {
         root.dashboardOpen = false;
         root.notifCenterOpen = false;
         root.powerMenuOpen = false;
+        root.hdmiMenuOpen = false;
         root.wallpaperPickerOpen = !root.wallpaperPickerOpen;
+    }
+
+    // Hito 004 follow-up 17: ver HdmiMenu.qml, disparado por la cápsula
+    // HDMI en SystemCapsules.qml (solo visible cuando Hdmi.connected).
+    function toggleHdmiMenu() {
+        root.dashboardOpen = false;
+        root.notifCenterOpen = false;
+        root.powerMenuOpen = false;
+        root.wallpaperPickerOpen = false;
+        root.hdmiMenuOpen = !root.hdmiMenuOpen;
     }
 
     function closeAll() {
@@ -105,6 +123,7 @@ Singleton {
         root.notifCenterOpen = false;
         root.powerMenuOpen = false;
         root.wallpaperPickerOpen = false;
+        root.hdmiMenuOpen = false;
     }
 
     // Permite disparar los toggles desde fuera de QuickShell (keybinds de
@@ -116,6 +135,7 @@ Singleton {
         function toggleNotifCenter(): void { root.toggleNotifCenter(); }
         function togglePowerMenu(): void { root.togglePowerMenu(); }
         function toggleWallpaperPicker(): void { root.toggleWallpaperPicker(); }
+        function toggleHdmiMenu(): void { root.toggleHdmiMenu(); }
         function setDashboardTab(index: int): void { root.setDashboardTab(index); }
         function openDashboardTab(index: int): void { root.openDashboardTab(index); }
         function closeAll(): void { root.closeAll(); }

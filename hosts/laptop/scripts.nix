@@ -300,4 +300,72 @@
       "$HYPRCTL" dispatch "hl.dsp.exec_cmd([[$LAUNCH_CMD]])"
     fi
   '';
+
+  # 6. CONTROL DE SALIDA HDMI (Hito 004 follow-up 17)
+  # Hardware real (ver NIXOS_ARCHITECTURE_HITO_001.md §1.1): perfil híbrido
+  # Intel iGPU + NVIDIA PRIME offload. Verificado en vivo antes de escribir
+  # esto (no asumido): los conectores HDMI-A-1/HDMI-A-2 en
+  # /sys/class/drm/card1-HDMI-A-* pertenecen a card1, cuyo device path
+  # (/sys/devices/pci0000:00/0000:00:02.0) coincide exacto con el Bus ID
+  # documentado del iGPU Intel (PCI:0:2:0) — el HDMI de este laptop lo
+  # maneja Intel, no la dGPU NVIDIA (que es offload-bajo-demanda, ni
+  # siquiera despierta para esto). No hay conector HDMI en card0 (NVIDIA).
+  #
+  # `hyprctl monitors -j`/`monitors all -j` NO lista conectores sin señal
+  # (confirmado en vivo: con el cable desconectado, ninguna de las dos
+  # variantes muestra HDMI-A-1/2 en absoluto) — así que la detección real
+  # de "¿hay un cable enchufado?" tiene que ir por sysfs (status), no por
+  # hyprctl. Para MUTAR el output sí se usa una herramienta distinta:
+  # `hyprctl keyword monitor ...` falló en vivo ("keyword can't work with
+  # non-legacy parsers. Use eval" — este fork de Hyprland con config Lua no
+  # soporta keywords dinámicos por CLI) y no existe un dispatcher hl.dsp.*
+  # equivalente para monitores. `wlr-randr` sí funciona: habla directo el
+  # protocolo wlr-output-management-v1 del compositor, evitando por
+  # completo la capa de parseo Lua que bloquea keyword/dispatch acá.
+  hdmi-control = pkgs.writeShellScriptBin "hdmi-control" ''
+    WLR_RANDR=${pkgs.wlr-randr}/bin/wlr-randr
+    MODE="''${1:-status}"
+
+    HDMI_NAME=""
+    for f in /sys/class/drm/card*-HDMI-A-*/status; do
+      [ -f "$f" ] || continue
+      if [ "$(cat "$f")" = "connected" ]; then
+        HDMI_NAME=$(basename "$(dirname "$f")" | sed 's/^card[0-9]*-//')
+        break
+      fi
+    done
+
+    case "$MODE" in
+      status)
+        if [ -n "$HDMI_NAME" ]; then
+          echo "{\"connected\":true,\"name\":\"$HDMI_NAME\"}"
+        else
+          echo "{\"connected\":false,\"name\":null}"
+        fi
+        ;;
+      extend)
+        [ -z "$HDMI_NAME" ] && exit 0
+        "$WLR_RANDR" --output eDP-1 --on --pos 0,0
+        "$WLR_RANDR" --output "$HDMI_NAME" --on --right-of eDP-1
+        ;;
+      mirror)
+        [ -z "$HDMI_NAME" ] && exit 0
+        "$WLR_RANDR" --output eDP-1 --on --pos 0,0
+        "$WLR_RANDR" --output "$HDMI_NAME" --on --pos 0,0
+        ;;
+      hdmi-only)
+        [ -z "$HDMI_NAME" ] && exit 0
+        "$WLR_RANDR" --output "$HDMI_NAME" --on --pos 0,0
+        "$WLR_RANDR" --output eDP-1 --off
+        ;;
+      laptop-only)
+        [ -n "$HDMI_NAME" ] && "$WLR_RANDR" --output "$HDMI_NAME" --off
+        "$WLR_RANDR" --output eDP-1 --on --pos 0,0
+        ;;
+      *)
+        echo "Uso: hdmi-control [status|extend|mirror|hdmi-only|laptop-only]" >&2
+        exit 1
+        ;;
+    esac
+  '';
 }

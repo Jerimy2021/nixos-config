@@ -130,6 +130,8 @@ in
     mis-scripts.nm-applet-ctl
     mis-scripts.app-toggle
     mis-scripts.system-stats
+    mis-scripts.hdmi-control
+    wlr-randr
   ];
 
   systemd.user.services.battery-notify = {

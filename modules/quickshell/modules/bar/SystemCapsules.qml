@@ -22,6 +22,19 @@ Row {
         }
     }
 
+    // Hito 004 follow-up 17: cápsula HDMI, oculta por completo cuando no
+    // hay cable enchufado (Hdmi.connected, sondeado vía sysfs — ver
+    // Hdmi.qml) para no ensuciar la barra en la sesión normal (sin TV) que
+    // es la inmensa mayoría del tiempo de uso de este laptop.
+    Capsule {
+        visible: Hdmi.connected
+        icon: Hdmi.icon()
+        value: ""
+        active: UiState.hdmiMenuOpen
+        accent: Theme.ok
+        onClicked: UiState.toggleHdmiMenu()
+    }
+
     Capsule {
         icon: BluetoothStatus.icon()
         value: BluetoothStatus.connectedCount > 0 ? String(BluetoothStatus.connectedCount) : ""
