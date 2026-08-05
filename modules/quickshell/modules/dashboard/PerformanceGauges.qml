@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Effects
 import qs.services
 import qs.modules.bar
 
@@ -29,26 +30,44 @@ Column {
     // (plugin/src/Caelestia/Config/tokens.hpp: perfUsageShapeSize=100,
     // spacing.extraLarge=28) — no importados como dependencia, solo usados
     // como referencia de proporción para que se sienta igual de "airoso".
+    //
+    // Hito 004 follow-up 11: pase estético (pedido explícito: "más grande,
+    // más glow/color, más impacto visual") — gauges 92→108px, thickness
+    // 6→7, y cada anillo ahora proyecta su propio glow (MultiEffect shadow
+    // coloreado según ratioColor/estado, misma técnica que ya usa
+    // Dashboard.qml para las tarjetas) en vez de flotar plano sobre el
+    // fondo.
     Row {
-        spacing: 36
+        spacing: 40
 
         // --- CPU ---
         Column {
-            width: 104
-            spacing: 10
+            width: 116
+            spacing: 12
 
             Item {
-                width: 92
-                height: 92
+                id: cpuGauge
+                width: 108
+                height: 108
                 anchors.horizontalCenter: parent.horizontalCenter
 
                 readonly property real ratio: Math.min(1, SystemStats.cpuTempC / 100)
+                readonly property color ringColor: root.ratioColor(ratio)
 
                 CircularGauge {
                     anchors.fill: parent
-                    thickness: 6
-                    value: parent.ratio
-                    progressColor: root.ratioColor(parent.ratio)
+                    thickness: 7
+                    value: cpuGauge.ratio
+                    progressColor: cpuGauge.ringColor
+
+                    layer.enabled: true
+                    layer.effect: MultiEffect {
+                        shadowEnabled: true
+                        shadowColor: cpuGauge.ringColor
+                        shadowBlur: 0.7
+                        shadowVerticalOffset: 0
+                        shadowHorizontalOffset: 0
+                    }
                 }
 
                 Text {
@@ -56,7 +75,7 @@ Column {
                     text: Math.round(SystemStats.cpuTempC) + "°"
                     color: Theme.textPrimary
                     font.family: "JetBrainsMono Nerd Font"
-                    font.pixelSize: 17
+                    font.pixelSize: 20
                     font.bold: true
                 }
             }
@@ -64,30 +83,44 @@ Column {
             Text {
                 anchors.horizontalCenter: parent.horizontalCenter
                 text: "CPU"
-                color: Theme.textMuted
+                color: cpuGauge.ringColor
                 font.family: "JetBrainsMono Nerd Font"
-                font.pixelSize: 11
+                font.pixelSize: 12
+                font.bold: true
+
+                Behavior on color { ColorAnimation { duration: Theme.durMed } }
             }
         }
 
         // --- GPU ---
         Column {
-            width: 104
-            spacing: 10
+            width: 116
+            spacing: 12
 
             Item {
-                width: 92
-                height: 92
+                id: gpuGauge
+                width: 108
+                height: 108
                 anchors.horizontalCenter: parent.horizontalCenter
 
                 readonly property real ratio: SystemStats.gpuAvailable ? Math.min(1, SystemStats.gpuTempC / 100) : 0
+                readonly property color ringColor: SystemStats.gpuAvailable ? root.ratioColor(ratio) : Theme.textMuted
 
                 CircularGauge {
                     anchors.fill: parent
-                    thickness: 6
-                    value: parent.ratio
+                    thickness: 7
+                    value: gpuGauge.ratio
                     trackColor: Theme.surfaceBorder
-                    progressColor: SystemStats.gpuAvailable ? root.ratioColor(parent.ratio) : Theme.textMuted
+                    progressColor: gpuGauge.ringColor
+
+                    layer.enabled: true
+                    layer.effect: MultiEffect {
+                        shadowEnabled: SystemStats.gpuAvailable
+                        shadowColor: gpuGauge.ringColor
+                        shadowBlur: 0.7
+                        shadowVerticalOffset: 0
+                        shadowHorizontalOffset: 0
+                    }
                 }
 
                 Text {
@@ -100,7 +133,7 @@ Column {
                     text: SystemStats.gpuAvailable ? (Math.round(SystemStats.gpuTempC) + "°") : "N/A"
                     color: SystemStats.gpuAvailable ? Theme.textPrimary : Theme.textMuted
                     font.family: "JetBrainsMono Nerd Font"
-                    font.pixelSize: SystemStats.gpuAvailable ? 17 : 12
+                    font.pixelSize: SystemStats.gpuAvailable ? 20 : 14
                     font.bold: true
                 }
             }
@@ -108,29 +141,43 @@ Column {
             Text {
                 anchors.horizontalCenter: parent.horizontalCenter
                 text: "GPU"
-                color: Theme.textMuted
+                color: gpuGauge.ringColor
                 font.family: "JetBrainsMono Nerd Font"
-                font.pixelSize: 11
+                font.pixelSize: 12
+                font.bold: true
+
+                Behavior on color { ColorAnimation { duration: Theme.durMed } }
             }
         }
 
         // --- RAM ---
         Column {
-            width: 104
-            spacing: 10
+            width: 116
+            spacing: 12
 
             Item {
-                width: 92
-                height: 92
+                id: ramGauge
+                width: 108
+                height: 108
                 anchors.horizontalCenter: parent.horizontalCenter
 
                 readonly property real ratio: Math.min(1, SystemStats.memUsedPercent / 100)
+                readonly property color ringColor: root.ratioColor(ratio)
 
                 CircularGauge {
                     anchors.fill: parent
-                    thickness: 6
-                    value: parent.ratio
-                    progressColor: root.ratioColor(parent.ratio)
+                    thickness: 7
+                    value: ramGauge.ratio
+                    progressColor: ramGauge.ringColor
+
+                    layer.enabled: true
+                    layer.effect: MultiEffect {
+                        shadowEnabled: true
+                        shadowColor: ramGauge.ringColor
+                        shadowBlur: 0.7
+                        shadowVerticalOffset: 0
+                        shadowHorizontalOffset: 0
+                    }
                 }
 
                 Text {
@@ -138,7 +185,7 @@ Column {
                     text: Math.round(SystemStats.memUsedPercent) + "%"
                     color: Theme.textPrimary
                     font.family: "JetBrainsMono Nerd Font"
-                    font.pixelSize: 17
+                    font.pixelSize: 20
                     font.bold: true
                 }
             }
@@ -146,9 +193,12 @@ Column {
             Text {
                 anchors.horizontalCenter: parent.horizontalCenter
                 text: "RAM"
-                color: Theme.textMuted
+                color: ramGauge.ringColor
                 font.family: "JetBrainsMono Nerd Font"
-                font.pixelSize: 11
+                font.pixelSize: 12
+                font.bold: true
+
+                Behavior on color { ColorAnimation { duration: Theme.durMed } }
             }
         }
     }
@@ -158,6 +208,6 @@ Column {
         text: SystemStats.memUsedGiB.toFixed(1) + " GiB / " + SystemStats.memTotalGiB.toFixed(1) + " GiB"
         color: Theme.textMuted
         font.family: "JetBrainsMono Nerd Font"
-        font.pixelSize: 10
+        font.pixelSize: 11
     }
 }

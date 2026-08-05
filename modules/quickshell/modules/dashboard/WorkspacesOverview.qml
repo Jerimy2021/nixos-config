@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Effects
 import Quickshell
 import Quickshell.Widgets
 import qs.services
@@ -13,9 +14,14 @@ import qs.services
 // esta grilla a propósito. Los pills de Workspaces.qml en la barra NO se
 // tocan — esta pestaña es puramente informativa/aditiva, click opcional
 // para enfocar (mismo Hypr.focusWorkspace() que ya usan los pills).
+//
+// Hito 004 follow-up 11: pase estético (pedido explícito: "más grande, más
+// glow/color, más impacto visual") — filas 40→48px, íconos 20→24px, el
+// workspace activo ahora proyecta glow real (MultiEffect, misma técnica que
+// el resto del dashboard) en vez de solo un borde+fondo tenue.
 Column {
     id: root
-    spacing: 6
+    spacing: 8
 
     Repeater {
         model: 10
@@ -28,37 +34,46 @@ Column {
             readonly property bool isActive: Hypr.activeId === wsId
 
             width: parent.width
-            height: 40
-            radius: 10
-            color: isActive ? Theme.withAlpha(Theme.activeAccent, 0.14) : Theme.surfaceFaint
-            border.width: isActive ? 1.2 : 0
-            border.color: Theme.activeAccent
+            height: 48
+            radius: 12
+            color: isActive ? Theme.withAlpha(Theme.activeAccent, 0.16) : Theme.surfaceFaint
+            border.width: isActive ? 1.4 : 1
+            border.color: isActive ? Theme.activeAccent : Theme.surfaceBorder
 
             Behavior on color { ColorAnimation { duration: Theme.durMed } }
             Behavior on border.color { ColorAnimation { duration: Theme.durMed } }
 
+            layer.enabled: true
+            layer.effect: MultiEffect {
+                shadowEnabled: wsRow.isActive
+                shadowColor: Theme.activeAccent
+                shadowBlur: 0.6
+                shadowVerticalOffset: 0
+                shadowHorizontalOffset: 0
+            }
+
             Row {
                 anchors.left: parent.left
-                anchors.leftMargin: 12
+                anchors.leftMargin: 14
                 anchors.right: parent.right
-                anchors.rightMargin: 12
+                anchors.rightMargin: 14
                 anchors.verticalCenter: parent.verticalCenter
-                spacing: 10
+                spacing: 12
 
                 Text {
                     text: String(wsRow.wsId)
                     color: wsRow.isActive ? Theme.activeAccent : Theme.textMuted
                     font.family: "JetBrainsMono Nerd Font"
-                    font.pixelSize: 13
+                    font.pixelSize: 15
                     font.bold: true
-                    width: 16
+                    width: 18
                     anchors.verticalCenter: parent.verticalCenter
 
                     Behavior on color { ColorAnimation { duration: Theme.durMed } }
                 }
 
                 Row {
-                    spacing: 4
+                    spacing: 6
                     anchors.verticalCenter: parent.verticalCenter
 
                     Repeater {
@@ -70,8 +85,8 @@ Column {
 
                             readonly property bool hasIcon: Quickshell.hasThemeIcon(modelData)
 
-                            width: 20
-                            height: 20
+                            width: 24
+                            height: 24
 
                             IconImage {
                                 anchors.fill: parent
@@ -82,14 +97,15 @@ Column {
                             Rectangle {
                                 anchors.fill: parent
                                 visible: !appIcon.hasIcon
-                                radius: 4
-                                color: Theme.surfaceHover
+                                radius: 5
+                                color: Theme.withAlpha(Theme.activeAccent, 0.18)
 
                                 Text {
                                     anchors.centerIn: parent
                                     text: (appIcon.modelData || "?").charAt(0).toUpperCase()
-                                    color: Theme.textMuted
-                                    font.pixelSize: 10
+                                    color: Theme.activeAccent
+                                    font.pixelSize: 11
+                                    font.bold: true
                                     font.family: "JetBrainsMono Nerd Font"
                                 }
                             }
@@ -102,7 +118,7 @@ Column {
                     text: "vacío"
                     color: Theme.textMuted
                     font.family: "JetBrainsMono Nerd Font"
-                    font.pixelSize: 10
+                    font.pixelSize: 11
                     font.italic: true
                     anchors.verticalCenter: parent.verticalCenter
                 }
