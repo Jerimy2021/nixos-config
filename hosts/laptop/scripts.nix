@@ -74,6 +74,14 @@
   # color. services/Palette.qml (QML) lee este archivo y lo vigila con
   # FileView.watchChanges, así que el acento de la barra se actualiza solo
   # en cuanto matugen termina, sin bloquear el cambio de workspace.
+  # Hito 004 follow-up 15: segundo argumento opcional, tipo de transición
+  # de awww (antes hardcodeado a "wipe" siempre). WorkspaceSync.qml ahora
+  # hashea el id de workspace contra una lista fija de tipos
+  # (transitionTypeFor()) para que cada workspace tenga una transición
+  # visualmente distinta y consistente (mismo criterio que el wallpaper
+  # por workspace: identidad reconocible, no aleatorio en cada cambio).
+  # Default "wipe" si no se pasa — mantiene compatible cualquier llamador
+  # viejo que no mande este argumento.
   workspace-wallpaper = pkgs.writeShellScriptBin "workspace-wallpaper" ''
     AWWW=${pkgs.awww}/bin/awww
     MATUGEN=${pkgs.matugen}/bin/matugen
@@ -81,6 +89,7 @@
     FLOCK=${pkgs.util-linux}/bin/flock
     MKTEMP=${pkgs.coreutils}/bin/mktemp
     WALLPAPER="$1"
+    TRANSITION_TYPE="''${2:-wipe}"
     CACHE_DIR="$HOME/.cache/quickshell"
     PALETTE_FILE="$CACHE_DIR/palette.json"
 
@@ -89,8 +98,9 @@
     [ -f "$PALETTE_FILE" ] || echo '{}' > "$PALETTE_FILE"
 
     "$AWWW" img "$WALLPAPER" \
-        --transition-type wipe \
+        --transition-type "$TRANSITION_TYPE" \
         --transition-angle 30 \
+        --transition-pos 0.5,0.5 \
         --transition-duration 0.65 \
         --transition-fps 60
 

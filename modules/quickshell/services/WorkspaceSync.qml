@@ -32,10 +32,44 @@ Singleton {
     // ciclo fijo apenas se cambiara de workspace y se volviera.
     property var overrides: ({})
 
+    // Hito 004 follow-up 15 (pedido explícito: "asignación aleatoria por
+    // workspace en vez de un array fijo, sin pisar los picks manuales").
+    // Antes wallpaperFor() sin override caía en un ciclo determinista
+    // (wallpapers[(id-1) % n]) — ahora cae en un pick al azar, pero
+    // CACHEADO acá la primera vez que se pide ese id, no re-tirado en cada
+    // llamada (wallpaperFor() se llama en cada syncTo(), que a su vez
+    // dispara en cada cambio de workspace — sin cachear, volver a un
+    // workspace ya visitado mostraría una imagen DISTINTA cada vez, lo que
+    // rompe la idea original de "cada workspace tiene una identidad visual
+    // reconocible" que ya traía este archivo). overrides sigue
+    // consultándose primero y nunca se toca acá — un pick manual sobrevive
+    // aunque este workspace ya tuviera una asignación aleatoria.
+    property var randomAssignments: ({})
+
     function wallpaperFor(id) {
         if (root.overrides[id]) return root.overrides[id];
-        var n = wallpapers.length;
-        return wallpapers[((id - 1) % n + n) % n];
+        if (root.randomAssignments[id]) return root.randomAssignments[id];
+        var pick = root.wallpapers[Math.floor(Math.random() * root.wallpapers.length)];
+        var copy = Object.assign({}, root.randomAssignments);
+        copy[id] = pick;
+        root.randomAssignments = copy;
+        return pick;
+    }
+
+    // Hito 004 follow-up 15 (pedido explícito: "animación de transición
+    // distinta por workspace, hasheando el id contra los tipos
+    // disponibles"). Lista deliberadamente sin "none"/"simple"/"fade"/"any"/
+    // "random" — esos son variantes sutiles o literalmente aleatorias, no
+    // aportan la sensación de "cada workspace se siente distinto" que pide
+    // esto; los 8 elegidos son todos visualmente reconocibles entre sí.
+    // Hash simple (no criptográfico, no hace falta) — determinista: el
+    // mismo id siempre cae en el mismo tipo, a diferencia de
+    // randomAssignments arriba que sí es al azar pero cacheado.
+    readonly property var transitionTypes: ["grow", "wipe", "outer", "wave", "left", "right", "top", "bottom", "center"]
+
+    function transitionTypeFor(id) {
+        var n = root.transitionTypes.length;
+        return root.transitionTypes[((id - 1) % n + n) % n];
     }
 
     // Llamado por WallpaperPicker.qml. Reusa syncTo() en vez de disparar su
@@ -64,7 +98,7 @@ Singleton {
         root.applyAccent(id);
         if (id === lastId) return;
         lastId = id;
-        proc.command = ["workspace-wallpaper", wallpaperFor(id)];
+        proc.command = ["workspace-wallpaper", wallpaperFor(id), transitionTypeFor(id)];
         proc.running = true;
     }
 
