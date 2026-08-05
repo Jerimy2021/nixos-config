@@ -533,8 +533,64 @@ Mismo espíritu que 23.4, aplicado a los otros tres componentes de contenido:
 
 ---
 
-## 24. Estado de Ratificación
+## 25. Addendum 10 — hotzone angosta, Workspaces en pills, atajos nuevos, subsistema de wallpapers reforzado, HDMI, Dolphin+Kvantum, selector de red real
 
-Snapshot verdadero al cierre del Hito 004 (secciones 1-7) más sus nueve follow-ups en la misma rama (secciones 8, 10, 12, 14, 16, 18, 20, 21 y 23). Cualquier cambio posterior invalida secciones específicas y debe generar Hito 005. No modificar retroactivamente — versionar hitos.
+Undécima sesión en la misma rama. Nueve pedidos puntuales (dos de ellos referenciaban explícitamente la ronda anterior, 3caaa87..2855a30, para no rehacer trabajo ya hecho). Nueve commits separados.
+
+### 25.1 Hotzone de hover angostada (revierte parcialmente el follow-up 10 anterior)
+
+El follow-up 10 de la ronda anterior había ensanchado el trigger de apertura por hover a TODA la barra, razonando que un centro sin ningún elemento visual sería un punto ciego. En uso real resultó demasiado sensible — cualquier paso del mouse hacia las cápsulas o los pills abría el dashboard sin querer. Vuelta a una franja central, esta vez de 200px (`Item` + `HoverHandler`, mismo mecanismo, sin inventar nada nuevo). Verificado en vivo con un `Rectangle` de debug rojo temporal (solo en la copia de prueba, nunca tocó el archivo real) confirmando ancho y centrado correctos.
+
+### 25.2 Pestaña Workspaces: verificado primero, SÍ hacía falta rediseñar
+
+El pedido pedía explícitamente verificar antes de tocar nada. Captura real contra ventanas reales confirmó que el follow-up 12 anterior (título completo por ventana, un renglón vertical por ventana) NO leía compacto — títulos largos ocupaban ~70px de alto por una sola línea elidida a la mitad. Rediseñado a "pills" (ícono + nombre corto de la clase) en un `Flow` que empaqueta varias por línea — el caso común (1-3 apps) vuelve a caber en una línea. El título completo no se pierde, aparece en un tooltip propio al hoverear (mismo criterio sin `QtQuick.Controls.Popup` que ya usaba `DndToggle.qml`).
+
+### 25.3 y 25.4 — dos atajos nuevos
+
+- `SUPER+SHIFT+W`: `UiState.openDashboardTab(3)` — abre el dashboard directo en Workspaces, sin togglear+clickear. Genérico por índice, no hardcodeado a "Workspaces" en el nombre de la función.
+- `SUPER+CTRL+SHIFT+ALT+Q`: `hyprctl dispatch exit` directo, sin el hold-to-confirm de `PowerMenu.qml`. Requisito de seguridad explícito del pedido: el combo de 4 modificadores ES el mecanismo de seguridad, ya que no hay confirmación de UI en este camino. **No ejecutado en vivo** — mataría la sesión real de Hyprland bajo la que corre esta conversación.
+
+### 25.5 Subsistema de wallpapers — refuerzo en dos commits
+
+**Random + transición por workspace** (`WorkspaceSync.qml`): `wallpaperFor()` sin override ahora cae en un pick al azar cacheado (no un ciclo fijo `wallpapers[(id-1)%n]`) — cacheado la primera vez por workspace para no re-randomizar en cada visita. `transitionTypeFor(id)` hashea el id contra 9 tipos de transición de awww (grow/wipe/outer/wave/left/right/top/bottom/center). Verificado en vivo con un `IpcHandler` de debug temporal (solo en la copia de prueba): hash determinista confirmado para ids 1-10, cache de wallpaperFor() estable en llamadas repetidas, override sobrevive intacto tras seedearlo.
+
+**Popup — 4 refinamientos**: (a) posible bug de centrado reportado por el usuario — no se pudo reproducir en una copia de prueba limpia (682.5px medido vs 683px real), pero se encontró y corrigió un binding loop real (`width: parent.width` circular en la Column de encabezado) que es exactamente el tipo de bug que se comporta distinto según timing — pendiente de reconfirmación real. (b) Anclado al fondo de pantalla en vez del tope. (c) Grilla (`Flow`) → filmstrip horizontal (`Flickable` + flechas que reusan el mismo `Behavior on contentX` del carrusel del Dashboard). (d) Glow de `Theme.activeAccent` en miniatura activa/hovereada y en el card completo.
+
+### 25.6 Dashboard: pase de layout puro
+
+Sin tocar colores (ya aprobados). Se encontró un bug de flow real: `QuickToggles` (4 botones fijos) no entraba en una fila dentro de la tarjeta de 280px, forzando un wrap 3+1 que se leía como bug, no como diseño. Ensanchada a 300px — de paso iguala el ancho con la tarjeta de calendario (antes 280/300 sin razón visible).
+
+### 25.7 Widget de control HDMI (nuevo)
+
+Verificado en vivo ANTES de asumir qué GPU maneja el HDMI: `/sys/class/drm/card1-HDMI-A-{1,2}` resuelven a `pci0000:00:02.0`, el Bus ID documentado del iGPU Intel — confirma que Intel maneja el HDMI, no la dGPU NVIDIA (offload puro, ver NIXOS_ARCHITECTURE_HITO_001.md §1.1). Dos restricciones reales encontradas y sorteadas: `hyprctl monitors -j`/`monitors all -j` no listan conectores sin señal (detección real vía sysfs); `hyprctl keyword monitor` falla ("keyword can't work with non-legacy parsers") en este fork Lua de Hyprland — se usa `wlr-randr` en su lugar, que habla el protocolo wlr-output-management-v1 directo, evitando esa capa. Cápsula oculta por completo sin cable enchufado. Bug real encontrado y corregido en vivo (con un `hdmi-control` falso en PATH, técnica ya establecida en rondas anteriores): el popup con `implicitHeight` fijo (220) recortaba el 4° botón contra el borde de la superficie Wayland — subido a 290. **No verificado**: comportamiento real extender/espejo/solo-TV/solo-laptop contra un TV real (ninguno conectado esta sesión).
+
+### 25.8 Thunar → Dolphin + Kvantum
+
+Paquetes swapeados, clase de ventana verificada en vivo (lanzando Dolphin real: `org.kde.dolphin`, no asumida). Tema Kvantum hecho a mano (`modules/kvantum/NixCyber/`) con los hex exactos de `Theme.qml` — se evaluó y descartó el paquete `catppuccin-kvantum` de nixpkgs (solo empaqueta la variante "frappe-blue", no calza con nuestra paleta Mocha-oscura+lavanda). Hallazgo real probando en vivo (Dolphin real, no solo revisión de código): Kvantum solo no bastaba — las apps KDE pintan su chrome nativo vía KColorScheme (`kdeglobals`), una capa paralela al QPalette del estilo Qt. Se agregó un `kdeglobals` a medida y se reverificó: sidebar y selección sí calcaron después. **Gap real no resuelto**: la vista "Detalles" de Dolphin no calcó el fondo oscuro en una prueba real — documentado, no escondido.
+
+### 25.9 Selector de red WiFi real
+
+Reemplaza `nmApplet.startDetached()` (spawneaba un tray icon externo) por `NetworkMenu.qml`, una lista QML real. Se verificó de nuevo si "D-Bus preferido" era viable antes de asumir que no (la nota vieja de `Network.qml` sobre "no existe Quickshell.Services.NetworkManager" resultó desactualizada) — inspección directa de los `.qmltypes` de quickshell 0.3.0 instalado confirmó que `Quickshell.Networking` SÍ existe, con `WifiNetwork.connect()`/`connectWithPsk()` reales sobre D-Bus/NetworkManager. Dos bugs reales corregidos vía el log (no adivinados): dos `onShownChanged` en el mismo objeto ("Property value set multiple times") y anchors en un hijo directo de `Row` ("Cannot specify ... anchors for items inside Row"). **El ítem mejor verificado de esta ronda**: probado contra hardware/red real de esta sesión — mostró la red conectada real (Xiaomi_F09F) al instante y, tras habilitar el escáner, redes vecinas reales (brian-2.4ghz, LAPLUWA2, BARZOLA 2.4G, brian-5ghz) ordenadas por señal. El flujo de contraseña para redes desconocidas se implementó pero no se ejerció contra una red ajena real (no correspondía intentar unirse a la red de un vecino sin motivo).
+
+### 25.10 Metodología repetida esta ronda
+
+- Debug temporal SOLO en copias de prueba (`/tmp/.../qstestN/`), nunca en el repo real — verificado con `grep` después de cada uso que el archivo real seguía limpio (hotzone roja, `contentX` semilla del filmstrip, `IpcHandler` de debug de `WorkspaceSync`, binario `hdmi-control` falso en PATH).
+- Comandos irreversibles/destructivos (matar la sesión de Hyprland) documentados como código pero NO ejecutados — la seguridad del usuario por encima de "verificar todo en vivo a toda costa".
+- Antes de escribir/sobreescribir un archivo real del sistema (`~/.config/kdeglobals`, `~/.config/Kvantum/`) se verificó primero que no existiera contenido real del usuario ahí — y se limpiaron los artefactos de prueba al terminar, para no interferir con la gestión de symlinks de home-manager en el próximo `switch`.
+- Cuando una nota antigua del propio repo ("no existe tal módulo") contradecía lo que hacía falta, se volvió a verificar en vivo en vez de asumir que seguía vigente — encontró un módulo real (`Quickshell.Networking`) que una ronda anterior no había visto.
+
+### 25.11 Pendientes
+
+- Verificación con mouse real de la hotzone angostada (§25.1).
+- Verificación del keybind SUPER+SHIFT+W y SUPER+CTRL+SHIFT+ALT+Q tras `nixos-rebuild switch`.
+- Reconfirmación del centrado del wallpaper popup en el escritorio real (§25.5).
+- Comportamiento real de HDMI contra un TV físico (§25.7).
+- Gap de la vista "Detalles" de Dolphin (§25.8).
+
+---
+
+## 26. Estado de Ratificación
+
+Snapshot verdadero al cierre del Hito 004 (secciones 1-7) más sus diez follow-ups en la misma rama (secciones 8, 10, 12, 14, 16, 18, 20, 21, 23 y 25). Cualquier cambio posterior invalida secciones específicas y debe generar Hito 005. No modificar retroactivamente — versionar hitos.
 
 **FIN DEL DOCUMENTO — Hito 004**
