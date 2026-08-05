@@ -142,14 +142,18 @@ hl.bind(mainMod .. " + SHIFT + R", hl.dsp.exec_cmd("hyprctl reload"))
 
 -- Fondos y Shaders
 -- CTRL+W abría la GUI de waypaper para elegir wallpaper a mano — ahora
--- redundante con el picker de miniaturas del dashboard (Hito 004 follow-up
--- 3, ver WallpaperPicker.qml), así que se repunta a abrir el dashboard.
+-- redundante con el picker de miniaturas (Hito 004 follow-up 3, ver
+-- WallpaperPicker.qml), así que se repunta a abrirlo.
+-- Hito 004 follow-up 13: el picker dejó de ser una pestaña anidada del
+-- dashboard — pasó a ser su propio popup standalone
+-- (WallpaperPickerPopup.qml), así que esto ahora apunta a
+-- toggleWallpaperPicker en vez de toggleDashboard.
 -- ALT+W (`waypaper --random`) SÍ se conserva: es una acción de un solo tecleo
 -- para "sorpréndeme", y el picker nuevo solo soporta selección deliberada
 -- por click — no hay equivalente de un tecleo para eso hoy. No es un
 -- descuido, es la razón documentada que pide el brief.
 hl.bind(mainMod .. " + ALT + W", hl.dsp.exec_cmd("waypaper --random"))
-hl.bind(mainMod .. " + CTRL + W", hl.dsp.exec_cmd("quickshell ipc call uiState toggleDashboard"))
+hl.bind(mainMod .. " + CTRL + W", hl.dsp.exec_cmd("quickshell ipc call uiState toggleWallpaperPicker"))
 hl.bind(mainMod .. " + SHIFT + H", hl.dsp.exec_cmd("hyprshade toggle blue-light-filter"))
 
 -- Modo Juego

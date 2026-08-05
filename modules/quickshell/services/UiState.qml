@@ -15,6 +15,12 @@ Singleton {
     // notifCenter (ver PowerMenu.qml/Bar.qml), así que comparte la misma
     // exclusión mutua que los otros dos.
     property bool powerMenuOpen: false
+    // Hito 004 follow-up 13: popup standalone del selector de wallpapers
+    // (ver WallpaperPickerPopup.qml) — reemplaza la pestaña "Wallpapers"
+    // que vivía adentro del dashboard. Mismo patrón de exclusión mutua que
+    // dashboard/notifCenter/powerMenu: los cuatro paneles top-anchored
+    // nunca deberían verse superpuestos.
+    property bool wallpaperPickerOpen: false
     // Pestaña activa del dashboard (Hito 004 follow-up 5: Dashboard/
     // Wallpapers/Media, ver Dashboard.qml + TabBar.qml). Vive acá y no como
     // property local del PanelWindow por el mismo motivo que el resto de
@@ -36,6 +42,7 @@ Singleton {
     function toggleDashboard() {
         root.notifCenterOpen = false;
         root.powerMenuOpen = false;
+        root.wallpaperPickerOpen = false;
         root.dashboardOpen = !root.dashboardOpen;
     }
 
@@ -46,6 +53,7 @@ Singleton {
     function openDashboard() {
         root.notifCenterOpen = false;
         root.powerMenuOpen = false;
+        root.wallpaperPickerOpen = false;
         root.dashboardOpen = true;
     }
 
@@ -56,6 +64,7 @@ Singleton {
     function toggleNotifCenter() {
         root.dashboardOpen = false;
         root.powerMenuOpen = false;
+        root.wallpaperPickerOpen = false;
         root.notifCenterOpen = !root.notifCenterOpen;
     }
 
@@ -66,13 +75,25 @@ Singleton {
     function togglePowerMenu() {
         root.dashboardOpen = false;
         root.notifCenterOpen = false;
+        root.wallpaperPickerOpen = false;
         root.powerMenuOpen = !root.powerMenuOpen;
+    }
+
+    // Hito 004 follow-up 13: ver WallpaperPickerPopup.qml — repuntado desde
+    // SUPER+CTRL+W en keybinds.lua (antes abría el dashboard directo en la
+    // pestaña Wallpapers, que ya no existe).
+    function toggleWallpaperPicker() {
+        root.dashboardOpen = false;
+        root.notifCenterOpen = false;
+        root.powerMenuOpen = false;
+        root.wallpaperPickerOpen = !root.wallpaperPickerOpen;
     }
 
     function closeAll() {
         root.dashboardOpen = false;
         root.notifCenterOpen = false;
         root.powerMenuOpen = false;
+        root.wallpaperPickerOpen = false;
     }
 
     // Permite disparar los toggles desde fuera de QuickShell (keybinds de
@@ -83,6 +104,7 @@ Singleton {
         function toggleDashboard(): void { root.toggleDashboard(); }
         function toggleNotifCenter(): void { root.toggleNotifCenter(); }
         function togglePowerMenu(): void { root.togglePowerMenu(); }
+        function toggleWallpaperPicker(): void { root.toggleWallpaperPicker(); }
         function setDashboardTab(index: int): void { root.setDashboardTab(index); }
         function closeAll(): void { root.closeAll(); }
     }

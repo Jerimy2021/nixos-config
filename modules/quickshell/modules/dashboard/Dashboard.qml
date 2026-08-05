@@ -117,13 +117,16 @@ Variants {
             // también el cambio al levantarse/bajar entre pestañas de altura
             // distinta, sin necesidad de tocar ese Behavior.
             readonly property real chromeHeight: profileHeader.height + 14 + tabBar.height + 8 + 1 + 14 + 36
+            // Hito 004 follow-up 13: "Wallpapers" (antes case 1) dejó de
+            // ser pestaña del dashboard — pasó a ser su propio popup (ver
+            // WallpaperPickerPopup.qml), así que estos switches bajaron de
+            // 5 a 4 casos y se renumeraron.
             readonly property real activeContentHeight: {
                 switch (UiState.dashboardTab) {
                 case 0: return dashboardTabContent.implicitHeight;
-                case 1: return wallpaperTabContent.implicitHeight;
-                case 2: return mediaTabContent.implicitHeight;
-                case 3: return perfTabContent.implicitHeight;
-                case 4: return wsTabContent.implicitHeight;
+                case 1: return mediaTabContent.implicitHeight;
+                case 2: return perfTabContent.implicitHeight;
+                case 3: return wsTabContent.implicitHeight;
                 default: return 0;
                 }
             }
@@ -158,7 +161,7 @@ Variants {
             readonly property real activeContentWidth: {
                 switch (UiState.dashboardTab) {
                 case 0: return dashboardTabContent.implicitWidth;
-                case 3: return perfTabContent.implicitWidth;
+                case 2: return perfTabContent.implicitWidth;
                 default: return 380;
                 }
             }
@@ -246,7 +249,7 @@ Variants {
                     anchors.top: profileHeader.bottom
                     anchors.topMargin: 14
                     width: parent.width
-                    tabs: ["Dashboard", "Wallpapers", "Media", "Performance", "Workspaces"]
+                    tabs: ["Dashboard", "Media", "Performance", "Workspaces"]
                     currentIndex: UiState.dashboardTab
                     onTabClicked: index => UiState.setDashboardTab(index)
                 }
@@ -307,10 +310,9 @@ Variants {
                         contentX: {
                             switch (UiState.dashboardTab) {
                             case 0: return dashboardTabFlick.x;
-                            case 1: return wallpaperTabFlick.x;
-                            case 2: return mediaTabFlick.x;
-                            case 3: return perfTabFlick.x;
-                            case 4: return wsTabFlick.x;
+                            case 1: return mediaTabFlick.x;
+                            case 2: return perfTabFlick.x;
+                            case 3: return wsTabFlick.x;
                             default: return 0;
                             }
                         }
@@ -451,35 +453,6 @@ Variants {
                                 }
                             }
 
-                            // --- Pestaña "Wallpapers": picker de miniaturas (Hito 004 follow-up 3) ---
-                            // Ancho fijo sin tocar esta ronda (ver
-                            // card.activeContentWidth) — width:336 explícito
-                            // acá en vez de parent.width para no depender
-                            // circularmente del ancho del Flickable, que a su
-                            // vez ahora depende del ancho de ESTE Column.
-                            Flickable {
-                                id: wallpaperTabFlick
-                                width: wallpaperTabContent.implicitWidth
-                                height: carousel.height
-                                contentHeight: wallpaperTabContent.implicitHeight
-                                clip: true
-
-                                Column {
-                                    id: wallpaperTabContent
-                                    width: 380
-                                    spacing: 8
-
-                                    Text {
-                                        text: "FONDOS"
-                                        color: Theme.textMuted
-                                        font.family: "JetBrainsMono Nerd Font"
-                                        font.pixelSize: 10
-                                        font.bold: true
-                                    }
-                                    WallpaperPicker { width: parent.width }
-                                }
-                            }
-
                             // --- Pestaña "Media": mezclador de volumen por dispositivo ---
                             Flickable {
                                 id: mediaTabFlick
@@ -501,7 +474,7 @@ Variants {
                             // natural (3 gauges + spacing generoso, ver
                             // PerformanceGauges.qml) para que esta pestaña
                             // también sea de las que ensanchan el panel (ver
-                            // card.activeContentWidth case 3).
+                            // card.activeContentWidth case 2).
                             Flickable {
                                 id: perfTabFlick
                                 width: perfTabContent.implicitWidth

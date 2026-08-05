@@ -18,6 +18,7 @@ ShellRoot {
 
     Bar {}
     Dashboard {}
+    WallpaperPickerPopup {}
     NotificationPopups {}
     NotificationCenter {}
     PowerMenu {}
