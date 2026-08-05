@@ -372,9 +372,26 @@ Variants {
                                     // el "glow" es literalmente esa sombra
                                     // con blur alto y offset 0, no un
                                     // elemento nuevo.
+                                    // Hito 004 follow-up 16: 280→300 (pase
+                                    // de layout/UX, sin tocar colores —
+                                    // pedido explícito). Dos motivos reales,
+                                    // no estéticos: (1) a 280px, QuickToggles
+                                    // (4 botones de 56px + 10px de spacing =
+                                    // 254px necesarios) no entraba en una
+                                    // sola fila dentro del contenido
+                                    // disponible (280-40=240px) y se veía
+                                    // como un bug — 3 botones arriba, el 4°
+                                    // solo en una segunda fila. A 300px
+                                    // (contenido 260px) los 4 entran en una
+                                    // sola fila. (2) de paso iguala el ancho
+                                    // con la Tarjeta 2 (calendario, ya
+                                    // 300px) — antes eran 280/300, un
+                                    // desbalance sin razón visible; ahora
+                                    // ambas tarjetas comparten el mismo
+                                    // ancho, mejor ritmo visual en el Row.
                                     Rectangle {
                                         id: quickAccessCard
-                                        width: 280
+                                        width: 300
                                         height: dashboardTabContent.cardHeight
                                         radius: 18
                                         color: Theme.withAlpha(Theme.activeAccent, 0.10)
