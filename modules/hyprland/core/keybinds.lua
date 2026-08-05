@@ -104,6 +104,22 @@ hl.bind("XF86ScreenSaver", hl.dsp.exec_cmd("hyprlock"), { locked = true })
 hl.bind("XF86PowerOff", hl.dsp.exec_cmd("quickshell ipc call uiState togglePowerMenu"), { locked = true })
 hl.bind(mainMod .. " + CTRL + L", hl.dsp.exec_cmd("hyprlock"))
 hl.bind(mainMod .. " + CTRL + Q", hl.dsp.exec_cmd("quickshell ipc call uiState togglePowerMenu"))
+-- Hito 004 follow-up 14: salida directa de Hyprland, SIN el paso de
+-- confirmación de PowerMenu.qml (su Content.qml exige mantener presionado
+-- ~600ms con arco de progreso antes de ejecutar cualquier acción — acá se
+-- salta ese paso a propósito). REQUISITO DE SEGURIDAD explícito del pedido:
+-- como no hay confirmación de UI, el atajo en sí mismo tiene que ser el
+-- mecanismo de seguridad — 4 modificadores a la vez (SUPER+CTRL+SHIFT+ALT)
+-- es intencionalmente incómodo de presionar por accidente, ningún combo de
+-- 2-3 teclas ya en uso se le parece. `hyprctl dispatch exit` mata la sesión
+-- completa de Hyprland (logout duro, no cierra solo una ventana) — mismo
+-- dispatcher que ya usa PowerMenu.qml (logoutProc, ver PowerMenu.qml línea
+-- ~246: Process{command:["hyprctl","dispatch","exit"]}), confirmado que
+-- funciona sin pasar por la sintaxis hl.dsp.* — es un dispatcher sin
+-- argumentos ("exit" es un identificador Lua válido por sí solo), a
+-- diferencia de dispatchers con parámetros (ej. movecursor X Y) que la
+-- capa Lua de este hyprctl rechaza si no vienen en sintaxis hl.dsp.*(...).
+hl.bind(mainMod .. " + CTRL + SHIFT + ALT + Q", hl.dsp.exec_cmd("hyprctl dispatch exit"))
 
 -- Volumen
 hl.bind("XF86AudioRaiseVolume", hl.dsp.exec_cmd("wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%+"), { repeating = true, locked = true }) --
