@@ -20,15 +20,17 @@ import qs.services
 // ahora proyecta glow real (MultiEffect, misma técnica que el resto del
 // dashboard) en vez de solo un borde+fondo tenue.
 //
-// Hito 004 follow-up 12: cada app ahora muestra su título real al lado del
-// ícono (antes solo el ícono, sin ninguna pista de CUÁL ventana era si había
-// varias de la misma app en el mismo workspace). El dato ya venía en
-// `hyprctl clients -j` sin usarse (campo "title", ver Hypr.qml
-// clientsByWorkspace()) — esto cambió la fila de "Row horizontal de íconos"
-// a una lista vertical de un renglón por ventana (icono+título no entran
-// lado a lado repetidos sin volverse ilegibles a este ancho), así que la
-// altura de cada bloque de workspace ahora es variable según cuántas
-// ventanas tiene.
+// Hito 004 follow-up 14: rediseño a "pills" compactos — el follow-up 12
+// (título completo por ventana, un renglón vertical por ventana) se
+// verificó en vivo esta ronda y NO leía compacto: títulos largos (pestaña
+// de browser, comando de terminal) ocupaban ~70px de alto por workspace
+// para una sola línea de texto elidida a la mitad. Ahora cada ventana es un
+// "pill" chico (ícono + nombre corto de la CLASE, no el título) en un Flow
+// que empaqueta varias por línea cuando entran — el caso común (1-3 apps
+// por workspace) vuelve a caber en una sola línea, igual de alto que la
+// fila "vacío". El título completo no se pierde: aparece en un tooltip
+// propio al hoverear el pill (mismo criterio que DndToggle.qml — sin
+// QtQuick.Controls.Popup, un Rectangle propio con z alto).
 Column {
     id: root
     spacing: 8
@@ -49,6 +51,12 @@ Column {
             color: isActive ? Theme.withAlpha(Theme.activeAccent, 0.16) : Theme.surfaceFaint
             border.width: isActive ? 1.4 : 1
             border.color: isActive ? Theme.activeAccent : Theme.surfaceBorder
+            // z alto para que el tooltip de cualquier pill (ver abajo) no
+            // quede tapado por el fondo de la fila siguiente del Column.
+            // Alimentado por cada pill vía HoverHandler (ver dentro del
+            // Repeater más abajo).
+            property bool tooltipHover: false
+            z: tooltipHover ? 10 : 0
 
             Behavior on height { NumberAnimation { duration: Theme.durFast } }
             Behavior on color { ColorAnimation { duration: Theme.durMed } }
@@ -97,78 +105,115 @@ Column {
                         font.italic: true
                         anchors.verticalCenter: parent.verticalCenter
                     }
-                }
 
-                // Un renglón por ventana: ícono + título real, elidido si
-                // no entra. anchors.left en vez de un Row envolvente para
-                // que el título pueda usar todo el ancho restante sin
-                // truncarse antes de tiempo por un spacing fijo.
-                Repeater {
-                    model: wsRow.clients
+                    // Flow en vez de Column: varios pills entran en la
+                    // misma línea cuando el ancho alcanza, solo baja de
+                    // línea cuando hace falta — esto es lo que realmente
+                    // ahorra el espacio vertical que el diseño anterior
+                    // desperdiciaba (un renglón entero por ventana, sin
+                    // importar cuán corto fuera el contenido).
+                    Flow {
+                        width: parent.width - 30
+                        spacing: 6
 
-                    delegate: Item {
-                        id: clientRow
-                        required property var modelData
+                        Repeater {
+                            model: wsRow.clients
 
-                        readonly property bool hasIcon: Quickshell.hasThemeIcon(modelData.class)
+                            delegate: Rectangle {
+                                id: pill
+                                required property var modelData
 
-                        // x:30 alinea el ícono de cada ventana bajo el
-                        // ícono de la fila de header (después del número
-                        // de workspace) — el width tiene que descontar ese
-                        // mismo offset, si no el borde derecho de este Item
-                        // (y por lo tanto el punto de elide del Text de
-                        // abajo) queda 30px más allá del `content` que lo
-                        // contiene. `wsRow` no tiene clip:true propio, así
-                        // que ese sobrante no se recortaba ahí — terminaba
-                        // filtrando hasta el clip de la pestaña completa,
-                        // muy más a la derecha (confirmado en vivo: el
-                        // título se veía cortado seco contra el borde de
-                        // TODA la tarjeta, no elidido con "…" contra su
-                        // propia fila).
-                        width: parent.width - x
-                        height: 24
-                        x: 30
+                                readonly property bool hasIcon: Quickshell.hasThemeIcon(modelData.class)
+                                readonly property string shortName: {
+                                    var c = modelData.class || "?";
+                                    return c.length > 14 ? c.substring(0, 13) + "…" : c;
+                                }
 
-                        Item {
-                            id: appIcon
-                            width: 24
-                            height: 24
-                            anchors.verticalCenter: parent.verticalCenter
+                                height: 24
+                                radius: 12
+                                color: Theme.surfaceHover
+                                width: pillRow.implicitWidth + 16
 
-                            IconImage {
-                                anchors.fill: parent
-                                visible: clientRow.hasIcon
-                                source: clientRow.hasIcon ? Quickshell.iconPath(clientRow.modelData.class) : ""
-                            }
-
-                            Rectangle {
-                                anchors.fill: parent
-                                visible: !clientRow.hasIcon
-                                radius: 5
-                                color: Theme.withAlpha(Theme.activeAccent, 0.18)
-
-                                Text {
+                                Row {
+                                    id: pillRow
                                     anchors.centerIn: parent
-                                    text: (clientRow.modelData.class || "?").charAt(0).toUpperCase()
-                                    color: Theme.activeAccent
-                                    font.pixelSize: 11
-                                    font.bold: true
-                                    font.family: "JetBrainsMono Nerd Font"
+                                    spacing: 5
+
+                                    Item {
+                                        width: 16
+                                        height: 16
+                                        anchors.verticalCenter: parent.verticalCenter
+
+                                        IconImage {
+                                            anchors.fill: parent
+                                            visible: pill.hasIcon
+                                            source: pill.hasIcon ? Quickshell.iconPath(pill.modelData.class) : ""
+                                        }
+
+                                        Rectangle {
+                                            anchors.fill: parent
+                                            visible: !pill.hasIcon
+                                            radius: 4
+                                            color: Theme.withAlpha(Theme.activeAccent, 0.25)
+
+                                            Text {
+                                                anchors.centerIn: parent
+                                                text: (pill.modelData.class || "?").charAt(0).toUpperCase()
+                                                color: Theme.activeAccent
+                                                font.pixelSize: 9
+                                                font.bold: true
+                                                font.family: "JetBrainsMono Nerd Font"
+                                            }
+                                        }
+                                    }
+
+                                    Text {
+                                        text: pill.shortName
+                                        color: Theme.textPrimary
+                                        font.family: "JetBrainsMono Nerd Font"
+                                        font.pixelSize: 10
+                                        anchors.verticalCenter: parent.verticalCenter
+                                    }
+                                }
+
+                                HoverHandler {
+                                    id: pillHover
+                                    onHoveredChanged: wsRow.tooltipHover = hovered
+                                }
+
+                                // Tooltip propio (sin QtQuick.Controls.Popup,
+                                // mismo criterio que DndToggle.qml): título
+                                // completo de la ventana, solo visible en
+                                // hover. elide como red de seguridad si el
+                                // título es absurdamente largo, no como
+                                // solución primaria — la mayoría entra sin
+                                // elidir en 260px.
+                                Rectangle {
+                                    visible: pillHover.hovered
+                                    anchors.bottom: pill.top
+                                    anchors.bottomMargin: 6
+                                    anchors.horizontalCenter: pill.horizontalCenter
+                                    width: Math.min(260, tooltipText.implicitWidth + 20)
+                                    height: tooltipText.implicitHeight + 12
+                                    radius: 8
+                                    color: Theme.surfaceElevated
+                                    border.width: 1
+                                    border.color: Theme.withAlpha(Theme.activeAccent, 0.4)
+                                    z: 20
+
+                                    Text {
+                                        id: tooltipText
+                                        anchors.centerIn: parent
+                                        width: parent.width - 16
+                                        elide: Text.ElideRight
+                                        horizontalAlignment: Text.AlignHCenter
+                                        text: pill.modelData.title
+                                        color: Theme.textPrimary
+                                        font.family: "JetBrainsMono Nerd Font"
+                                        font.pixelSize: 10
+                                    }
                                 }
                             }
-                        }
-
-                        Text {
-                            anchors.left: appIcon.right
-                            anchors.leftMargin: 8
-                            anchors.right: parent.right
-                            anchors.rightMargin: 4
-                            anchors.verticalCenter: parent.verticalCenter
-                            elide: Text.ElideRight
-                            text: clientRow.modelData.title
-                            color: Theme.textPrimary
-                            font.family: "JetBrainsMono Nerd Font"
-                            font.pixelSize: 11
                         }
                     }
                 }
