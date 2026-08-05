@@ -462,8 +462,79 @@ Se agregó `card.activeContentWidth` (switch sobre `UiState.dashboardTab`, exact
 
 ---
 
-## 22. Estado de Ratificación
+## 23. Addendum 9 — feedback en vivo sobre capturas reales: hover, tabs, glow, wallpaper popup, títulos
 
-Snapshot verdadero al cierre del Hito 004 (secciones 1-7) más sus ocho follow-ups en la misma rama (secciones 8, 10, 12, 14, 16, 18, 20 y 21). Cualquier cambio posterior invalida secciones específicas y debe generar Hito 005. No modificar retroactivamente — versionar hitos.
+Décima sesión en la misma rama. Disparador: siete pedidos puntuales del usuario contra capturas reales del estado tras el Addendum 8 (no contra el video/proyecto de referencia esta vez — feedback directo de uso). Siete commits separados, uno por ítem.
+
+### 23.1 Trigger de hover reubicado a toda la barra (no solo un centro)
+
+Antes vivía en la cápsula del reloj (`SystemCapsules.qml`, `onHoveredChanged: if (hovered) UiState.openDashboard()`) — un blanco chico, solo a la derecha. El pedido daba la opción de "centro de la barra o barra completa, la que se sienta mejor en vivo". Se probó mentalmente la opción centro primero y se descartó sin necesidad de probarla en vivo: la barra no tiene ningún elemento visual en el medio (workspaces a la izquierda, cápsulas a la derecha) que sugiera "hovereá acá" — una franja central sería una zona ciega sin pista de que existe. Se implementó `HoverHandler` sobre `surface` (el `Rectangle` completo de la barra) en `Bar.qml`, mismo mecanismo (`HoverHandler`) que ya usaba `Capsule.qml` para su glow de proximidad — no se inventó un tercer sistema de hover.
+
+`UiState` gana `barHovered`/`dashboardCardHovered` (asignación directa desde afuera, mismo patrón que `Theme.activeAccent` en `WorkspaceSync.qml`) — el primero lo puebla `Bar.qml`, el segundo lo puebla `Dashboard.qml` (ver 23.2), y ambos alimentan la lógica de auto-cierre.
+
+### 23.2 Auto-cierre por salida de hover, click-afuera se mantiene como fallback
+
+`Dashboard.qml` (`win`) gana `hoveringDashboard: UiState.barHovered || UiState.dashboardCardHovered` y un `Timer` de gracia de 200ms (`closeGrace`): cuando `hoveringDashboard` pasa a `false` y el panel sigue abierto, arranca el timer; si `hoveringDashboard` vuelve a `true` antes de que dispare, se cancela. Si dispara, llama `UiState.closeAll()`. El click-afuera (`MouseArea` de siempre) no se tocó — se mantiene como fallback real (navegación por teclado, o cualquier caso donde el mouse nunca se mueve).
+
+**Limitación honesta:** este ambiente no tiene forma de sintetizar hover real de mouse — `wtype` solo hace teclado, y el `hyprctl dispatch` de este Hyprland (capa Lua propia, ver `NIXOS_ARCHITECTURE_HITO_002.md` §1.3) rechaza dispatchers crudos tipo `movecursor X Y` (exige llamadas `hl.dsp.*` ya definidas, y no se encontró ninguna de cursor). El trigger de apertura y el cierre por gracia se verificaron por revisión de código y manejando `dashboardOpen`/`dashboardTab` vía `quickshell ipc call` — no con un mouse real entrando/saliendo de la barra. Queda pendiente una verificación rápida del usuario con su propio mouse.
+
+### 23.3 TabBar: fuente más grande + ancho compartido subido (336→380)
+
+`font.pixelSize: 8→10`, `spacing: 4→3` en `TabBar.qml`. Se probó 11px primero (pedido "aumentar notablemente") y colisionó en vivo: a 5 pestañas, "Performance"/"Workspaces" volvían a elidir en el ancho fijo compartido de Wallpapers/Media/Workspaces (336px de entonces). La solución real no fue solo bajar el número de tamaño — fue subir también ese ancho fijo compartido a 380px (`Dashboard.qml`, `card.activeContentWidth` caso `default` + los 3 `Column` de contenido que antes tenían `width: 336`).
+
+**Bug real encontrado en el camino:** subir el switch de `activeContentWidth` sin subir también los `Column` de contenido interno reabre un bug de "bleed" — `card` se ensancha (el viewport del carrusel sigue su ancho) pero el contenido de la pestaña activa se queda angosto, dejando un hueco donde se filtra visualmente la pestaña vecina del `Row` interno (sin gap entre Flickables). Se vio en vivo antes de corregirlo (captura con "SALIDA"/"ENTRADA" de la pestaña Media superpuesto sobre la grilla de Wallpapers).
+
+### 23.4 Tarjetas de la pestaña Dashboard: color/glow reales
+
+Se mantuvo el layout de tarjetas del Addendum 8 (ya aprobado), pero se le subió el terminado visual: de `Theme.surfaceFaint` plano sin borde a un wash translúcido de `Theme.activeAccent` (`Theme.withAlpha(activeAccent, 0.10)`) + borde acentuado + sombra coloreada (`MultiEffect`, mismo mecanismo que la sombra de `card`/`Bar.qml`, solo recoloreada de negro a `activeAccent` — el "glow" es literalmente esa sombra con blur alto y offset 0). El encabezado "ACCESOS" y el divisor interno pasaron de `textMuted` a `activeAccent`.
+
+**Nota técnica:** `Theme.tintSurface()` no sirve para esto — preserva la *luminosidad* del color base, y `surfaceFaint` es casi blanco/casi transparente (`Qt.rgba(1,1,1,0.03)`, lightness=1), así que teñirlo hacia cualquier hue con esa función es un no-op (HSL con lightness=1 siempre da blanco, sin importar el hue). Se usa `Theme.withAlpha()` directo en su lugar.
+
+### 23.5 Pase visual en Media/Performance/Workspaces
+
+Mismo espíritu que 23.4, aplicado a los otros tres componentes de contenido:
+- **`VolumeMixer.qml`**: filas 30→38px, ícono de mute 14→18px, barra 6→9px con su propio glow coloreado, thumb que crece al arrastrar/hoverear (antes cero feedback aparte del ancho de la barra). Encabezados "SALIDA"/"ENTRADA" a `activeAccent`.
+- **`PerformanceGauges.qml`**: gauges 92→108px, thickness 6→7, cada anillo proyecta su propio glow coloreado según `ratioColor()`/estado — el gauge de GPU se queda sin glow cuando `SystemStats.gpuAvailable` es falso (no se fuerza ni se esconde, mismo criterio que el Addendum 7).
+- **`WorkspacesOverview.qml`**: íconos 20→24px, el workspace activo proyecta glow real en vez de solo fondo+borde tenues, avatares de fallback (sin ícono de tema) recoloreados a `activeAccent`.
+
+### 23.6 Wallpapers deja de ser pestaña — popup standalone
+
+`WallpaperPickerPopup.qml` (nuevo archivo): mismo patrón de ventana que `Dashboard.qml` (centrado bajo la barra, costura sin gap) en vez de top-right como `PowerMenu`/`NotificationCenter` — una grilla se beneficia más del ancho que da centrar. `UiState` gana `wallpaperPickerOpen` + `toggleWallpaperPicker()`, con la misma exclusión mutua que dashboard/notifCenter/powerMenu. `keybinds.lua`: `SUPER+CTRL+W` repuntado de `toggleDashboard` a `toggleWallpaperPicker` (antes abría el dashboard en la pestaña Wallpapers, que ya no existe).
+
+`TabBar` de `Dashboard.qml` baja de 5 a 4 pestañas (`Dashboard/Media/Performance/Workspaces`) — los switches de `activeContentHeight`/`activeContentWidth`/`carousel.contentX` se renumeraron (los índices de Media/Performance/Workspaces bajaron uno).
+
+**Candidatos de referencia estudiados antes de decidir** (`~/reference/caelestia-shell`):
+- `modules/launcher/WallpaperList.qml` + `items/WallpaperItem.qml`: el más parecido estructuralmente (keybind → popup propio → browse → seleccionar), pero su `PathView` 3D con preview en vivo depende de `Caelestia.Config`/`Colours`, que no existen acá — se tomó solo la forma ("popup propio, no anidado"), no el mecanismo `PathView`.
+- `modules/nexus/pages/wallandstyle/{WallpaperSelect,WallpaperCategory}.qml`: página de una app de settings completa agrupada por carpeta — confirmado que NO encaja para un popup de keybind, descartado.
+- `services/Wallpapers.qml`: hubiera sido reusable como servicio de datos, pero `WorkspaceSync.qml` ya cubre ese rol acá (integrado a nuestro pipeline `workspace-wallpaper`+matugen) — no se reemplaza, y su mecanismo de cambio de wallpaper (`caelestia wallpaper`) tampoco se adopta, solo el patrón de UI (grilla + atribución de cuál está activo).
+
+`WallpaperPicker.qml` (el componente `Flow` existente) se reutiliza tal cual dentro del popup nuevo en vez de duplicarse — las miniaturas crecieron 64→88px ahora que no está apretado en una pestaña de 336px, más una insignia de check en la miniatura activa y una línea "Activo: <nombre-de-archivo>" de atribución.
+
+### 23.7 Títulos de ventana en la pestaña Workspaces
+
+`Hypr.qml`: `classesByWorkspace(wsId)` → `clientsByWorkspace(wsId)`, ahora devuelve `{class, title}` por cliente en vez de solo la clase — el campo `title` ya venía en `hyprctl clients -j` sin usarse. Se agrega `"windowtitlev2"` al trigger de refresh de `Connections.onRawEvent` (cambios de título, ej. pestaña de browser, no invalidaban la lista cacheada antes).
+
+`WorkspacesOverview.qml` restructurado: de una fila horizontal de solo íconos a un renglón por ventana (ícono + título elidido) — íconos lado a lado dejó de tener sentido en cuanto cada uno necesita un título al lado. La altura de cada bloque de workspace pasó de fija (48px) a `content.implicitHeight + 20` (variable según cantidad de ventanas).
+
+**Bug real encontrado y corregido en vivo:** el `x: 30` que alinea cada renglón de ventana bajo el ícono del encabezado no venía acompañado de una reducción de `width` equivalente — el punto de elide del `Text` del título quedaba 30px más allá del borde real de `content`, y como `wsRow` no tiene `clip: true` propio, ese sobrante no se recortaba ahí: terminaba filtrando hasta el clip de la pestaña completa, mucho más a la derecha. Se veía como el título "cortado seco" contra el borde de TODA la tarjeta en vez de elidido con "…" contra su propia fila. Corregido con `width: parent.width - x`.
+
+### 23.8 Verificación en vivo
+
+- Los 7 ítems verificados vía `quickshell ipc call uiState <función>` (abrir dashboard/wallpaper-picker, cambiar de pestaña) + capturas `grim` de una copia de prueba en `/tmp` (mismo método de rondas anteriores: exclusiveZone stacking para separarla del `qs` real de producción).
+- **Hallazgo de método repetido** (ver también §20.3/§21.4, misma clase de problema): un cambio de ancho (336→380 en las 3 `Column` de contenido) se probó primero con hot-reload de QuickShell (`settings.watchFiles`) y el bug de "bleed" seguía apareciendo en la captura pese a que el archivo en disco ya tenía el fix — un reinicio completo del proceso `qs` de prueba (no solo guardar el archivo) confirmó que el fix sí funcionaba. El hot-reload de QuickShell no es 100% confiable para cambios de layout/ancho — para verificaciones de ese tipo, reiniciar el proceso entero en vez de confiar en el watcher.
+- El repunte de `SUPER+CTRL+W` en `keybinds.lua` no es verificable desde este ambiente (requiere `nixos-rebuild switch` + reload real de Hyprland) — pendiente de confirmación del usuario, igual que la verificación real de hover de §23.2.
+- Build de Nix (`nixos-rebuild build --flake .`) verde tras los 7 commits.
+
+### 23.9 Pendientes
+
+- Verificación con mouse real de §23.1/23.2 (trigger de hover + auto-cierre) — no sintetizable en este ambiente.
+- Verificación del keybind `SUPER+CTRL+W` tras un `nixos-rebuild switch` real.
+- `PowerMenu.qml`/`NotificationCenter.qml` siguen sin el mismo pase de color/glow — no fueron parte del pedido de esta ronda.
+
+---
+
+## 24. Estado de Ratificación
+
+Snapshot verdadero al cierre del Hito 004 (secciones 1-7) más sus nueve follow-ups en la misma rama (secciones 8, 10, 12, 14, 16, 18, 20, 21 y 23). Cualquier cambio posterior invalida secciones específicas y debe generar Hito 005. No modificar retroactivamente — versionar hitos.
 
 **FIN DEL DOCUMENTO — Hito 004**
