@@ -33,10 +33,39 @@ import qs.services
 //   solo el patrón de UI (popup con grilla, atribución de cuál está
 //   activo), aplicado sobre nuestros scripts existentes.
 //
-// Estructura de ventana: mismo patrón que Dashboard.qml (centrado bajo la
-// barra, costura sin gap) en vez del top-right de PowerMenu/NotificationCenter
-// — una grilla de wallpapers se beneficia más del ancho extra que da centrar
-// que de quedar pegada a una esquina.
+// Hito 004 follow-up 15 — cuatro refinamientos sobre la versión anterior:
+//
+// (a) Centrado torcido a la derecha, reportado en el escritorio real. Se
+// midió en vivo (captura + comparación contra el centro real de pantalla,
+// no solo revisión de código): en una copia de prueba limpia el card SÍ
+// centraba casi exacto (682.5px medido vs 683px = centro real de 1366px).
+// No se logró reproducir el corrimiento a la derecha en ese entorno. Sí se
+// encontró y corrigió una causa real y plausible: la Column de encabezado
+// ("FONDOS DE PANTALLA"/"Activo:") tenía `width: parent.width` apuntando a
+// `contentCol`, cuyo propio ancho depende de sus hijos — un binding
+// circular real (Column.implicitWidth intenta usar el width ya asignado
+// de sus hijos, pero ese width depende de vuelta del resultado). Qt no
+// garantiza un orden de resolución para binding loops así — es exactamente
+// el tipo de bug que puede comportarse distinto según timing/orden de
+// creación, lo que encajaría con "en la copia de prueba fresca no se ve,
+// en la instancia real de larga duración sí". Reemplazado por un ancho fijo
+// compartido (`pickerWidth`) igual al de WallpaperPicker, sin ciclo
+// posible. Pendiente que el usuario reconfirme en su escritorio real.
+//
+// (b) Ancla al fondo de pantalla en vez del tope (mismo criterio de
+// costura sin gap que ya usan Dashboard.qml/NotificationCenter.qml/
+// PowerMenu.qml contra la barra, acá aplicado al borde inferior real de
+// pantalla — no hay ninguna otra superficie exclusiveZone ahí, así que
+// margin 0 sí es el borde físico, a diferencia del margin-top de esos
+// otros paneles).
+//
+// (c) Layout de grilla (Flow) → filmstrip horizontal, ver WallpaperPicker.qml.
+//
+// (d) Glow de Theme.activeAccent: además del que ya gana cada miniatura
+// (ver WallpaperPicker.qml), el card completo pasa de sombra negra plana a
+// sombra coloreada con el acento — misma técnica MultiEffect que el resto
+// del dashboard (Dashboard.qml follow-up 11), aplicada acá por primera vez
+// a este popup.
 Variants {
     model: Quickshell.screens
 
@@ -48,16 +77,16 @@ Variants {
         readonly property bool shown: UiState.wallpaperPickerOpen
 
         anchors {
-            top: true
+            bottom: true
             left: true
             right: true
         }
         margins {
-            // Mismo hallazgo que Dashboard.qml/NotificationCenter.qml: este
-            // margin no se mide desde el borde de pantalla, Hyprland ya
-            // arranca el área utilizable después de la exclusiveZone de
-            // Bar.qml — 0 = pegado exacto al borde real de la barra.
-            top: 0
+            // Sin otra exclusiveZone reservada en el borde inferior — 0 acá
+            // sí es el borde físico real de la pantalla (a diferencia del
+            // margin-top de Dashboard.qml/NotificationCenter.qml, que
+            // arranca después de la exclusiveZone de la barra).
+            bottom: 0
         }
         implicitHeight: 480
         color: "transparent"
@@ -82,24 +111,28 @@ Variants {
         Rectangle {
             id: card
 
-            readonly property real targetWidth: Math.max(320, Math.min(760, contentCol.implicitWidth + 40))
+            // Ancho fijo compartido con WallpaperPicker (ver comentario
+            // (a) arriba) — antes la Column de encabezado usaba
+            // `width: parent.width` (ciclo real contra contentCol), ahora
+            // ambos usan esta misma constante, sin binding circular
+            // posible.
+            readonly property real pickerWidth: 560
             readonly property real targetHeight: Math.max(200, Math.min(480, contentCol.implicitHeight + 40))
 
-            width: targetWidth
+            width: pickerWidth + 40
             height: win.shown ? targetHeight : 0
-            anchors.top: parent.top
+            anchors.bottom: parent.bottom
             anchors.horizontalCenter: parent.horizontalCenter
             clip: true
 
-            Behavior on width { NumberAnimation { duration: Theme.durMed; easing.type: Theme.easeOutCubic } }
             Behavior on height { NumberAnimation { duration: Theme.durMed; easing.type: Theme.easeOutCubic } }
 
             radius: 22
-            // Mismo razonamiento que Dashboard.qml/NotificationCenter.qml:
-            // esquinas superiores cuadradas + sin borde propio en el tope
-            // para que la silueta continúe la de la barra.
-            topLeftRadius: 0
-            topRightRadius: 0
+            // Esquinas inferiores cuadradas ahora (antes eran las
+            // superiores, cuando el panel colgaba del tope) — el borde que
+            // toca al borde real de pantalla es el de abajo.
+            bottomLeftRadius: 0
+            bottomRightRadius: 0
             color: Theme.tintSurface(Theme.surface, Theme.activeAccent, 0.6)
 
             opacity: win.shown ? 1 : 0
@@ -107,12 +140,14 @@ Variants {
             Behavior on opacity { NumberAnimation { duration: Theme.durMed; easing.type: Theme.easeOutCubic } }
             Behavior on color { ColorAnimation { duration: Theme.durSlow } }
 
+            // (d): sombra coloreada con el acento en vez de negro plano —
+            // mismo criterio "glow" que el resto del dashboard.
             layer.enabled: true
             layer.effect: MultiEffect {
                 shadowEnabled: true
-                shadowColor: Qt.rgba(0, 0, 0, 0.55)
-                shadowBlur: 0.5
-                shadowVerticalOffset: 3
+                shadowColor: Theme.withAlpha(Theme.activeAccent, 0.5)
+                shadowBlur: 0.6
+                shadowVerticalOffset: 0
                 shadowHorizontalOffset: 0
             }
 
@@ -127,7 +162,7 @@ Variants {
                 spacing: 14
 
                 Column {
-                    width: parent.width
+                    width: card.pickerWidth
                     spacing: 2
 
                     Text {
@@ -154,7 +189,7 @@ Variants {
                 }
 
                 WallpaperPicker {
-                    width: 560
+                    width: card.pickerWidth
                 }
             }
         }
