@@ -301,7 +301,7 @@
     fi
   '';
 
-  # 6. CONTROL DE SALIDA HDMI (Hito 004 follow-up 17)
+  # 6. CONTROL DE SALIDA HDMI (Hito 004 follow-up 17, corregido en follow-up 20)
   # Hardware real (ver NIXOS_ARCHITECTURE_HITO_001.md §1.1): perfil híbrido
   # Intel iGPU + NVIDIA PRIME offload. Verificado en vivo antes de escribir
   # esto (no asumido): los conectores HDMI-A-1/HDMI-A-2 en
@@ -310,20 +310,69 @@
   # documentado del iGPU Intel (PCI:0:2:0) — el HDMI de este laptop lo
   # maneja Intel, no la dGPU NVIDIA (que es offload-bajo-demanda, ni
   # siquiera despierta para esto). No hay conector HDMI en card0 (NVIDIA).
+  # Esto también significa que la detección de hotplug/auto-placement de
+  # Hyprland NO tiene la complejidad de un switch de GPU en el medio — se
+  # comporta exactamente como en un laptop solo-Intel, sin carrera PRIME
+  # que agregue inestabilidad extra al bug de abajo.
   #
   # `hyprctl monitors -j`/`monitors all -j` NO lista conectores sin señal
   # (confirmado en vivo: con el cable desconectado, ninguna de las dos
   # variantes muestra HDMI-A-1/2 en absoluto) — así que la detección real
   # de "¿hay un cable enchufado?" tiene que ir por sysfs (status), no por
-  # hyprctl. Para MUTAR el output sí se usa una herramienta distinta:
-  # `hyprctl keyword monitor ...` falló en vivo ("keyword can't work with
-  # non-legacy parsers. Use eval" — este fork de Hyprland con config Lua no
-  # soporta keywords dinámicos por CLI) y no existe un dispatcher hl.dsp.*
-  # equivalente para monitores. `wlr-randr` sí funciona: habla directo el
-  # protocolo wlr-output-management-v1 del compositor, evitando por
-  # completo la capa de parseo Lua que bloquea keyword/dispatch acá.
+  # hyprctl.
+  #
+  # Hito 004 follow-up 20 — bug real de solape ("HDMI-A-1 overlaps with
+  # other monitor(s)") diagnosticado por el usuario y confirmado acá:
+  # la versión anterior de este script usaba `wlr-randr` (protocolo
+  # wlr-output-management-v1, hablado directo al compositor) para
+  # posicionar monitores, corriendo COMPLETAMENTE POR FUERA del motor de
+  # reglas de monitores propio de Hyprland (monitors.lua/hl.monitor()). Al
+  # conectar el TV, Hyprland aplica primero su propia regla de fallback
+  # (position="auto") — nuestro script recién corre DESPUÉS, cuando el
+  # usuario elige un modo en HdmiMenu.qml, y wlr-randr reposicionaba sin
+  # que el estado interno de Hyprland se enterara correctamente: dos
+  # sistemas de posicionamiento peleando por el mismo output.
+  #
+  # Fix: usar `hl.monitor()` (la misma función Lua que monitors.lua llama
+  # al parsear la config) EN VIVO vía `hyprctl eval`, no wlr-randr.
+  # `hyprctl keyword monitor ...` sigue fallando igual que antes ("keyword
+  # can't work with non-legacy parsers. Use eval") y no existe un
+  # dispatcher hl.dsp.* para monitores — pero `hyprctl eval` sí ejecuta Lua
+  # arbitrario contra el runtime de Hyprland, y `hl.monitor` resultó ser
+  # una función real invocable ahí (confirmado en vivo: `hyprctl eval
+  # 'hl.monitor({output="eDP-1", mode="1366x768@60", position="0x0",
+  # scale=1})'` corrió sin error y `hyprctl monitors -j` confirmó el
+  # estado esperado después). Esto mantiene todo el posicionamiento DENTRO
+  # del mismo motor de reglas que ya usa Hyprland — ya no hay dos sistemas
+  # separados.
+  #
+  # position="mirror,eDP-1" y mode="disable" son sintaxis estándar de
+  # Hyprland para el keyword `monitor=` clásico (no cambiaron entre
+  # versiones) — se asume que `hl.monitor()` acepta los mismos valores en
+  # sus campos ya que es un wrapper directo sobre el mismo parser, pero
+  # SIN un segundo monitor real conectado en esta sesión no se pudo
+  # verificar en vivo el comportamiento de mirror/hdmi-only/laptop-only
+  # específicamente — solo la llamada base a hl.monitor() en sí (sobre
+  # eDP-1) está confirmada funcionando. Ver
+  # NIXOS_ARCHITECTURE_HITO_004.md §27 para el detalle completo y qué
+  # falta reconfirmar con un TV real.
+  #
+  # Hito 004 follow-up 20 (audio, pedido explícito: "match the wpctl
+  # pattern already used elsewhere" — wpctl SÍ está establecido en este
+  # repo para audio, ver keybinds.lua/gestures.lua para las teclas de
+  # volumen; VolumeMixer.qml en cambio usa la API nativa
+  # Quickshell.Services.Pipewire, no wpctl — corrección honesta sobre lo
+  # que el pedido asumía, pero wpctl sigue siendo el patrón correcto para
+  # ESTE script porque es shell, no QML). Cada modo con salida activa en
+  # el TV busca un sink cuyo nombre contenga "hdmi" (case-insensitive) en
+  # `wpctl status` y lo hace default; laptop-only busca uno que contenga
+  # "built-in". Verificado en vivo que el parseo awk y `wpctl set-default`
+  # funcionan correctamente contra el audio real de esta sesión (sink
+  # "Built-in Audio Analog Stereo", id 57) — el matching específico de un
+  # sink HDMI real no se pudo probar sin un TV conectado.
   hdmi-control = pkgs.writeShellScriptBin "hdmi-control" ''
-    WLR_RANDR=${pkgs.wlr-randr}/bin/wlr-randr
+    HYPRCTL=${pkgs.hyprland}/bin/hyprctl
+    WPCTL=${pkgs.wireplumber}/bin/wpctl
     MODE="''${1:-status}"
 
     HDMI_NAME=""
@@ -335,6 +384,26 @@
       fi
     done
 
+    hl_monitor() {
+      # $1=output $2=mode $3=position $4=scale
+      "$HYPRCTL" eval "hl.monitor({output=\"$1\", mode=\"$2\", position=\"$3\", scale=$4})"
+    }
+
+    set_default_sink_matching() {
+      # Busca un sink cuyo nombre/descripción contenga $1 (case-insensitive)
+      # dentro de la sección "Sinks:" de `wpctl status` y lo hace default.
+      # No falla si no encuentra nada — el audio simplemente se queda en el
+      # sink que ya estaba activo.
+      id=$("$WPCTL" status 2>/dev/null | awk -v pat="$1" '
+        /Sinks:/{f=1; next}
+        /Sources:/{f=0}
+        f && tolower($0) ~ tolower(pat) {
+          for (i=1;i<=NF;i++) if ($i ~ /^[0-9]+\.$/) { print substr($i,1,length($i)-1); exit }
+        }
+      ')
+      [ -n "$id" ] && "$WPCTL" set-default "$id"
+    }
+
     case "$MODE" in
       status)
         if [ -n "$HDMI_NAME" ]; then
@@ -345,22 +414,26 @@
         ;;
       extend)
         [ -z "$HDMI_NAME" ] && exit 0
-        "$WLR_RANDR" --output eDP-1 --on --pos 0,0
-        "$WLR_RANDR" --output "$HDMI_NAME" --on --right-of eDP-1
+        hl_monitor "eDP-1" "1366x768@60" "0x0" 1
+        hl_monitor "$HDMI_NAME" "preferred" "auto" 1
+        set_default_sink_matching "hdmi"
         ;;
       mirror)
         [ -z "$HDMI_NAME" ] && exit 0
-        "$WLR_RANDR" --output eDP-1 --on --pos 0,0
-        "$WLR_RANDR" --output "$HDMI_NAME" --on --pos 0,0
+        hl_monitor "eDP-1" "1366x768@60" "0x0" 1
+        hl_monitor "$HDMI_NAME" "preferred" "mirror,eDP-1" 1
+        set_default_sink_matching "hdmi"
         ;;
       hdmi-only)
         [ -z "$HDMI_NAME" ] && exit 0
-        "$WLR_RANDR" --output "$HDMI_NAME" --on --pos 0,0
-        "$WLR_RANDR" --output eDP-1 --off
+        hl_monitor "$HDMI_NAME" "preferred" "0x0" 1
+        hl_monitor "eDP-1" "disable" "" 1
+        set_default_sink_matching "hdmi"
         ;;
       laptop-only)
-        [ -n "$HDMI_NAME" ] && "$WLR_RANDR" --output "$HDMI_NAME" --off
-        "$WLR_RANDR" --output eDP-1 --on --pos 0,0
+        [ -n "$HDMI_NAME" ] && hl_monitor "$HDMI_NAME" "disable" "" 1
+        hl_monitor "eDP-1" "1366x768@60" "0x0" 1
+        set_default_sink_matching "built-in"
         ;;
       *)
         echo "Uso: hdmi-control [status|extend|mirror|hdmi-only|laptop-only]" >&2
