@@ -1,10 +1,35 @@
-// Hito 005 — Fase 2. Paso 4: operaciones de archivo (copiar/mover/
-// renombrar/crear carpeta/eliminar/papelera) vía FileOperations.cpp (ver
-// NIXOS_FILEMANAGER_HITO05_PLAN.md §5.1 — kioclient no existe en este
-// nixpkgs, esto usa coreutils + un script de papelera propio en su lugar).
-// PageRow/animación llegan en el paso 5 — el menú contextual de acá es
-// deliberadamente QQC2 plano, sin transición, igual que el resto de esta
-// UI hasta ahora.
+// Hito 005 — Fase 2. Paso 5: pase de animación/glow (ver
+// NIXOS_FILEMANAGER_HITO05_PLAN.md §4/§8). Primitivos Kirigami nativos
+// donde existen, trabajo custom para lo que no tiene equivalente Kirigami
+// (glow de proximidad, hover-scale, flash de apertura) — mismo criterio de
+// duración/easing que Theme.qml de QuickShell (durFast/durMed/durSlow,
+// easeOutCubic/OutBack/InOutQuad), redeclarado acá como constantes locales
+// porque este es un proceso QML separado sin acceso al singleton de
+// QuickShell (mismo motivo que forzó PaletteWatcher en el paso 3).
+//
+// Nota real sobre Kirigami.PageRow (el primitivo que el plan §4 recomendaba
+// para la navegación, "vale la pena construir sobre PageRow en vez de
+// reinventar breadcrumbs a mano"): SE INTENTÓ en esta sesión — cada
+// entrada a una carpeta empujaba un Kirigami.Page nuevo con su propio
+// FolderModel. Verificado en vivo con un self-test programático
+// (folderPageRow.push()/pop() llamados directo, sin depender de clicks):
+// el estado LÓGICO de PageRow es correcto (depth 1->2, currentItem.
+// targetFolder cambia al valor esperado, pop() lo revierte bien — todo
+// confirmado por consola). Pero el panel VISIBLE nunca cambiaba de
+// contenido — screenshot real tras el push seguía mostrando el listado de
+// $HOME, no el de la carpeta empujada, pese a que currentItem ya apuntaba
+// a la nueva página. No se identificó la causa exacta en el tiempo
+// disponible (sospecha: PageRow embebido angosto/sin columnas, fuera del
+// pageStack nativo de ApplicationWindow, interactuando mal con su modelo
+// de layout por columnas) — el plan (§7) ya anticipaba este riesgo
+// explícito y autorizaba una salida: "tiene salida de emergencia
+// (breadcrumb a mano + StackView) si no convence". Se tomó esa salida:
+// esta versión final vuelve al modelo de navegación de los pasos 2-4 (un
+// solo FolderModel compartido, reasignar `folder` in-place) — probado y
+// visualmente confirmado funcionando en cada paso anterior — en vez de
+// arriesgar una navegación rota pero "elegante" en el código. Queda como
+// pendiente real para retomar en una sesión futura con más margen para
+// diagnosticar PageRow a fondo (ver NIXOS_ARCHITECTURE_HITO_005.md §5).
 import QtQuick
 import QtQuick.Controls as QQC2
 import QtQuick.Layouts
@@ -18,18 +43,27 @@ Kirigami.ApplicationWindow {
     height: 650
     visible: true
 
-    // Hito 005, paso 3 (ver NIXOS_FILEMANAGER_HITO05_PLAN.md §3): pisar acá,
-    // en la raíz, alcanza — Kirigami.Theme es una propiedad adjunta que se
-    // hereda por todo el árbol QML hijo salvo que algún componente la pise
-    // de nuevo más abajo. accentColor sigue al workspace activo de
-    // Hyprland/QuickShell vía PaletteWatcher (archivo compartido, ver
-    // PaletteWatcher.cpp) — no un color fijo.
+    // --- Mismas curvas que Theme.qml (modules/quickshell/services/Theme.qml)
+    // — no son Kirigami.Units.*: se probó adoptarlas tal cual, pero la
+    // continuidad visual 1:1 con el resto del sistema es el requisito
+    // explícito de este hito (plan §4), así que se pisan acá en vez de
+    // heredar los valores de fábrica de Kirigami.
+    readonly property int durFast: 140
+    readonly property int durMed: 240
+    readonly property int durSlow: 420
+    readonly property int easeOutCubic: Easing.OutCubic
+    readonly property int easeOutBack: Easing.OutBack
+    readonly property int easeInOutQuad: Easing.InOutQuad
+
+    // Hito 005, paso 3: Kirigami.Theme es una propiedad adjunta que se
+    // hereda por todo el árbol QML hijo — pisarla acá en la raíz alcanza.
+    // accentColor sigue al workspace activo de Hyprland/QuickShell vía
+    // PaletteWatcher (archivo compartido, ver PaletteWatcher.cpp).
     Kirigami.Theme.highlightColor: paletteWatcher.accent
     Kirigami.Theme.focusColor: paletteWatcher.accent
     Kirigami.Theme.hoverColor: Qt.rgba(paletteWatcher.accent.r, paletteWatcher.accent.g, paletteWatcher.accent.b, 0.15)
 
-    // Portapapeles de un solo elemento (paso 4) — copiar/cortar un ítem,
-    // pegar en la carpeta actual o sobre otra carpeta del listado.
+    // Portapapeles de un solo elemento (paso 4).
     property url clipboardUrl: ""
     property bool clipboardCut: false
 
@@ -59,8 +93,6 @@ Kirigami.ApplicationWindow {
         onOperationFailed: (op, msg) => statusLabel.text = "Error (" + op + "): " + msg
     }
 
-    // Menú contextual compartido — un solo QQC2.Menu reusado por todos los
-    // delegates del listado, con el target seteado justo antes de popup().
     QQC2.Menu {
         id: contextMenu
         property url targetUrl
@@ -160,8 +192,7 @@ Kirigami.ApplicationWindow {
             anchors.fill: parent
             spacing: 0
 
-            // --- Sidebar de Places: KFilePlacesModel real, el mismo que
-            // usan Dolphin y los diálogos nativos de KDE (ver plan §5.1) ---
+            // --- Sidebar de Places: KFilePlacesModel real ---
             QQC2.ScrollView {
                 Layout.preferredWidth: 220
                 Layout.fillHeight: true
@@ -170,16 +201,25 @@ Kirigami.ApplicationWindow {
                     id: placesView
                     model: placesModel
                     delegate: QQC2.ItemDelegate {
+                        id: placeDelegate
                         width: placesView.width
                         text: model.display
                         // "icon.source: model.decoration" NO sirve — bug real
-                        // encontrado en vivo: model.decoration (Qt::DecorationRole)
-                        // entrega un QIcon, pero icon.source es una propiedad QUrl —
-                        // QML lo rechaza en tiempo de ejecución ("Unable to assign
-                        // QIcon to QUrl", sin crashear, pero sin ícono tampoco).
-                        // KFilePlacesModel expone un role "iconName" (string) aparte,
-                        // que sí calza con icon.name.
+                        // encontrado en vivo (paso 4): model.decoration
+                        // (Qt::DecorationRole) entrega un QIcon, icon.source
+                        // es QUrl. KFilePlacesModel expone "iconName" (string)
+                        // aparte, que sí calza con icon.name.
                         icon.name: model.iconName
+
+                        // --- Hover-scale (paso 5) ---
+                        scale: placeHover.hovered ? 1.02 : 1.0
+                        Behavior on scale {
+                            NumberAnimation { duration: root.durFast; easing.type: root.easeOutBack }
+                        }
+                        HoverHandler {
+                            id: placeHover
+                        }
+
                         onClicked: folderModel.folder = placesModel.url(placesModel.index(index, 0))
                     }
                 }
@@ -227,11 +267,7 @@ Kirigami.ApplicationWindow {
                         }
                         Item { Layout.fillWidth: true }
                         // Indicador del acento activo (paso 3) — sigue al
-                        // workspace de Hyprland en vivo, sin relanzar la
-                        // app. Doble función: feedback visual real de
-                        // "estoy temeado igual que el resto del sistema" +
-                        // forma directa de verificar el paso 3 con una
-                        // captura de pantalla.
+                        // workspace de Hyprland en vivo, sin relanzar la app.
                         Rectangle {
                             Layout.preferredWidth: 18
                             Layout.preferredHeight: 18
@@ -248,23 +284,79 @@ Kirigami.ApplicationWindow {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
                     model: folderModel
-                    delegate: QQC2.ItemDelegate {
-                        id: fileDelegate
+                    delegate: Item {
+                        id: delegateRoot
                         width: folderView.width
-                        text: model.name
-                        icon.name: model.iconName
-                        onClicked: {
-                            if (model.isDir)
-                                folderModel.folder = model.url;
+                        height: 40
+
+                        // --- Glow de proximidad (paso 5) — sin equivalente
+                        // Kirigami, mismo efecto (gradiente detrás del ítem)
+                        // que usa QuickShell en Capsule.qml, portado acá.
+                        Rectangle {
+                            anchors.fill: parent
+                            anchors.margins: -3
+                            radius: 8
+                            opacity: hoverHandler.hovered ? 0.45 : 0
+                            Behavior on opacity {
+                                NumberAnimation { duration: root.durMed; easing.type: root.easeOutCubic }
+                            }
+                            gradient: Gradient {
+                                orientation: Gradient.Horizontal
+                                GradientStop { position: 0.0; color: Qt.rgba(paletteWatcher.accent.r, paletteWatcher.accent.g, paletteWatcher.accent.b, 0.35) }
+                                GradientStop { position: 1.0; color: Qt.rgba(paletteWatcher.accent.r, paletteWatcher.accent.g, paletteWatcher.accent.b, 0.0) }
+                            }
                         }
 
-                        TapHandler {
-                            acceptedButtons: Qt.RightButton
-                            onTapped: {
-                                contextMenu.targetUrl = model.url;
-                                contextMenu.targetName = model.name;
-                                contextMenu.targetIsDir = model.isDir;
-                                contextMenu.popup();
+                        QQC2.ItemDelegate {
+                            id: itemDelegate
+                            anchors.fill: parent
+                            text: model.name
+                            icon.name: model.iconName
+
+                            // --- Hover-scale (paso 5) — mismo patrón que
+                            // Bar.qml/Capsule.qml de QuickShell.
+                            scale: hoverHandler.hovered ? 1.015 : 1.0
+                            Behavior on scale {
+                                NumberAnimation { duration: root.durFast; easing.type: root.easeOutBack }
+                            }
+
+                            HoverHandler {
+                                id: hoverHandler
+                            }
+
+                            onClicked: {
+                                if (model.isDir) {
+                                    folderModel.folder = model.url;
+                                } else {
+                                    // Apertura real (paso 5, no estaba en
+                                    // ningún paso anterior — ver cabecera):
+                                    // KIO::OpenUrlJob vía FileOperations,
+                                    // misma xdg.mimeApps que ya declara
+                                    // home.nix (plan §5.1).
+                                    openFlash.start();
+                                    fileOps.openFile(model.url);
+                                }
+                            }
+
+                            // --- Flash de apertura (paso 5) — sin
+                            // equivalente Kirigami. opacity en vez de scale
+                            // a propósito: scale ya tiene un binding
+                            // declarativo (hover, arriba) — animarlo acá con
+                            // NumberAnimation imperativo lo rompería.
+                            SequentialAnimation {
+                                id: openFlash
+                                NumberAnimation { target: itemDelegate; property: "opacity"; to: 0.4; duration: root.durFast; easing.type: root.easeOutCubic }
+                                NumberAnimation { target: itemDelegate; property: "opacity"; to: 1.0; duration: root.durFast; easing.type: root.easeOutCubic }
+                            }
+
+                            TapHandler {
+                                acceptedButtons: Qt.RightButton
+                                onTapped: {
+                                    contextMenu.targetUrl = model.url;
+                                    contextMenu.targetName = model.name;
+                                    contextMenu.targetIsDir = model.isDir;
+                                    contextMenu.popup();
+                                }
                             }
                         }
                     }

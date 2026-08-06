@@ -1,5 +1,7 @@
 #include "FileOperations.h"
 
+#include <KIO/OpenUrlJob>
+#include <KJob>
 #include <QProcess>
 #include <memory>
 
@@ -31,6 +33,19 @@ void FileOperations::removePermanently(const QUrl &path)
 void FileOperations::moveToTrash(const QUrl &path)
 {
     run(QStringLiteral("trash"), {QStringLiteral("trash"), path.toLocalFile()});
+}
+
+void FileOperations::openFile(const QUrl &path)
+{
+    auto *job = new KIO::OpenUrlJob(path, this);
+    connect(job, &KJob::result, this, [this, job]() {
+        if (job->error()) {
+            Q_EMIT operationFailed(QStringLiteral("open"), job->errorString());
+        } else {
+            Q_EMIT operationSucceeded(QStringLiteral("open"));
+        }
+    });
+    job->start();
 }
 
 void FileOperations::run(const QString &opName, const QStringList &args)

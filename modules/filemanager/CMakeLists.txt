@@ -68,6 +68,7 @@ target_link_libraries(nixfm PRIVATE
     Qt6::Qml
     Qt6::Quick
     KF6::KIOCore
+    KF6::KIOGui
     KF6::KIOFileWidgets
 )
 

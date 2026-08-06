@@ -23,6 +23,13 @@ public:
     Q_INVOKABLE void removePermanently(const QUrl &path);
     Q_INVOKABLE void moveToTrash(const QUrl &path);
 
+    // Paso 5 (ver NIXOS_FILEMANAGER_HITO05_PLAN.md §5.1): abrir con la
+    // misma xdg.mimeApps que ya declara home.nix — KIO::OpenUrlJob resuelve
+    // el mimetype y lanza la app default real (lee el mismo
+    // ~/.config/mimeapps.list que home-manager ya escribe), no una tabla
+    // de asociaciones paralela.
+    Q_INVOKABLE void openFile(const QUrl &path);
+
 Q_SIGNALS:
     void operationSucceeded(const QString &operation);
     void operationFailed(const QString &operation, const QString &message);
