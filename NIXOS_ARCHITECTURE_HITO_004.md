@@ -589,8 +589,64 @@ Reemplaza `nmApplet.startDetached()` (spawneaba un tray icon externo) por `Netwo
 
 ---
 
-## 26. Estado de Ratificación
+## 27. Addendum 11 — Dolphin no abría archivos (causa raíz real), sidebar washed-out, HDMI overlap + audio
 
-Snapshot verdadero al cierre del Hito 004 (secciones 1-7) más sus diez follow-ups en la misma rama (secciones 8, 10, 12, 14, 16, 18, 20, 21, 23 y 25). Cualquier cambio posterior invalida secciones específicas y debe generar Hito 005. No modificar retroactivamente — versionar hitos.
+Duodécima sesión en la misma rama. Cuatro pedidos puntuales sobre bugs reales encontrados en uso — dos de ellos (Dolphin) resultaron en investigaciones profundas de varias horas cada una, documentadas acá en detalle porque el camino recorrido (qué se descartó y por qué) es tan valioso como el fix final.
+
+### 27.1 Dolphin no abría archivos — causa raíz real: `applications.menu` faltante
+
+**Síntoma confirmado en vivo**: doble-click (simulado con `wtype` navegando+Enter sobre el ítem seleccionado, ya que este ambiente no puede sintetizar clicks de mouse) no abría NINGÚN archivo — el diálogo "Select the program you want to use" aparecía con la grilla de apps completamente VACÍA, para CUALQUIER tipo de archivo, no solo asociaciones custom (nvim-foot.desktop/imv.desktop) — hasta `org.kde.dolphin.desktop` mismo salía como "unknown service".
+
+**Hipótesis descartadas con pruebas reales, no supuestas**:
+1. Cache de ksycoca desactualizada — se reconstruyó manualmente (`kbuildsycoca6`, `--noincremental`, `--menutest`) múltiples veces, incluyendo forzar que Dolphin la reconstruya por sí solo (borrando el cache antes de lanzar) — la grilla seguía vacía.
+2. Falta el demonio `kded6` (normal en una sesión Plasma completa, ausente acá por ser Hyprland) — se lanzó manualmente, sin cambio.
+3. Falta `XDG_CURRENT_DESKTOP=KDE` — seteado explícito al lanzar Dolphin, sin cambio.
+4. Verificado con `strings -e l` (UTF-16LE, el encoding real que usa QDataStream para las cadenas del cache — `strings` plano no las encuentra) que el cache ksycoca no contenía NINGÚN string `.desktop` de aplicación, ni siquiera de apps del propio cierre de kio/kservice — apuntaba a que el escaneo de aplicaciones fallaba por completo, no solo para nuestras entradas.
+
+**Trampa metodológica real, encontrada y documentada para que no se repita**: Dolphin se registra como servicio D-Bus de instancia única (`org.kde.dolphin-<pid>`, `org.freedesktop.FileManager1`). Matar el PID visible con `pgrep -f "bin/dolphin" | head -1` dejaba OTRAS instancias viejas registradas y vivas en D-Bus, que seguían sirviendo pedidos de "--new-window" nuevos con su entorno ORIGINAL (sin los fixes de la prueba en curso) — esto invalidó silenciosamente varias rondas de prueba (incluyendo la prueba de `kded6` y `XDG_CURRENT_DESKTOP`) hasta que se detectó vía `busctl --user list | grep dolphin` y se mataron TODAS las instancias por PID explícito.
+
+**Causa real, encontrada vía `journalctl --user`** (no vía revisión de código): `kbuildsycoca6`/dolphin logueaban literalmente `"applications.menu" not found in QList("/etc/profiles/per-user/jerimy/etc/xdg/menus", "/run/current-system/sw/etc/xdg/menus")`, seguido de `mimeapps.list specifies unknown service "X.desktop"` para cada entrada. Este sistema no corre Plasma/GNOME/XFCE — ningún paquete instala `/etc/xdg/menus/applications.menu`, el archivo base de la XDG Desktop Menu Specification que `kbuildsycoca6` necesita para indexar CUALQUIER aplicación como KService. Sin ese archivo, el escaneo de aplicaciones simplemente no produce nada, sin importar cuán correcto sea `mimeapps.list`.
+
+**Fix**: `modules/kvantum/applications.menu`, un archivo mínimo hecho a mano (`<Include><All/></Include>` — se probó primero con `<Category>Application</Category>`, que no filtra nada porque "Application" no es un `Category=` válido de la especificación) empaquetado como una derivación chica (`pkgs.runCommand` contribuyendo `etc/xdg/menus/applications.menu`) en vez de traer un paquete completo tipo `gnome-menus`/`plasma-workspace` (ambos atan este archivo a una DE completa, justo lo que este sistema evita). Se agregó también `home.activation.rebuildKSycoca` (pedido explícito del brief: "figure out how to trigger declaratively on activation") — no era la causa real del bug (confirmado por las pruebas de arriba), pero es la práctica correcta de todos modos.
+
+**Verificación final en vivo**: dado que `nixos-rebuild switch` necesita credenciales sudo que esta sesión no tiene, se probó vía un wrapper script que exporta `XDG_CONFIG_DIRS` con el archivo de prueba prepend — confirmado con `/proc/<pid>/environ` que el override SÍ llegaba al proceso real de Dolphin (a diferencia de un intento anterior con `env VAR=x cmd` inline en un comando backgrounded, que NO llegaba — otra trampa metodológica real, sin explicación concluyente de por qué, resuelta con un wrapper script explícito en su lugar). Con el fix activo: seleccionar el archivo de prueba y presionar Enter lanzó `foot -e nvim /tmp/dolphin_open_test.txt` — exactamente el `Exec=` de `nvim-foot.desktop` — confirmado vía lista de procesos real.
+
+### 27.2 Sidebar de Dolphin lavado/bajo contraste
+
+Dos causas reales, encontradas estudiando la arquitectura real de KColorScheme:
+
+1. **`[Colors:Complementary]` faltante** — los paneles empotrados en apps KDE (el "Places Panel" de Dolphin es exactamente esto) no usan `[Colors:Window]`, usan un quinto grupo de color dedicado a chrome tipo panel/dock. Sin definirlo, Dolphin cae al complementary por defecto de su estilo base (gris Breeze genérico) — coincide exacto con el síntoma reportado. Agregado con tinte propio (más lavanda que Window/View).
+2. **`qt6ct.conf` no existía en absoluto** — `QT_QPA_PLATFORMTHEME=qt6ct` está seteado (necesario para que `QT_STYLE_OVERRIDE=kvantum` aplique de verdad) pero sin ningún archivo de config, confirmado en vivo (`ls ~/.config/qt6ct/` → "No such file or directory"). Sin config, Qt cae a sus defaults compilados — afecta tanto el estilo como el ícono theme (Papirus-Dark estaba configurado para GTK pero nunca propagaba a Qt/KDE). Agregado explícito.
+
+Encontrado y corregido de paso: `kdeglobals` usaba `;` como prefijo de comentario (convención GTK/INI) en 24 líneas — KConfig solo acepta `#`, confirmado vía los mismos logs de journalctl del bug anterior (`"Invalid entry (missing '=')"` repetido).
+
+Verificado en vivo intercambiando los symlinks gestionados por home-manager (de la ronda anterior) por archivos planos con el contenido nuevo — mismo método usado para probar Kvantum originalmente. Captura antes/después: el sidebar pasó de gris plano a un panel oscuro con tinte lavanda claramente distinguible, con zebra-striping visible en la vista principal.
+
+### 27.3 y 27.4 — HDMI: solape de monitores + audio
+
+Ver commit `d6c0b86` para el detalle completo (documentado extensamente en el propio mensaje de commit, no repetido acá). Resumen:
+
+- **Causa real del solape**: `wlr-randr` posicionaba monitores por fuera del motor de reglas de Hyprland (`monitors.lua`/`hl.monitor()`), corriendo DESPUÉS de que Hyprland ya aplicara su propia regla `position="auto"` al conectar — dos sistemas de posicionamiento sin coordinación. Fix: usar `hl.monitor()` en vivo vía `hyprctl eval` (confirmado real y funcional, no solo un `hyprctl keyword` que ya se sabía roto de la ronda anterior).
+- **GPU que maneja HDMI**: reconfirmado en vivo (Intel exclusivo, mismo método que la ronda del widget HDMI) — el perfil híbrido PRIME no agrega una carrera de switch de GPU al problema, no hacía falta una regla explícita en `monitors.lua`.
+- **Audio**: `wpctl status` + `set-default` agregado a cada modo, matching por substring de nombre de sink ("hdmi"/"built-in"). Corrección honesta sobre la premisa del pedido: `VolumeMixer.qml` usa la API nativa `Quickshell.Services.Pipewire`, no `wpctl` — el patrón real establecido en el repo para `wpctl` es `keybinds.lua`/`gestures.lua` (teclas de volumen), que sigue siendo la referencia correcta para ESTE script (shell, no QML).
+- **Pendiente honesto**: ni el posicionamiento mirror/hdmi-only/laptop-only ni el matching de un sink HDMI real se pudieron verificar contra hardware real — ningún TV conectado esta sesión. Solo la llamada base `hl.monitor()` (sobre eDP-1) y el matching "built-in" (audio real de la sesión) están confirmados en vivo.
+
+### 27.5 Metodología — hallazgos de esta ronda
+
+- **Instancias D-Bus de aplicación única son una trampa de testing real**: matar el PID visible no basta para apps con activación D-Bus (Dolphin, y probablemente cualquier app KDE moderna) — hay que verificar `busctl --user list` y matar TODAS las instancias registradas, o las pruebas subsiguientes quedan silenciosamente confundidas por una instancia vieja respondiendo con su entorno original.
+- **`env VAR=x cmd` inline en un comando backgrounded no siempre propaga** el override al proceso final de forma confiable en este ambiente — un wrapper script explícito con `export`+`exec` sí, de forma reproducible. Sin explicación concluyente de la causa raíz de esa discrepancia, pero el workaround es confiable.
+- **`journalctl --user`** fue la herramienta que realmente destrabó ambos bugs de Dolphin — mucho más informativa que `strace`, `strings` sobre el cache binario, o los flags de debug de `kbuildsycoca6` (que resultaron no producir salida útil, aparentemente compilados sin logging de debug en este build de nixpkgs).
+- Sin `sudo` con credenciales en esta sesión, `nixos-rebuild switch` no es ejecutable directamente — la verificación de fixes que tocan rutas gestionadas por el perfil de Nix (`/etc/profiles/per-user/...`) requirió workarounds (override de `XDG_CONFIG_DIRS`, reemplazo temporal de symlinks de home-manager por archivos planos) en vez de una confirmación end-to-end con el mecanismo real de despliegue.
+
+### 27.6 Pendientes
+
+- Confirmación real post-`nixos-rebuild switch` de todo lo de esta ronda (bloqueado por falta de sudo en esta sesión).
+- Comportamiento HDMI real (mirror/hdmi-only/laptop-only, audio) contra un TV físico.
+
+---
+
+## 28. Estado de Ratificación
+
+Snapshot verdadero al cierre del Hito 004 (secciones 1-7) más sus once follow-ups en la misma rama (secciones 8, 10, 12, 14, 16, 18, 20, 21, 23, 25 y 27). Cualquier cambio posterior invalida secciones específicas y debe generar Hito 005. No modificar retroactivamente — versionar hitos.
 
 **FIN DEL DOCUMENTO — Hito 004**
