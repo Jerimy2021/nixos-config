@@ -21,7 +21,17 @@ include(KDECompilerSettings NO_POLICY_SCOPE)
 
 find_package(Qt6 6.6 REQUIRED COMPONENTS Core Gui Qml Quick QuickControls2)
 
-qt_add_executable(nixfm src/main.cpp)
+# Paso 2: KCoreDirLister vive en KIOCore (sin QtWidgets); KFilePlacesModel
+# vive en KIOFileWidgets (histórico — sí liga QtWidgets transitivamente,
+# aunque esta app no use ningún QWidget propio; no hay forma de evitarlo
+# y usar el Places model real de KIO, ver plan §1.5/§5.1). Ambos vienen
+# del mismo paquete nixpkgs `kio`, un solo find_package.
+find_package(KF6 REQUIRED COMPONENTS KIO)
+
+qt_add_executable(nixfm
+    src/main.cpp
+    src/FolderModel.cpp
+)
 
 # QT_RESOURCE_ALIAS: sin esto, qt_add_qml_module preserva la subcarpeta
 # "qml/" del árbol fuente dentro del recurso compilado (queda en
@@ -55,6 +65,8 @@ target_link_libraries(nixfm PRIVATE
     Qt6::Gui
     Qt6::Qml
     Qt6::Quick
+    KF6::KIOCore
+    KF6::KIOFileWidgets
 )
 
 install(TARGETS nixfm ${KDE_INSTALL_TARGETS_DEFAULT_ARGS})

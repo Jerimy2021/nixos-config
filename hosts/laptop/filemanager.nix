@@ -25,12 +25,13 @@ pkgs.stdenv.mkDerivation {
     kdePackages.wrapQtAppsHook
   ];
 
-  # Paso 1 (scaffold desnudo): deliberadamente solo Kirigami — nada de KIO
-  # todavía (llega en el paso 2, ver plan §1.5/§1.6/§8).
   buildInputs = with pkgs; [
     kdePackages.qtbase
     kdePackages.qtdeclarative
     kdePackages.kirigami
+    # Paso 2: KCoreDirLister (listado de carpetas) + KFilePlacesModel
+    # (sidebar) — ambos vienen de este único paquete nixpkgs.
+    kdePackages.kio
   ];
 
   meta = {
