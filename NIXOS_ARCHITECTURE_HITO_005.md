@@ -16,7 +16,33 @@ Fase 2 sigue la secuencia numerada acordada explícitamente antes de escribir c�
 - **Paso 1 (§1, completo):** scaffold Kirigami desnudo compila y lanza. Riesgo más alto del proyecto (primer C++ del flake) aislado y superado — dos bugs reales encontrados y corregidos en el camino, ninguno relacionado con KIO/tema/features (ver §1.2).
 - **Paso 2 (§2, completo):** listado real de carpeta (KCoreDirLister) + sidebar de Places (KFilePlacesModel) — verificado en vivo con screenshot real contra la sesión Hyprland.
 - **Paso 3 (§3, completo):** Kirigami.Theme sigue el acento matugen-derivado del workspace activo, vía un archivo compartido nuevo (`active-accent.json`) que escribe QuickShell y lee nixfm. Verificado en vivo con dos colores reales distintos — pero NO vía cambio de workspace real (bug real de Hyprland encontrado en esta sesión, ver §3.3, no relacionado con este código).
-- Pasos 4-5: pendientes, se documentan acá a medida que se completan.
+- **Paso 4 (§4, completo):** copiar/mover/renombrar/crear carpeta/eliminar/papelera vía coreutils + una implementación propia del freedesktop.org Trash spec (kioclient confirmado ausente, ver plan §1.6) — verificado en vivo contra archivos reales, incluyendo el bridge C++ completo con un self-test temporal.
+- Paso 5: pendiente, se documenta acá al completarse.
+
+---
+
+## 4. Paso 4 — Operaciones de archivo: coreutils + papelera propia (COMPLETO)
+
+### 4.1 Qué se construyó
+
+- **`nixfm-fileops`** (`scripts.nix`, mismo estilo que `hdmi-control`/`workspace-wallpaper`): subcomandos `copy`/`move`/`mkdir`/`delete` son wrappers directos de coreutils (`cp -r`, `mv`, `mkdir -p`, `rm -rf`). `trash` es una implementación propia y directa del freedesktop.org Trash spec — mueve el archivo a `$XDG_DATA_HOME/Trash/files/` y escribe un `.trashinfo` hermano en `Trash/info/` con `Path=` (percent-encoded vía `jq -sRr @uri`) y `DeletionDate=`. Cruce de filesystem detectado (`stat -c %d` del origen vs. de la carpeta Trash) y rechazado con `exit 2` explícito — no cae silenciosamente a un delete permanente que nadie pidió; esa decisión queda del lado de la UI (por ahora, sin implementar — ver §7).
+- **`FileOperations.h`/`.cpp`**: bridge C++ que corre `nixfm-fileops` por nombre (PATH) vía `QProcess` — no vía `Quickshell.Io.Process`, que no está disponible en este proceso separado (mismo motivo que forzó `PaletteWatcher` en el paso 3). Señales `operationSucceeded(op)`/`operationFailed(op, mensaje)`, con guarda contra doble-reporte (`QProcess` puede disparar tanto `errorOccurred` como `finished` para el mismo fallo en algunos casos).
+- **`Main.qml`**: portapapeles de un ítem (copiar/cortar vía menú contextual, pegar desde el menú contextual de una carpeta destino o desde el botón "Pegar" de la toolbar sobre la carpeta actual), menú contextual por click derecho (`TapHandler { acceptedButtons: Qt.RightButton }` — no interfiere con el click izquierdo que ya maneja `ItemDelegate` internamente), diálogos `QQC2.Dialog`+`QQC2.TextField` para renombrar/nueva carpeta (deliberadamente sin ningún primitivo Kirigami de alto nivel no verificado — misma lección del paso 2), label de estado con el resultado de la última operación.
+
+### 4.2 Bug real encontrado en vivo
+
+`icon.source: model.decoration` en el sidebar de Places (introducido en el paso 2) tiraba en cada delegate: `"Unable to assign QIcon to QUrl"` — advertencia de QML en tiempo de ejecución, no crashea la app, pero el ícono nunca se pintaba. Causa: `Qt::DecorationRole` de `KFilePlacesModel` entrega un `QIcon`, y `icon.source` (grupo de propiedades de `QQC2.AbstractButton`) es un `QUrl` — tipos incompatibles, QML lo rechaza silenciosamente en vez de fallar el build (por eso no se vio en el paso 2 hasta correr con logging forzado). Fix: `KFilePlacesModel` expone un role separado, `iconName` (string), que sí calza con `icon.name` — mismo patrón que ya usa `FolderModel` para sus propios íconos. Confirmado en vivo: cero warnings tras el fix, íconos reales visibles en captura de pantalla (Home/Downloads/Trash/Network con sus íconos correctos).
+
+### 4.3 Verificación en vivo (dos capas, no solo el código)
+
+1. **`nixfm-fileops` standalone** (fuera de la app, directo desde una terminal): las 6 rutas probadas contra archivos reales en un directorio de scratch — `mkdir` (carpeta creada), `copy` (contenido verificado con `cat`), `move`/rename (verificado con `ls`), `trash` con `XDG_DATA_HOME` apuntado a un directorio de prueba (`.trashinfo` inspeccionado byte a byte: `Path=` percent-encoded correcto, `DeletionDate=` con formato ISO correcto), `delete` permanente, y uso inválido (mensaje de uso + `exit 1`).
+2. **El bridge C++ completo, con archivos reales bajo `$HOME`**: se agregó un self-test temporal a `Main.qml` (4 `Timer`s encadenados ejecutando `mkdir→copy→move→trash→delete` en secuencia vía `fileOps`, revertido antes de commitear — no quedó en el código final) contra `~/nixfm-test-scratch/`. Las 5 operaciones reportaron éxito vía las señales reales de `FileOperations` (capturado con `QT_LOGGING_TO_CONSOLE=1`, mismo truco del paso 1 para ver el output de Qt). Confirmado **independientemente de la señal** inspeccionando el filesystem real después: la carpeta de prueba quedó borrada, el archivo original (`src.txt`, nunca tocado por el test) seguía intacto, y el archivo trasheado apareció en el `~/.local/share/Trash` REAL del usuario (sin override de `XDG_DATA_HOME` esta vez) con `Path=`/fecha correctos — un efecto secundario real, inofensivo y esperado (es exactamente para qué es la papelera), no limpiado (vaciar la papelera del usuario no es una decisión de este agente).
+
+**Gap honesto**: sin `ydotool`/`wlrctl` disponibles en esta sesión (mismo gap ya anotado en el paso 2), no se pudo click-testear literalmente el menú contextual/los diálogos de renombrar/nueva-carpeta con input sintético — la verificación de arriba prueba el bridge C++↔shell↔filesystem completo llamando a `FileOperations` directamente (el tramo real y riesgoso), dejando sin ejercitar solo el QML de UI en sí (abrir el menú, click en "Renombrar", escribir en el `TextField`) — binding QML simple, mismo perfil de riesgo bajo que el click-to-navigate del paso 2.
+
+### 4.4 Estado de Dolphin
+
+Sin cambios — mismo estado que §1.4/§2.4/§3.4.
 
 ---
 
