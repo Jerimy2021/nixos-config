@@ -31,6 +31,7 @@ find_package(KF6 REQUIRED COMPONENTS KIO)
 qt_add_executable(nixfm
     src/main.cpp
     src/FolderModel.cpp
+    src/PaletteWatcher.cpp
 )
 
 # QT_RESOURCE_ALIAS: sin esto, qt_add_qml_module preserva la subcarpeta

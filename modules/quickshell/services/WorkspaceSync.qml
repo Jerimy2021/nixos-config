@@ -94,6 +94,37 @@ Singleton {
         Theme.activeAccent = derived !== undefined ? derived : Theme.coreAccentFor(id);
     }
 
+    // Hito 005 (ver NIXOS_FILEMANAGER_HITO05_PLAN.md §3.2): nixfm corre en
+    // su PROPIO proceso QML, sin acceso a la memoria de este singleton —
+    // no puede reproducir wallpaperFor()/randomAssignments/overrides (hay
+    // aleatoriedad+estado en memoria acá que un proceso aparte no puede
+    // recalcular). En vez de intentar duplicar esa lógica, se persiste acá
+    // el resultado YA resuelto (Theme.activeAccent, después de vividize())
+    // a un archivo chico — mismo patrón de "archivo compartido, no IPC
+    // nuevo" que ya usa este proyecto (palette.json/WallpaperPalette.qml),
+    // aplicado en el punto donde el valor ya está calculado en vez de
+    // pedirle a cada proceso que lo recalcule por su cuenta.
+    function colorToHex(c) {
+        function h(v) { return Math.round(Math.max(0, Math.min(1, v)) * 255).toString(16).padStart(2, '0'); }
+        return "#" + h(c.r) + h(c.g) + h(c.b);
+    }
+
+    function writeActiveAccent() {
+        var hex = root.colorToHex(Theme.activeAccent);
+        accentProc.command = ["bash", "-c",
+            "mkdir -p \"$HOME/.cache/quickshell\" && printf '{\"hex\":\"%s\"}' \"" + hex + "\" > \"$HOME/.cache/quickshell/active-accent.json\""];
+        accentProc.running = true;
+    }
+
+    Process {
+        id: accentProc
+    }
+
+    Connections {
+        target: Theme
+        function onActiveAccentChanged() { root.writeActiveAccent(); }
+    }
+
     function syncTo(id) {
         root.applyAccent(id);
         if (id === lastId) return;

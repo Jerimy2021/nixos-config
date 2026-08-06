@@ -15,6 +15,20 @@ Kirigami.ApplicationWindow {
     height: 650
     visible: true
 
+    // Hito 005, paso 3 (ver NIXOS_FILEMANAGER_HITO05_PLAN.md §3): pisar acá,
+    // en la raíz, alcanza — Kirigami.Theme es una propiedad adjunta que se
+    // hereda por todo el árbol QML hijo salvo que algún componente la pise
+    // de nuevo más abajo. accentColor sigue al workspace activo de
+    // Hyprland/QuickShell vía PaletteWatcher (archivo compartido, ver
+    // PaletteWatcher.cpp) — no un color fijo.
+    Kirigami.Theme.highlightColor: paletteWatcher.accent
+    Kirigami.Theme.focusColor: paletteWatcher.accent
+    Kirigami.Theme.hoverColor: Qt.rgba(paletteWatcher.accent.r, paletteWatcher.accent.g, paletteWatcher.accent.b, 0.15)
+
+    PaletteWatcher {
+        id: paletteWatcher
+    }
+
     FolderModel {
         id: folderModel
     }
@@ -70,6 +84,21 @@ Kirigami.ApplicationWindow {
                                 const parentUrl = folderModel.folder.toString().replace(/\/[^/]+\/?$/, "/");
                                 folderModel.folder = parentUrl;
                             }
+                        }
+                        Item { Layout.fillWidth: true }
+                        // Indicador del acento activo (paso 3) — sigue al
+                        // workspace de Hyprland en vivo, sin relanzar la
+                        // app. Doble función: feedback visual real de
+                        // "estoy temeado igual que el resto del sistema" +
+                        // forma directa de verificar el paso 3 con una
+                        // captura de pantalla.
+                        Rectangle {
+                            Layout.preferredWidth: 18
+                            Layout.preferredHeight: 18
+                            radius: 9
+                            color: paletteWatcher.accent
+                            border.color: Kirigami.Theme.textColor
+                            border.width: 1
                         }
                     }
                 }
