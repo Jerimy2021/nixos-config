@@ -1,0 +1,34 @@
+<!DOCTYPE Menu PUBLIC "-//freedesktop//DTD Menu 1.0//EN"
+ "http://www.freedesktop.org/standards/menu-spec/menu-1.0.dtd">
+<!--
+  Hito 004 follow-up 19 — causa raíz real del bug "Dolphin no abre
+  archivos" (ver NIXOS_ARCHITECTURE_HITO_004.md §27). Este sistema no
+  corre Plasma/GNOME/XFCE — ningún paquete instala
+  /etc/xdg/menus/applications.menu, el archivo base de la XDG Desktop
+  Menu Specification que kbuildsycoca6 necesita para construir el
+  índice de aplicaciones. Confirmado en vivo vía journalctl:
+  `kbuildsycoca6`/`dolphin` tiraban literalmente
+  `"applications.menu" not found in QList(...)` y, en consecuencia,
+  `mimeapps.list specifies unknown service "nvim-foot.desktop"` (y lo
+  mismo para CUALQUIER app, incluido org.kde.dolphin.desktop) — el
+  picker "Abrir con" salía completamente vacío para TODO, no solo
+  nuestras entradas custom.
+
+  <All/> en vez de filtrar por <Category> — probado primero con
+  `<Category>Application</Category>`, que no filtra nada porque
+  "Application" no es un Category= válido de la especificación
+  (values reales: Utility, Development, TextEditor, etc.) — el filtro
+  resultante no incluía ningún ítem. `<All/>` es la regla estándar
+  para "todas las apps, sin taxonomía de categorías" — no se
+  necesita un menú jerárquico real acá, solo que kbuildsycoca6 tenga
+  UN archivo base válido para no abortar el escaneo completo.
+-->
+<Menu>
+  <Name>Applications</Name>
+  <DefaultAppDirs/>
+  <DefaultDirectoryDirs/>
+  <DefaultMergeDirs/>
+  <Include>
+    <All/>
+  </Include>
+</Menu>

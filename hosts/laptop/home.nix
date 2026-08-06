@@ -2,6 +2,21 @@
 
 let
   mis-scripts = import ./scripts.nix { inherit pkgs; };
+
+  # Hito 004 follow-up 19 — causa raíz real del bug "Dolphin no abre
+  # archivos al hacer click": ningún paquete de este sistema (no corremos
+  # Plasma/GNOME/XFCE) instala /etc/xdg/menus/applications.menu, el
+  # archivo base de la XDG Desktop Menu Specification que kbuildsycoca6
+  # necesita para indexar CUALQUIER aplicación (confirmado en vivo vía
+  # journalctl — ver modules/kvantum/applications.menu para el detalle
+  # completo de la investigación). Se empaqueta acá como una derivación
+  # mínima en vez de buscar un paquete nixpkgs que lo traiga — el archivo
+  # real (gnome-menus, plasma-workspace) viene siempre atado a una DE
+  # completa, exactamente lo que este sistema evita a propósito.
+  applicationsMenu = pkgs.runCommand "applications-menu" { } ''
+    mkdir -p $out/etc/xdg/menus
+    cp ${../../modules/kvantum/applications.menu} $out/etc/xdg/menus/applications.menu
+  '';
 in
 {
   home.username = "jerimy";
@@ -59,6 +74,8 @@ in
     kdePackages.kdegraphics-thumbnailers
     kdePackages.kimageformats
     kdePackages.qtstyleplugin-kvantum
+    kdePackages.kservice
+    applicationsMenu
     webp-pixbuf-loader
     poppler_gi
     papirus-icon-theme
@@ -152,6 +169,21 @@ in
     mis-scripts.hdmi-control
     wlr-randr
   ];
+
+  # Hito 004 follow-up 19 (pedido explícito: "figure out how to trigger
+  # [kbuildsycoca6] declaratively on activation"). La causa raíz real del
+  # bug de Dolphin resultó ser applications.menu faltante (ver
+  # `applicationsMenu` arriba), no la cache en sí — pero de todos modos es
+  # la práctica correcta en cualquier distro KDE: cada vez que cambia el
+  # set de paquetes/.desktop instalados (cualquier `nixos-rebuild switch`
+  # que toque home.packages), la cache de ksycoca debería refrescarse
+  # proactivamente en vez de depender del rebuild perezoso que Dolphin
+  # dispara por su cuenta al notar que está desactualizada. `entryAfter
+  # ["writeBoundary"]` asegura que corra DESPUÉS de que mimeapps.list/
+  # kdeglobals/applications.menu ya estén escritos en su ubicación final.
+  home.activation.rebuildKSycoca = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+    run ${pkgs.kdePackages.kservice}/bin/kbuildsycoca6 --noincremental
+  '';
 
   systemd.user.services.battery-notify = {
     Unit = {
