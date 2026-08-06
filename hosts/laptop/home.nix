@@ -92,6 +92,10 @@ in
     # NO reemplaza a Dolphin (xdg.mimeApps/fileManager de keybinds.lua
     # siguen apuntando a Dolphin) hasta que el plan lo apruebe (§6).
     nixfm
+    # Paso 4: operaciones de archivo (copy/move/mkdir/delete/trash) que
+    # FileOperations.cpp invoca por nombre vía QProcess — tiene que estar
+    # en el PATH real del usuario, igual que hdmi-control/workspace-wallpaper.
+    mis-scripts.nixfm-fileops
 
     # 2. DEPENDENCIAS DE SCRIPTS
     jq

@@ -617,4 +617,93 @@
         ;;
     esac
   '';
+
+  # 7. OPERACIONES DE ARCHIVO PARA nixfm (Hito 005, ver
+  # NIXOS_FILEMANAGER_HITO05_PLAN.md §1.6/§5.1). `kioclient` (el
+  # intermediario originalmente pedido para esto) se investigó y se
+  # confirmó AUSENTE en este nixpkgs/KF6 — ni binario, ni paquete, ni
+  # documentación empaquetada, ver plan §1.6. Esto usa coreutils directo en
+  # su lugar, invocado por FileOperations.cpp (QProcess) — mismo patrón de
+  # "script empaquetado + proceso hijo" que hdmi-control/workspace-wallpaper
+  # ya establecen en este archivo, sólo que llamado desde C++ (QProcess) en
+  # vez de QML (Quickshell.Io.Process), porque nixfm no tiene ese módulo de
+  # QuickShell disponible.
+  nixfm-fileops = pkgs.writeShellScriptBin "nixfm-fileops" ''
+    CP=${pkgs.coreutils}/bin/cp
+    MV=${pkgs.coreutils}/bin/mv
+    RM=${pkgs.coreutils}/bin/rm
+    MKDIR=${pkgs.coreutils}/bin/mkdir
+    DATE=${pkgs.coreutils}/bin/date
+    BASENAME=${pkgs.coreutils}/bin/basename
+    STAT=${pkgs.coreutils}/bin/stat
+    JQ=${pkgs.jq}/bin/jq
+    MODE="$1"; shift || true
+
+    case "$MODE" in
+      copy)
+        "$CP" -r -- "$1" "$2"
+        ;;
+      move)
+        "$MV" -- "$1" "$2"
+        ;;
+      mkdir)
+        "$MKDIR" -p -- "$1"
+        ;;
+      delete)
+        "$RM" -rf -- "$1"
+        ;;
+      trash)
+        # Implementación directa del freedesktop.org Trash spec — ni
+        # kioclient ni ktrash6 sirven para esto (ver plan §1.6: ktrash6
+        # solo vacía/restaura, su propio --help remite a kioclient, que no
+        # existe acá). Spec real: mover el archivo a
+        # $XDG_DATA_HOME/Trash/files/ + escribir un .trashinfo hermano en
+        # Trash/info/ con la ruta original (percent-encoded) y la fecha.
+        SRC="$1"
+        [ -e "$SRC" ] || { echo "no existe: $SRC" >&2; exit 1; }
+
+        DATA_HOME="''${XDG_DATA_HOME:-$HOME/.local/share}"
+        TRASH_DIR="$DATA_HOME/Trash"
+        "$MKDIR" -p "$TRASH_DIR/files" "$TRASH_DIR/info"
+
+        # El spec solo garantiza mover-sin-copiar (rename() atómico) DENTRO
+        # del mismo dispositivo — cruzar dispositivos necesita un
+        # $topdir/.Trash-$uid aparte en la raíz de ESE punto de montaje,
+        # que v1 no implementa (ver plan §5.1/§7). Se corta acá explícito
+        # con un código de salida distinto (2) en vez de silenciosamente
+        # caer a un delete permanente que el usuario no pidió — la UI
+        # decide qué mostrar, no este script.
+        SRC_DEV=$("$STAT" -c %d "$SRC")
+        TRASH_DEV=$("$STAT" -c %d "$TRASH_DIR")
+        if [ "$SRC_DEV" != "$TRASH_DEV" ]; then
+          echo "cross-device, no soportado en v1: $SRC" >&2
+          exit 2
+        fi
+
+        NAME=$("$BASENAME" -- "$SRC")
+        DEST="$TRASH_DIR/files/$NAME"
+        INFO="$TRASH_DIR/info/$NAME.trashinfo"
+        i=1
+        while [ -e "$DEST" ] || [ -e "$INFO" ]; do
+          DEST="$TRASH_DIR/files/$NAME.$i"
+          INFO="$TRASH_DIR/info/$NAME.$i.trashinfo"
+          i=$((i + 1))
+        done
+
+        # Path= del spec: percent-encoded, ruta absoluta original. @uri de
+        # jq hace el percent-encoding real (RFC 3986) sin agregar una
+        # dependencia nueva (jq ya es dependencia de scripts en este
+        # archivo).
+        ENCODED=$(printf '%s' "$SRC" | "$JQ" -sRr @uri)
+        DELETION_DATE=$("$DATE" '+%Y-%m-%dT%H:%M:%S')
+
+        printf '[Trash Info]\nPath=%s\nDeletionDate=%s\n' "$ENCODED" "$DELETION_DATE" > "$INFO"
+        "$MV" -- "$SRC" "$DEST"
+        ;;
+      *)
+        echo "Uso: nixfm-fileops [copy|move|mkdir|delete|trash] ..." >&2
+        exit 1
+        ;;
+    esac
+  '';
 }

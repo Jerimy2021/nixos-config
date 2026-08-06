@@ -4,6 +4,7 @@
 // ver FolderModel.h) y KFilePlacesModel (ya es un QAbstractItemModel de
 // KIO, no hace falta envolverlo, solo registrarlo como tipo QML
 // instanciable).
+#include "FileOperations.h"
 #include "FolderModel.h"
 #include "PaletteWatcher.h"
 
@@ -22,6 +23,7 @@ int main(int argc, char *argv[])
     qmlRegisterType<FolderModel>("org.nixos.filemanager", 1, 0, "FolderModel");
     qmlRegisterType<KFilePlacesModel>("org.nixos.filemanager", 1, 0, "PlacesModel");
     qmlRegisterType<PaletteWatcher>("org.nixos.filemanager", 1, 0, "PaletteWatcher");
+    qmlRegisterType<FileOperations>("org.nixos.filemanager", 1, 0, "FileOperations");
 
     QQmlApplicationEngine engine;
     QObject::connect(
