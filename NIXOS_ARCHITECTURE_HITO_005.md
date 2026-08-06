@@ -14,7 +14,36 @@
 Fase 2 sigue la secuencia numerada acordada explícitamente antes de escribir código (ver plan §8): scaffold desnudo → navegación/Places → tema matugen → operaciones de archivo → animación. Cada paso se verifica en vivo (no solo `nixos-rebuild build`) y se commitea por separado — igual disciplina que Hito 004.
 
 - **Paso 1 (§1, completo):** scaffold Kirigami desnudo compila y lanza. Riesgo más alto del proyecto (primer C++ del flake) aislado y superado — dos bugs reales encontrados y corregidos en el camino, ninguno relacionado con KIO/tema/features (ver §1.2).
-- Pasos 2-5: pendientes, se documentan acá a medida que se completan.
+- **Paso 2 (§2, completo):** listado real de carpeta (KCoreDirLister) + sidebar de Places (KFilePlacesModel) — verificado en vivo con screenshot real contra la sesión Hyprland.
+- Pasos 3-5: pendientes, se documentan acá a medida que se completan.
+
+---
+
+## 2. Paso 2 — Browsing + sidebar de Places (COMPLETO)
+
+### 2.1 Qué se construyó
+
+- `FolderModel` (`src/FolderModel.h`/`.cpp`): `QAbstractListModel` propio respaldado por `KCoreDirLister` (de `KIOCore` — deliberadamente NO `KDirLister`/`KIOWidgets`, que arrastra QtWidgets sin necesidad). Property `folder` (QUrl, navegable reasignándola), roles `name`/`iconName`/`isDir`/`url`/`size`/`mimeType`.
+- `KFilePlacesModel` expuesto directo sin wrapper — ya es un `QAbstractItemModel` de KIO, solo hace falta registrarlo como tipo QML instanciable.
+- Ambos registrados vía `qmlRegisterType` en `main.cpp` bajo el URI propio `org.nixos.filemanager` (KIO no tiene un módulo QML de fábrica, ver plan §1.5 — este es exactamente ese puente delgado).
+- `CMakeLists.txt`: `find_package(KF6 REQUIRED COMPONENTS KIO)`, linkea `KF6::KIOCore` + `KF6::KIOFileWidgets` (esta última es donde vive `KFilePlacesModel`, y sí trae QtWidgets transitivamente — inevitable, no hay forma de usar el Places model real de KIO sin eso).
+- QML: `RowLayout` con sidebar (`ListView` sobre `PlacesModel`) + panel principal (`ListView` sobre `FolderModel`, con un botón "Subir" simple). Navegación real por `PageRow`/breadcrumb animado queda para el paso 5 (animación) — acá el objetivo era solo "los datos son reales".
+
+### 2.2 Bug real encontrado en vivo
+
+`Kirigami.BasicListItem` no existe en esta versión de Kirigami (6.28) — error QML en vivo: `"Kirigami.BasicListItem is not a type"`. Reemplazado por `QQC2.ItemDelegate` (API de `QtQuick.Controls`, estable independientemente de qué delegates exponga esta versión puntual de Kirigami). Nota para el paso 5 (animación): revisar en ese momento qué delegates de alto nivel SÍ expone esta versión de Kirigami antes de asumir cualquier nombre de la documentación general — ya van dos bugs de este tipo (ver también §1.2) en dos pasos, así que no es casualidad, es real que hay que verificar contra la versión instalada, no contra memoria genérica de "cómo es Kirigami".
+
+### 2.3 Verificación en vivo
+
+Screenshot real tomado con `grim` contra la sesión Hyprland real (no una captura simulada) — requirió enfocar el workspace donde Hyprland tiló la ventana antes de poder capturarla (`hl.dsp.focus({workspace="N"})`, la misma sintaxis Lua real de este fork ya usada en `keybinds.lua`, no la sintaxis clásica `hyprctl dispatch workspace N`, que falla en este fork). Contenido confirmado:
+- Listado de carpeta: archivos reales de `$HOME` con nombres reales, e iconos correctos por tipo de archivo (PDF, HTML, imagen, xlsx) — confirma que `KFileItem::iconName()` + la resolución de tema de iconos (Papirus, vía el mismo `QT_QPA_PLATFORMTHEME=qt6ct` que ya configura el resto del sistema) funcionan sin configuración adicional.
+- Sidebar de Places: entradas reales — Home, Downloads, Pictures, Trash, Network, entradas de línea de tiempo ("Modified Today"/"Modified Yesterday"), y un dispositivo montado real ("3.9 GiB Internal Drive...") — confirma que `KFilePlacesModel` está leyendo el estado real del sistema (Solid), no una lista estática.
+- **Gap honesto**: click-to-navigate no se probó con un click sintético (no había `ydotool`/`wlrctl` instalados en esta sesión, y no se agregaron solo para esto). Lo que sí está probado en vivo: el mismo camino de código que un click dispararía (`folderModel.folder = <url>`) ya se ejecuta al arrancar la app (`FolderModel`'s constructor llama `setFolder()` con `$HOME`), y el resultado (listado+título correctos) está confirmado — el binding QML del `onClicked` en sí (una línea, sin lógica propia) es el único tramo no ejercitado literalmente por un click real.
+- `nixos-rebuild build --flake .`: pasó completo.
+
+### 2.4 Estado de Dolphin
+
+Sin cambios — mismo estado que §1.4.
 
 ---
 
