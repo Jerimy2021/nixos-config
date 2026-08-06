@@ -11,7 +11,6 @@
   # ==========================================
   nixpkgs.config = {
   allowUnfree = true;
-  # Permitir dependencias de Steam + Claude Code
   allowUnfreePredicate = pkg: builtins.elem (lib.getName pkg) [
     "steam" "steam-original" "steam-unwrapped" "steam-run"
     "claude-code"
@@ -62,7 +61,7 @@
 
   hardware.graphics = {
     enable = true; 
-    enable32Bit = true; # VITAL para Steam
+    enable32Bit = true;
   };
 
   services.xserver.videoDrivers = [ "nvidia" ]; # Cambiado de intel a nvidia para que la detecte
@@ -101,12 +100,8 @@
   };
   services.blueman.enable = true;
 
-  # Requerido por Quickshell.Services.UPower (cápsula de batería del bar,
-  # Hito 004) — sin esto el servicio de batería nunca queda activatable en
-  # el bus de sesión.
   services.upower.enable = true;
   
-  # Activar el servidor OpenSSH
   services.openssh = {
     enable = true;
     ports = [ 22 ];
@@ -118,7 +113,6 @@
   
   services.gvfs.enable = true;
 
-  # Abrir el puerto 22 en el firewall de NixOS
   networking.firewall.allowedTCPPorts = [ 22 ];
 
   # ==========================================
