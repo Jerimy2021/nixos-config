@@ -3,6 +3,11 @@
 let
   mis-scripts = import ./scripts.nix { inherit pkgs; };
 
+  # Hito 005 — File manager Kirigami+KIO (ver NIXOS_FILEMANAGER_HITO05_PLAN.md).
+  # Fase 2, paso 1: scaffold desnudo, sin funcionalidad de archivos todavía
+  # (Dolphin sigue siendo el file manager activo — ver keybinds.lua).
+  nixfm = import ./filemanager.nix { inherit pkgs; };
+
   # Hito 004 follow-up 19 — causa raíz real del bug "Dolphin no abre
   # archivos al hacer click": ningún paquete de este sistema (no corremos
   # Plasma/GNOME/XFCE) instala /etc/xdg/menus/applications.menu, el
@@ -80,6 +85,13 @@ in
     poppler_gi
     papirus-icon-theme
     imv
+
+    # Hito 005 (ver NIXOS_FILEMANAGER_HITO05_PLAN.md) — file manager
+    # Kirigami+KIO en construcción, instalado en paralelo a Dolphin para
+    # poder probarlo en vivo sin tocar el explorador activo todavía.
+    # NO reemplaza a Dolphin (xdg.mimeApps/fileManager de keybinds.lua
+    # siguen apuntando a Dolphin) hasta que el plan lo apruebe (§6).
+    nixfm
 
     # 2. DEPENDENCIAS DE SCRIPTS
     jq
