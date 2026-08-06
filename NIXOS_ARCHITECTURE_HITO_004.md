@@ -641,12 +641,47 @@ Ver commit `d6c0b86` para el detalle completo (documentado extensamente en el pr
 ### 27.6 Pendientes
 
 - Confirmación real post-`nixos-rebuild switch` de todo lo de esta ronda (bloqueado por falta de sudo en esta sesión).
-- Comportamiento HDMI real (mirror/hdmi-only/laptop-only, audio) contra un TV físico.
+- Comportamiento HDMI real (mirror/hdmi-only/laptop-only, audio) contra un TV físico. **Resuelto en la sesión siguiente, ver §29.**
 
 ---
 
-## 28. Estado de Ratificación
+## 29. Addendum 12 — HDMI con TV real conectado: audio (causa raíz distinta a la asumida) + dos bugs reales de `hl.monitor()` encontrados recién con hardware físico
 
-Snapshot verdadero al cierre del Hito 004 (secciones 1-7) más sus once follow-ups en la misma rama (secciones 8, 10, 12, 14, 16, 18, 20, 21, 23, 25 y 27). Cualquier cambio posterior invalida secciones específicas y debe generar Hito 005. No modificar retroactivamente — versionar hitos.
+Sesión siguiente a la del §27, con el TV Samsung real conectado por HDMI todo el tiempo (`/sys/class/drm/card1-HDMI-A-1/status` = `connected`). Esto permitió probar en vivo, por primera vez, exactamente lo que el §27.6 dejaba pendiente — y encontró tres bugs reales que el testing sin hardware no podía haber revelado.
+
+#### 29.1 Audio HDMI — causa raíz real: perfil de tarjeta ALSA, no matching de sink por nombre
+
+El usuario había diagnosticado esto en paralelo, a mano, con `dmesg`/`pactl`/`pw-dump`, antes de pedir el fix: la tarjeta de audio (`alsa_card.pci-0000_00_1f.3`, "HDA Intel PCH") expone **un solo sink activo a la vez**, determinado por su **perfil ALSA** (`api.acp` de PipeWire), no por qué sinks existan. Confirmado en vivo con `wpctl inspect 47`: `api.acp.auto-port=false` y `api.acp.auto-profile=false` — nada cambia de perfil solo. El perfil `output:hdmi-stereo+input:analog-stereo` existe y está disponible (`available: "yes"` en `pw-dump`, confirmado con el TV real conectado — Dolphin... digo, PipeWire, ya reconocía el puerto como "SAMSUNG" con sus modos reales), pero **no hay ningún sink HDMI hasta que el perfil de la tarjeta cambia primero**. El matching-por-substring de sinks del §27 (`set_default_sink_matching "hdmi"`) nunca podía funcionar — no había nada que matchear, exactamente como predijo el usuario.
+
+**Fix**: `switch_audio_profile()` nuevo en `hdmi-control` (scripts.nix), que corre ANTES de `set_default_sink_matching`. Resuelve el `device_id`+`profile_index` correctos en vivo vía `pw-dump` (ya en el sistema, parte de `pipewire`) + `jq`, sin agregar `pactl` como dependencia nueva (confirmado que no está instalado — se evaluó agregar `pulseaudio` solo por el CLI y se descartó: `wpctl set-profile ID INDEX` ya cubre esto). Prefiere el perfil "duplex" (`+input:analog-stereo`, mantiene el micrófono) sobre la variante solo-output, con esta última como fallback.
+
+**Verificado en vivo, ciclo completo, con el TV real**:
+- `wpctl set-profile 47 3` → apareció sink nuevo "Built-in Audio Digital Stereo (HDMI)", promovido a default automáticamente por PipeWire (al ser el único sink de salida disponible en ese momento).
+- `wpctl set-profile 47 1` (restaurar) → volvió a "Built-in Audio Analog Stereo" como default, sin intervención manual.
+- Repetido varias veces en distintas secuencias de modo (`extend`→`mirror`→`hdmi-only`→`laptop-only`→`extend`) — el perfil y el sink default cambiaron correctamente en cada transición.
+
+**Bug real encontrado y medido con precisión, no solo "reintentar por las dudas"**: probando la secuencia real que un usuario ejecutaría (`hdmi-only` → `laptop-only`, es decir apagar el video de un output y prender el del otro), `find_audio_profile` empezó a fallar CONSISTENTEMENTE (3/3 en pruebas repetidas) al encadenar `laptop-only` → `extend` sin pausa. Causa raíz real, no solo sospechada — medida con `date` entre el `hl.monitor()` que reactiva el video de HDMI-A-1 y el momento en que `pw-dump` vuelve a reportar el perfil `output:hdmi-stereo+...` como `available="yes"`: **~1.5 segundos consistentes (1.52s/1.49s/1.52s en tres corridas)**. La disponibilidad del perfil de audio HDMI en PipeWire/ALSA sigue al estado del LINK DE VIDEO HDMI, no es independiente — el audio digital viaja sobre el mismo cable que el video (ELD vía DRM/KMS), así que el jack-detect de audio espera a que el link de video termine de renegociarse tras un `hl.monitor({disabled=...})`. Esto es distinto de (y bastante más lento que) la hipótesis inicial de "la tarjeta ALSA se reabre al cambiar de perfil". Con esta medición real, `switch_audio_profile()` reintenta la búsqueda hasta 12 veces con 0.3s de espera (3.6s tope, dimensionado con margen real sobre la medición, no a ojo) — costo cero en el caso común (sale del loop apenas encuentra un perfil disponible), robustez real para el caso que sí importa: cambiar de modo justo después de que el output de video contrario estuviera apagado. Reproducida la secuencia exacta que fallaba 3/3 veces después del fix — las 3 corridas resolvieron el sink HDMI correctamente.
+
+#### 29.2 `hl.monitor()` no acepta la sintaxis heredada del keyword clásico `monitor=` para apagar/espejar — dos bugs reales que el testing sin TV del §27 dejó sin poder confirmar
+
+El §27.3/27.4 ya advertía explícitamente: *"ni el posicionamiento mirror/hdmi-only/laptop-only... se pudieron verificar contra hardware real"*. Con el TV conectado, se probaron en vivo por primera vez y **ambos supuestos resultaron incorrectos**:
+
+1. **`mode="disable"` / `position=""`** (sintaxis del keyword clásico `monitor=`, asumida como compatible en el §27) — `hyprctl eval` tira `error applying field 'mode'` y `error applying field 'position'`. El monitor se queda encendido pese al `ok` cosmético de las posiciones ya aplicadas antes del error. La forma real de apagar/prender un output es un campo booleano **separado**, `disabled` — confirmado en vivo: `hl.monitor({output="HDMI-A-1", disabled=true})` sí lo saca de `hyprctl monitors -j` (sigue en `monitors all -j`), y reactivarlo requiere pasar `disabled=false` explícito junto con `mode`/`position` válidos — omitir el campo `disabled` en una llamada posterior NO reactiva el monitor.
+
+2. **`position="mirror,eDP-1"`** (también sintaxis del keyword clásico) — mismo tipo de error, `error applying field 'position'`. El espejo es un campo **separado**, `mirror`, que toma el nombre del output a espejar (o `"none"` para desactivarlo) — confirmado en vivo: con `mirror="eDP-1"`, `hyprctl monitors all -j` muestra `"mirrorOf":"0"` (el id interno de eDP-1) para HDMI-A-1.
+
+**Fix**: `hl_monitor()` ahora acepta dos parámetros nuevos (`$5=disabled`, `$6=mirror`, ambos opcionales con default `false`/`"none"`) y los pasa siempre explícitos en cada llamada — nunca se vuelve a usar `mode="disable"` ni `position="mirror,..."` en ningún caso del script.
+
+**Bug de mayor severidad encontrado durante la propia verificación de este fix** — orden de apagado/encendido entre dos outputs: al reproducir la secuencia real `hdmi-only` → `laptop-only` (la que un usuario ejecutaría al desconectar el TV), la primera versión del fix de `laptop-only` apagaba HDMI-A-1 ANTES de reencender eDP-1. Como `hdmi-only` ya había dejado eDP-1 apagado, esa orden creaba una ventana de **cero monitores habilitados a la vez**. Confirmado en vivo que Hyprland entra en un estado del que `hl.monitor({disabled=false})` **ya no puede sacarlo por sí solo después** — `hyprctl eval` seguía devolviendo `ok` pero ambos outputs se quedaban `"disabled":true` de forma persistente, pantalla del laptop literalmente apagada. Único recovery encontrado: `hyprctl reload` (fuerza releer `monitors.lua` desde cero, que sí reaplica el estado base correcto). Fix real: reordenar `laptop-only` para **siempre encender el output que va a quedar activo ANTES de apagar el que se va** — el mismo orden que `hdmi-only` ya usaba por casualidad (por eso ese caso nunca mostró el bug). Reproducido el escenario exacto de nuevo tras el fix — confirmado que eDP-1 se reactiva correctamente sin necesitar `hyprctl reload`.
+
+**Verificación final, ciclo completo en vivo con el TV real, las cuatro transiciones + vuelta**: `extend` → `mirror` → `hdmi-only` → `laptop-only` → `extend`, revisando `hyprctl monitors all -j` y `wpctl status` después de cada paso, y `journalctl --user` en paralelo buscando "overlap" — **cero apariciones del warning "overlaps with other monitor(s)" en todo el ciclo**, posiciones/mirror/disabled correctos en cada paso, audio siguiendo correctamente al modo activo en cada transición. Estado final devuelto a `laptop-only` (el estado en que empezó la sesión), confirmado limpio.
+
+**Sigue pendiente**: confirmación post-`nixos-rebuild switch` real — esta sesión, igual que la del §27, no tuvo credenciales sudo. Todo lo de arriba se verificó ejecutando una copia extraída del script (misma lógica exacta, rutas de binario resueltas por `PATH` en vez de por store path) contra el Hyprland/PipeWire reales de la sesión — no contra el paquete final desplegado por home-manager.
+
+---
+
+## 30. Estado de Ratificación
+
+Snapshot verdadero al cierre del Hito 004 (secciones 1-7) más sus doce follow-ups en la misma rama (secciones 8, 10, 12, 14, 16, 18, 20, 21, 23, 25, 27 y 29). Cualquier cambio posterior invalida secciones específicas y debe generar Hito 005. No modificar retroactivamente — versionar hitos.
 
 **FIN DEL DOCUMENTO — Hito 004**
