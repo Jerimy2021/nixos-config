@@ -363,16 +363,54 @@
   # volumen; VolumeMixer.qml en cambio usa la API nativa
   # Quickshell.Services.Pipewire, no wpctl — corrección honesta sobre lo
   # que el pedido asumía, pero wpctl sigue siendo el patrón correcto para
-  # ESTE script porque es shell, no QML). Cada modo con salida activa en
-  # el TV busca un sink cuyo nombre contenga "hdmi" (case-insensitive) en
-  # `wpctl status` y lo hace default; laptop-only busca uno que contenga
-  # "built-in". Verificado en vivo que el parseo awk y `wpctl set-default`
-  # funcionan correctamente contra el audio real de esta sesión (sink
-  # "Built-in Audio Analog Stereo", id 57) — el matching específico de un
-  # sink HDMI real no se pudo probar sin un TV conectado.
+  # ESTE script porque es shell, no QML). Versión ORIGINAL de este bloque
+  # (primera pasada del follow-up 20) solo buscaba un sink por nombre
+  # ("hdmi"/"built-in") en `wpctl status` — funcionaba contra el audio de
+  # laptop pero NUNCA podía encontrar un sink HDMI real, ver el fix de
+  # abajo (follow-up 21) para la causa raíz real.
+  #
+  # Hito 004 follow-up 21 — causa raíz real del audio HDMI encontrada en
+  # vivo junto al usuario (dmesg/proc/pactl/pw-dump), diagnóstico completo
+  # documentado en NIXOS_ARCHITECTURE_HITO_004.md §27+1: la tarjeta de
+  # audio (alsa_card.pci-0000_00_1f.3, "HDA Intel PCH") expone UN SOLO
+  # sink activo a la vez, determinado por su PERFIL ALSA (vía PipeWire's
+  # ALSA Card Profile / "acp"), no por qué sinks existan. Con
+  # api.acp.auto-port=false Y api.acp.auto-profile=false (confirmado en
+  # vivo con `wpctl inspect 47`), nada cambia de perfil solo — el sink
+  # HDMI NO EXISTE hasta que el perfil de la tarjeta cambia primero. Por
+  # eso el matching-por-nombre original nunca podía funcionar: no había
+  # nada que matchear.
+  #
+  # Fix: antes de buscar/setear un sink, cambiar el perfil de la tarjeta.
+  # `pactl` no está instalado en este sistema (confirmado: "command not
+  # found") y agregarlo solo para esto habría sido una dependencia nueva
+  # innecesaria — en cambio se usa `wpctl set-profile ID INDEX`, que ya
+  # cubre exactamente esto sin agregar ningún paquete nuevo (wpctl ya es
+  # una dependencia de este script). El INDEX no se hardcodea: varía según
+  # qué construya PipeWire en cada boot/hardware, así que se resuelve en
+  # vivo vía `pw-dump` (parte de pipewire, ya en el sistema) + `jq`,
+  # buscando el primer Audio/Device cuyo EnumProfile tenga el perfil
+  # deseado con available="yes". Se prefiere la variante "+input:..."
+  # (duplex, mantiene el micrófono funcionando) sobre la variante solo-
+  # output, con esta última como fallback si la duplex no estuviera
+  # disponible en algún hardware distinto.
+  #
+  # Verificado en vivo, con el TV real conectado en esta sesión
+  # (/sys/class/drm/card1-HDMI-A-1/status = "connected"): `wpctl
+  # set-profile 47 3` (perfil "output:hdmi-stereo+input:analog-stereo")
+  # hizo aparecer un sink "Built-in Audio Digital Stereo (HDMI)" nuevo, que
+  # PipeWire promovió a default automáticamente (al ser el único sink de
+  # salida ahora disponible) — `set_default_sink_matching "hdmi"` de abajo
+  # sigue llamándose de todos modos como resguardo explícito por si hay
+  # más de una tarjeta/sink en juego. Restaurar a `wpctl set-profile 47 1`
+  # (perfil duplex analógico original) devolvió el sink "Built-in Audio
+  # Analog Stereo" a default sin intervención manual — ciclo completo
+  # confirmado en ambas direcciones antes de commitear.
   hdmi-control = pkgs.writeShellScriptBin "hdmi-control" ''
     HYPRCTL=${pkgs.hyprland}/bin/hyprctl
     WPCTL=${pkgs.wireplumber}/bin/wpctl
+    PWDUMP=${pkgs.pipewire}/bin/pw-dump
+    JQ=${pkgs.jq}/bin/jq
     MODE="''${1:-status}"
 
     HDMI_NAME=""
@@ -385,8 +423,38 @@
     done
 
     hl_monitor() {
-      # $1=output $2=mode $3=position $4=scale
-      "$HYPRCTL" eval "hl.monitor({output=\"$1\", mode=\"$2\", position=\"$3\", scale=$4})"
+      # $1=output $2=mode $3=position $4=scale $5=disabled ("true"/"false",
+      # opcional, default "false") $6=mirror (nombre de output a espejar,
+      # opcional, default "none")
+      #
+      # Hito 004 follow-up 21 — dos bugs reales encontrados en vivo con el
+      # TV conectado, ninguno de los dos era la sintaxis heredada del
+      # keyword clásico `monitor=`:
+      #
+      # 1) mode="disable"/position="" (lo que se asumía en el follow-up 20
+      #    sin poder probarlo) NO sirve. Confirmado con `hyprctl eval`
+      #    directo: tira "error applying field 'mode'" y "... 'position'",
+      #    y el monitor se queda encendido pese al "ok" cosmético de
+      #    llamadas previas. La forma real de apagar/prender un output es
+      #    el campo booleano `disabled` — confirmado en vivo:
+      #    `hl.monitor({output="HDMI-A-1", disabled=true})` sí lo saca de
+      #    `hyprctl monitors -j` (solo sigue apareciendo en `monitors all
+      #    -j`), y re-encenderlo requiere pasar `disabled=false` explícito
+      #    junto con mode/position válidos — pasar solo mode/position sin
+      #    el campo disabled NO lo reactiva (probado en vivo).
+      #
+      # 2) position="mirror,eDP-1" (sintaxis clásica del keyword
+      #    `monitor=`) tampoco sirve acá — mismo error, "error applying
+      #    field 'position'". El espejo es un campo SEPARADO, `mirror`,
+      #    que toma el nombre del output a espejar (o "none" para
+      #    desactivar el espejo) — confirmado en vivo: con
+      #    `mirror="eDP-1"` `hyprctl monitors all -j` muestra
+      #    `"mirrorOf":"0"` (el id interno de eDP-1) en vez de sus propias
+      #    coordenadas/tamaño, y `mirror="none"` lo devuelve a extend
+      #    normal sin tocar nada más.
+      disabled="''${5:-false}"
+      mirror="''${6:-none}"
+      "$HYPRCTL" eval "hl.monitor({output=\"$1\", mode=\"$2\", position=\"$3\", scale=$4, disabled=$disabled, mirror=\"$mirror\"})"
     }
 
     set_default_sink_matching() {
@@ -394,14 +462,97 @@
       # dentro de la sección "Sinks:" de `wpctl status` y lo hace default.
       # No falla si no encuentra nada — el audio simplemente se queda en el
       # sink que ya estaba activo.
-      id=$("$WPCTL" status 2>/dev/null | awk -v pat="$1" '
-        /Sinks:/{f=1; next}
-        /Sources:/{f=0}
-        f && tolower($0) ~ tolower(pat) {
-          for (i=1;i<=NF;i++) if ($i ~ /^[0-9]+\.$/) { print substr($i,1,length($i)-1); exit }
-        }
-      ')
+      #
+      # Reintentos: encontrado en vivo con el TV real (reproducido dos
+      # veces en la misma sesión) que, encadenando un cambio de modo justo
+      # después de otro (p.ej. laptop-only -> extend con menos de ~1s de
+      # diferencia), el sink nuevo que switch_audio_profile() debería
+      # haber creado a veces todavía no aparece en el PRIMER `wpctl
+      # status` posterior al `wpctl set-profile` — aun cuando la consulta
+      # de disponibilidad de perfil en pw-dump ya decía "yes". Un segundo
+      # intento inmediato (llamado a mano) sí lo encontraba. Mismo patrón
+      # de reintento corto que switch_audio_profile(), por la misma razón:
+      # más robusto que asumir "no hay match" cuando en realidad es
+      # "todavía no asentó".
+      id=""
+      for _ in 1 2 3 4; do
+        id=$("$WPCTL" status 2>/dev/null | awk -v pat="$1" '
+          /Sinks:/{f=1; next}
+          /Sources:/{f=0}
+          f && tolower($0) ~ tolower(pat) {
+            for (i=1;i<=NF;i++) if ($i ~ /^[0-9]+\.$/) { print substr($i,1,length($i)-1); exit }
+          }
+        ')
+        [ -n "$id" ] && break
+        sleep 0.3
+      done
       [ -n "$id" ] && "$WPCTL" set-default "$id"
+    }
+
+    find_audio_profile() {
+      # $1=nombre de perfil preferido (duplex, con input) $2=fallback (solo output)
+      # Busca en TODOS los Audio/Device de pw-dump (no asume que es la
+      # tarjeta 47 — otro hardware podría enumerar distinto) el primero
+      # cuyo EnumProfile tenga $1 o $2 con available="yes", prefiriendo $1.
+      # Devuelve "<device_id> <profile_index>" o nada si no encontró nada.
+      "$PWDUMP" 2>/dev/null | "$JQ" -r --arg pref "$1" --arg fallback "$2" '
+        [ .[] | select(.info.props["media.class"]? == "Audio/Device")
+          | . as $d
+          | ($d.info.params.EnumProfile // [])[]
+          | select(.available == "yes")
+          | select(.name == $pref or .name == $fallback)
+          | {device: $d.id, index: .index, name: .name}
+        ]
+        | sort_by(.name != $pref)
+        | .[0]
+        | if . then "\(.device) \(.index)" else empty end
+      '
+    }
+
+    switch_audio_profile() {
+      # $1 = "hdmi" | "laptop" — cambia el PERFIL de la tarjeta ALSA antes
+      # de que exista ningún sink que buscar (ver comentario largo arriba,
+      # follow-up 21). No falla si no encuentra un perfil que matchee — el
+      # audio simplemente se queda como estaba, igual que
+      # set_default_sink_matching.
+      if [ "$1" = "hdmi" ]; then
+        pref="output:hdmi-stereo+input:analog-stereo"; fallback="output:hdmi-stereo"
+      else
+        pref="output:analog-stereo+input:analog-stereo"; fallback="output:analog-stereo"
+      fi
+      # Reintentos — causa raíz real encontrada en vivo (reproducida 3/3
+      # veces, medida con precisión): la disponibilidad del perfil de
+      # audio HDMI en PipeWire/ALSA (api.acp) sigue al ESTADO DEL LINK DE
+      # VIDEO HDMI, no es independiente. Confirmado midiendo con `date`:
+      # tras re-habilitar el output de video HDMI-A-1 con `hl.monitor()`,
+      # `pw-dump` siguió reportando "output:hdmi-stereo+..." como
+      # available="no" durante ~1.5s consistentes (1.52s/1.49s/1.52s en
+      # tres corridas) antes de pasar a "yes" — el audio digital viaja
+      # sobre el mismo cable/enlace que el video (ELD vía DRM/KMS), así
+      # que el jack-detect de audio tiene que esperar a que el link de
+      # video termine de re-negociarse. Esto es DISTINTO de (y más lento
+      # que) la sospecha original de "la tarjeta ALSA se reabre al cambiar
+      # de perfil" — importa sobre todo en `extend`/`mirror`/`hdmi-only`
+      # cuando el output de video HDMI-A-1 venía de estar apagado (p.ej.
+      # viniendo de `laptop-only`). Presupuesto de reintento
+      # dimensionado con margen real sobre la medición de arriba, no a
+      # ojo: 12 intentos x 0.3s = 3.6s tope (solo se paga completo si de
+      # verdad no hay perfil disponible — sale del loop apenas encuentra
+      # uno, así que el caso común con el link ya estable no se retrasa).
+      result=""
+      for _ in $(seq 1 12); do
+        result=$(find_audio_profile "$pref" "$fallback")
+        [ -n "$result" ] && break
+        sleep 0.3
+      done
+      [ -z "$result" ] && return 0
+      "$WPCTL" set-profile ''${result% *} ''${result#* }
+      # Da tiempo a que WirePlumber cree/promueva el sink nuevo tras el
+      # cambio de perfil antes de que set_default_sink_matching intente
+      # encontrarlo — confirmado en vivo que sin esta espera corta el
+      # primer `wpctl status` inmediatamente después puede no listar
+      # todavía el sink nuevo.
+      sleep 0.5
     }
 
     case "$MODE" in
@@ -416,23 +567,48 @@
         [ -z "$HDMI_NAME" ] && exit 0
         hl_monitor "eDP-1" "1366x768@60" "0x0" 1
         hl_monitor "$HDMI_NAME" "preferred" "auto" 1
+        switch_audio_profile "hdmi"
         set_default_sink_matching "hdmi"
         ;;
       mirror)
         [ -z "$HDMI_NAME" ] && exit 0
         hl_monitor "eDP-1" "1366x768@60" "0x0" 1
-        hl_monitor "$HDMI_NAME" "preferred" "mirror,eDP-1" 1
+        # $6="eDP-1" -> campo `mirror`, no position="mirror,eDP-1" (ver
+        # comentario en hl_monitor arriba, esa sintaxis clásica también
+        # falla acá).
+        hl_monitor "$HDMI_NAME" "preferred" "0x0" 1 false "eDP-1"
+        switch_audio_profile "hdmi"
         set_default_sink_matching "hdmi"
         ;;
       hdmi-only)
         [ -z "$HDMI_NAME" ] && exit 0
         hl_monitor "$HDMI_NAME" "preferred" "0x0" 1
-        hl_monitor "eDP-1" "disable" "" 1
+        # eDP-1 apagado: hl.monitor NO acepta mode="disable"/position=""
+        # (ver comentario en hl_monitor arriba) — hay que pasar un
+        # mode/position válidos igual (los últimos conocidos-buenos) junto
+        # con disabled=true, que es el campo que realmente apaga el output.
+        hl_monitor "eDP-1" "1366x768@60" "0x0" 1 true
+        switch_audio_profile "hdmi"
         set_default_sink_matching "hdmi"
         ;;
       laptop-only)
-        [ -n "$HDMI_NAME" ] && hl_monitor "$HDMI_NAME" "disable" "" 1
+        # ORDEN IMPORTA — bug real encontrado en vivo: si se apaga HDMI
+        # ANTES de prender eDP-1, y eDP-1 ya venía apagado (p.ej. viniendo
+        # de hdmi-only), hay una ventana donde CERO monitores están
+        # habilitados a la vez. Confirmado en vivo que Hyprland entra en
+        # un estado del que `hl.monitor({disabled=false})` YA NO puede
+        # sacarlo por sí solo después — hyprctl seguía devolviendo "ok"
+        # pero el monitor se quedaba "disabled":true para siempre, ambos
+        # outputs a la vez, pantalla del laptop literalmente apagada.
+        # Recuperado en esa prueba solo con `hyprctl reload` (fuerza
+        # releer monitors.lua desde cero). Fix: SIEMPRE prender el output
+        # que va a quedar activo ANTES de apagar el que se va — mismo
+        # orden que ya usaba hdmi-only (por eso ese caso nunca mostró el
+        # bug al probarlo). Nunca debe haber un instante con cero
+        # monitores habilitados.
         hl_monitor "eDP-1" "1366x768@60" "0x0" 1
+        [ -n "$HDMI_NAME" ] && hl_monitor "$HDMI_NAME" "preferred" "auto" 1 true
+        switch_audio_profile "laptop"
         set_default_sink_matching "built-in"
         ;;
       *)
