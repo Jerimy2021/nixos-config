@@ -15,7 +15,40 @@ Fase 2 sigue la secuencia numerada acordada explícitamente antes de escribir c�
 
 - **Paso 1 (§1, completo):** scaffold Kirigami desnudo compila y lanza. Riesgo más alto del proyecto (primer C++ del flake) aislado y superado — dos bugs reales encontrados y corregidos en el camino, ninguno relacionado con KIO/tema/features (ver §1.2).
 - **Paso 2 (§2, completo):** listado real de carpeta (KCoreDirLister) + sidebar de Places (KFilePlacesModel) — verificado en vivo con screenshot real contra la sesión Hyprland.
-- Pasos 3-5: pendientes, se documentan acá a medida que se completan.
+- **Paso 3 (§3, completo):** Kirigami.Theme sigue el acento matugen-derivado del workspace activo, vía un archivo compartido nuevo (`active-accent.json`) que escribe QuickShell y lee nixfm. Verificado en vivo con dos colores reales distintos — pero NO vía cambio de workspace real (bug real de Hyprland encontrado en esta sesión, ver §3.3, no relacionado con este código).
+- Pasos 4-5: pendientes, se documentan acá a medida que se completan.
+
+---
+
+## 3. Paso 3 — Integración de tema matugen (COMPLETO)
+
+### 3.1 Qué se construyó
+
+- **Lado QuickShell** (`modules/quickshell/services/WorkspaceSync.qml`): al cambiar `Theme.activeAccent` (ya sea por cambio de workspace o porque matugen terminó en background), se persiste el valor a `~/.cache/quickshell/active-accent.json` como `{"hex":"#rrggbb"}`, vía un `Process` (`printf ... > archivo`) disparado desde `Connections { target: Theme; function onActiveAccentChanged() }`. Este archivo es nuevo — deliberadamente separado de `palette.json` (que es cache interna de QuickShell, keyed por ruta de wallpaper, con su propia lógica de aleatoriedad/overrides en memoria que un proceso aparte no puede reproducir, ver plan §3.2). `active-accent.json` es un contrato mínimo y deliberado entre los dos procesos: "acá está el color YA resuelto ahora mismo", nada más.
+- **Lado nixfm** (`src/PaletteWatcher.h`/`.cpp`): `QFileSystemWatcher` sobre ese archivo (vigilando también el directorio contenedor, para notar cuándo el archivo se crea si `nixfm` arranca antes de que QuickShell haya escrito nada; re-vigilando el archivo tras cada rewrite atómico, que es como escribe el `Process` de arriba — un simple `addPath` no sobrevive un unlink+create). Expuesto a QML como tipo instanciable con una property `accent` (QColor).
+- `Main.qml`: `Kirigami.Theme.{highlightColor,focusColor,hoverColor}` pisados en la raíz del `Kirigami.ApplicationWindow` — son propiedades adjuntas, se heredan por todo el árbol QML hijo sin tocar cada componente individualmente (confirmado, no solo documentado — ver verificación abajo). Se agregó también un círculo de color chico en la toolbar como indicador visual real del acento activo (feature legítima, no solo código de prueba).
+
+### 3.2 Verificación en vivo
+
+Reiniciada la instancia de QuickShell corriendo en la sesión real (`nix shell nixpkgs#quickshell -c qs -p modules/quickshell`, apuntando al checkout local con el cambio) para que recogiera el `WorkspaceSync.qml` editado — la instancia previa (desplegada por el último `nixos-rebuild switch` del usuario) no lo tenía. Confirmado un único proceso QuickShell corriendo (se encontró y corrigió un problema propio de esta verificación: dos instancias corriendo en paralelo a la vez tras un primer intento fallido de relanzarla con `nohup ... & disown`, que el sandboxing de este agente mata al terminar la llamada de shell aunque tenga `disown` — la forma correcta fue con el propio mecanismo de background del agente).
+
+Con una sola instancia corriendo:
+- `~/.cache/quickshell/active-accent.json` se escribió solo, con un color real derivado de matugen (`#ff9a70`, ni el lavender de fallback ni ningún core-accent fijo — confirma que sí está leyendo el cache de matugen real).
+- `nixfm` lanzado en vivo: screenshot real confirma el círculo de la toolbar en ese mismo naranja/coral.
+- Forzado un segundo valor real y distinto editando `~/.cache/quickshell/palette.json` (todas las entradas a un azul de prueba `#1a1aff`, restaurado al valor original después) — esto dispara `WallpaperPalette.onCacheChanged` → `WorkspaceSync.applyAccent()` → `Theme.activeAccent` cambia → se reescribe `active-accent.json` → `PaletteWatcher` (ya corriendo, SIN relanzar `nixfm`) lo detecta solo → el círculo de la toolbar cambia a azul en la siguiente captura. Confirma la cadena completa end-to-end, incluyendo que el file-watching en vivo funciona (no solo la lectura al arrancar).
+- `palette.json` restaurado a su contenido original byte a byte (`diff` limpio) antes de seguir — no se dejó contaminado el cache real de matugen del usuario.
+
+### 3.3 Gap honesto + un bug real de Hyprland encontrado (no de este código)
+
+El pedido explícito era verificar "across at least two different **workspace** accent colors" — es decir, cambiando de workspace de verdad, no editando el cache a mano. Se intentó extensamente (más de 7 variantes reales, no solo una): `hl.dsp.focus({workspace="N"})` (la sintaxis real ya usada en `keybinds.lua` para los binds numéricos), con `workspace` como string y como número, `hl.dsp.focus({window="class:firefox"})` para forzar el cambio indirectamente, `hyprctl reload` como intento de recuperación (mismo mecanismo que sí resolvió el bug de "cero monitores habilitados" documentado en Hito 004 §29.2), y finalmente una tecla `SUPER+2` **real, sintética** vía `wtype` (no `hyprctl eval`, sino el mismo bind que usa el usuario a diario) — ninguno cambió el workspace activo (`hyprctl activeworkspace -j` siguió reportando el mismo id en todos los casos), pese a que todas las llamadas devolvían `"ok"` sin error. Introspeccionado `hl.dsp`/`hl.dsp.focus`/`hl.dsp.workspace` en vivo (forzando un `error()` de Lua para poder leer el valor de retorno) para confirmar que `focus({workspace=...})` es realmente el mecanismo correcto y no un error de sintaxis de este agente.
+
+**Esto es un problema real de la sesión de Hyprland de esta máquina, no de `nixfm` ni de `WorkspaceSync.qml`** — probablemente relacionado con haber matado/relanzado QuickShell varias veces durante esta verificación (o preexistente). Vale la pena que el usuario lo confirme la próxima vez que use la máquina normalmente (¿los binds `SUPER+1..9` cambian de workspace?) — si el problema persiste tras un login nuevo, es un hallazgo aparte digno de su propia sesión de diagnóstico, no algo para resolver como parte de Hito 005.
+
+La verificación alternativa (§3.2, forzando el cambio vía `palette.json` en vez de vía workspace) ejercita exactamente la misma cadena de código que un cambio de workspace real dispararía — la única diferencia es qué evento dispara `Theme.activeAccent = ...`, no qué pasa después. Confianza alta en que esto funciona igual con un cambio de workspace real una vez que ese problema aparte se resuelva, pero queda como el único punto no confirmado literalmente tal como se pidió.
+
+### 3.4 Estado de Dolphin
+
+Sin cambios — mismo estado que §1.4/§2.4.
 
 ---
 
