@@ -1,32 +1,60 @@
-; Hito 004 follow-up 18 (migración Thunar -> Dolphin+Kvantum). Encontrado en
-; vivo: Kvantum solo no alcanza para que Dolphin calce exacto con la
-; paleta de Theme.qml — las apps KDE (Dolphin incluida) pintan su chrome
-; nativo (sidebar, selección, header de columnas) vía KColorScheme
-; (kdeglobals), una capa PARALELA al QPalette que expone el estilo Qt
-; (Kvantum). Confirmado con captura real: con Kvantum solo, el resultado
-; era gris oscuro genérico, no nuestra paleta — recién con este archivo
-; además el sidebar/selección/etc. usan los colores reales de Theme.qml.
-; Formato real de kdeglobals: RGB decimal separado por comas, no hex.
-;
-; #0A0A12 = 10,10,18   (Theme.surface)
-; #0D0D16 = 13,13,22   (Theme.surfaceElevated)
-; #15151F = 21,21,31   (botones, un paso más claro)
-; #F1E6FF = 241,230,255 (Theme.textPrimary)
-; #B8AECF = 184,174,207 (Theme.textMuted)
-; #CBA6F7 = 203,166,247 (Theme.lavender / Theme.activeAccent por defecto)
-; #89B4FA = 137,180,250 (Theme.blue)
-;
-; Pendiente honesto (no resuelto esta ronda): verificado en vivo que la
-; vista "Detalles" (lista, no íconos) de Dolphin no siempre respeta este
-; fondo oscuro — se vio blanca en una prueba real pese a que la vista de
-; íconos sí calcaba bien. No se investigó más a fondo qué sección exacta
-; de kdeglobals (o si es directamente el propio Kvantum) controla ese caso
-; particular — candidato real para una ronda futura si molesta en uso real.
+# Hito 004 follow-up 18 (migración Thunar -> Dolphin+Kvantum). Encontrado en
+# vivo: Kvantum solo no alcanza para que Dolphin calce exacto con la
+# paleta de Theme.qml — las apps KDE (Dolphin incluida) pintan su chrome
+# nativo (sidebar, selección, header de columnas) vía KColorScheme
+# (kdeglobals), una capa PARALELA al QPalette que expone el estilo Qt
+# (Kvantum). Confirmado con captura real: con Kvantum solo, el resultado
+# era gris oscuro genérico, no nuestra paleta — recién con este archivo
+# además el sidebar/selección/etc. usan los colores reales de Theme.qml.
+# Formato real de kdeglobals: RGB decimal separado por comas, no hex.
+#
+# #0A0A12 = 10,10,18   (Theme.surface)
+# #0D0D16 = 13,13,22   (Theme.surfaceElevated)
+# #15151F = 21,21,31   (botones, un paso más claro)
+# #F1E6FF = 241,230,255 (Theme.textPrimary)
+# #B8AECF = 184,174,207 (Theme.textMuted)
+# #CBA6F7 = 203,166,247 (Theme.lavender / Theme.activeAccent por defecto)
+# #89B4FA = 137,180,250 (Theme.blue)
+#
+# Hito 004 follow-up 19: este archivo entero era inválido — usaba ";" como
+# prefijo de comentario (convención GTK/INI clásica) en vez de "#", que es
+# lo que KConfig realmente acepta. Confirmado en vivo vía journalctl:
+# kbuildsycoca6 tiraba "Invalid entry (missing '=')" en CADA una de estas
+# líneas (1-24). No se sabe con certeza cuánto de esto contribuía al bug
+# más grave de esta ronda (el picker "Abrir con" vacío, ver
+# NIXOS_ARCHITECTURE_HITO_004.md §27) — la causa raíz de ESE bug resultó
+# ser otra (applications.menu faltante) — pero un kdeglobals que falla en
+# parsear 24 líneas seguidas es un bug real de todos modos, corregido acá
+# independientemente.
+#
+# Hito 004 follow-up 20 — sidebar (Places/Devices/Recent) lavado/bajo
+# contraste, reportado por el usuario. Causa real encontrada revisando la
+# arquitectura de KColorScheme: los sidebars/paneles empotrados en apps
+# KDE (el "Places Panel" de Dolphin es exactamente esto) no usan
+# [Colors:Window] — usan un QUINTO grupo de color, [Colors:Complementary],
+# que esta versión del archivo nunca definía. Sin esa sección, Dolphin cae
+# a lo que sea el complementary por defecto de su estilo base (gris Breeze
+# genérico) — coincide exacto con el síntoma reportado ("lee como
+# Breeze-dark default"). Agregado acá con un tinte propio (más azulado que
+# Window/View a propósito) para que el sidebar se sienta como un panel
+# propio, no un gris plano.
+#
+# Contraste de íconos: Papirus-Dark ya está configurado como icon theme de
+# GTK (home.nix, gtk.iconTheme) pero eso NO propaga a apps Qt/KDE — Dolphin
+# resuelve tema de íconos vía [Icons] Theme= acá (agregado abajo) y/o
+# qt6ct.conf (ver modules/kvantum/qt6ct.conf, mismo problema: no existía
+# ningún archivo de config para qt6ct pese a estar seteado como
+# QT_QPA_PLATFORMTHEME, confirmado en vivo con `ls ~/.config/qt6ct/` -> "No
+# such file or directory" — sin config, Qt cae a sus defaults compilados,
+# no a lo que declaramos en ningún lado).
 
 [General]
 ColorScheme=NixCyber
 Name=NixCyber
 widgetStyle=kvantum
+
+[Icons]
+Theme=Papirus-Dark
 
 [Colors:Window]
 BackgroundNormal=10,10,18
@@ -56,6 +84,20 @@ ForegroundNormal=241,230,255
 [Colors:Header]
 BackgroundNormal=13,13,22
 ForegroundNormal=241,230,255
+
+# Grupo real que usa el sidebar/Places Panel de Dolphin — ver comentario
+# del follow-up 20 arriba. Tinte deliberadamente distinto de Window/View
+# (más hacia el lavanda) para que el panel se lea como una superficie
+# propia, no una extensión plana del fondo.
+[Colors:Complementary]
+BackgroundNormal=14,12,24
+BackgroundAlternate=19,16,30
+ForegroundNormal=241,230,255
+ForegroundInactive=184,174,207
+ForegroundLink=137,180,250
+ForegroundVisited=203,166,247
+DecorationFocus=203,166,247
+DecorationHover=137,180,250
 
 [WM]
 activeBackground=10,10,18

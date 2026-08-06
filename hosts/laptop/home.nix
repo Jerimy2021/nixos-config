@@ -230,6 +230,12 @@ in
     # se probó y qué quedó pendiente (la vista de detalles/lista no calca
     # el fondo oscuro en todos los casos, gap real no resuelto esta ronda).
     "kdeglobals".source = ../../modules/kvantum/kdeglobals;
+    # Hito 004 follow-up 20: no existía NINGÚN qt6ct.conf pese a que
+    # QT_QPA_PLATFORMTHEME=qt6ct está seteado (confirmado en vivo con
+    # `ls ~/.config/qt6ct/` -> "No such file or directory") — sin config,
+    # qt6ct no tiene nada declarado y Qt cae a sus defaults compilados en
+    # vez de a lo que decimos acá. Ver el archivo para más detalle.
+    "qt6ct/qt6ct.conf".source = ../../modules/kvantum/qt6ct.conf;
   };
   
   dconf.settings = {
