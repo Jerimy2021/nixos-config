@@ -1,8 +1,8 @@
 # NixOS + Hyprland — Mapa de Arquitectura del Sistema
 ## Jerimy's Laptop | Hito 005 — File Manager Kirigami+KIO (reemplazo de Dolphin)
 
-**Fecha del hito:** 2026-08-06 (Fase 1, investigación) — Fase 2 (implementación) en curso.
-**Estado:** Fase 2 en progreso, verificada en vivo paso a paso. Dolphin sigue siendo el file manager activo (`keybinds.lua`/`xdg.mimeApps` sin tocar) — `nixfm` se instala en paralelo para probar sin reemplazar nada, misma disciplina que QuickShell en Hito 004.
+**Fecha del hito:** 2026-08-06 (Fase 1, investigación, y Fase 2, implementación — misma fecha, sesión larga).
+**Estado:** **Fase 2 completa** (los 5 pasos acordados, cada uno verificado en vivo y commiteado por separado). Dolphin sigue siendo el file manager activo (`keybinds.lua`/`xdg.mimeApps` sin tocar) — `nixfm` se instala en paralelo para probar sin reemplazar nada, misma disciplina que QuickShell en Hito 004. Falta aprobación explícita del usuario antes de ejecutar cualquier paso del plan de migración (plan §6).
 **Precede a:** `NIXOS_ARCHITECTURE_HITO_004.md` (2026-08-01 en adelante) y `NIXOS_FILEMANAGER_HITO05_PLAN.md` (2026-08-06, Fase 1 — plan de investigación aprobado antes de tocar código). Este documento asume ambos.
 **Por qué un documento nuevo y no un addendum a Hito 004:** Hito 004 documenta QuickShell (QML/Qt, sin C++ compilado, sin KIO). Hito 005 es un subsistema técnicamente distinto — primer C++ compilado en este flake, primera dependencia de KDE Frameworks (KIO) más allá de Dolphin como app ya empaquetada — mezclarlo en el documento de QuickShell habría hecho más difícil encontrar cualquiera de los dos temas después. Mismo criterio que separó Hito 004 de Hito 001-003.
 **Uso:** Adjuntar junto a `NIXOS_FILEMANAGER_HITO05_PLAN.md` y `NIXOS_ARCHITECTURE_HITO_004.md` al inicio de cualquier sesión futura que toque `modules/filemanager/` o `hosts/laptop/filemanager.nix`.
@@ -17,7 +17,40 @@ Fase 2 sigue la secuencia numerada acordada explícitamente antes de escribir c�
 - **Paso 2 (§2, completo):** listado real de carpeta (KCoreDirLister) + sidebar de Places (KFilePlacesModel) — verificado en vivo con screenshot real contra la sesión Hyprland.
 - **Paso 3 (§3, completo):** Kirigami.Theme sigue el acento matugen-derivado del workspace activo, vía un archivo compartido nuevo (`active-accent.json`) que escribe QuickShell y lee nixfm. Verificado en vivo con dos colores reales distintos — pero NO vía cambio de workspace real (bug real de Hyprland encontrado en esta sesión, ver §3.3, no relacionado con este código).
 - **Paso 4 (§4, completo):** copiar/mover/renombrar/crear carpeta/eliminar/papelera vía coreutils + una implementación propia del freedesktop.org Trash spec (kioclient confirmado ausente, ver plan §1.6) — verificado en vivo contra archivos reales, incluyendo el bridge C++ completo con un self-test temporal.
-- Paso 5: pendiente, se documenta acá al completarse.
+- **Paso 5 (§5, completo):** animación/glow (hover-scale, glow de proximidad, flash de apertura) + apertura real de archivos (KIO::OpenUrlJob). `Kirigami.PageRow` para navegación (lo que el plan recomendaba) se intentó, se encontró un bug real en vivo, y se revirtió a la salida que el propio plan ya autorizaba — ver §5.3. **Fase 2 completa.**
+
+---
+
+## 5. Paso 5 — Animación/glow + apertura de archivos (COMPLETO)
+
+### 5.1 Qué se construyó
+
+- Constantes locales `durFast`/`durMed`/`durSlow` (140/240/420) y `easeOutCubic`/`easeOutBack`/`easeInOutQuad`, redeclaradas en `Main.qml` con los mismos valores que `Theme.qml` de QuickShell — no los defaults de fábrica de `Kirigami.Units` — mismo criterio explícito del plan §4: la continuidad visual 1:1 con el resto del sistema es el requisito de este hito, por sobre "sentirse KDE stock". No es posible importar `Theme.qml` directamente (proceso separado, mismo motivo que forzó `PaletteWatcher` en el paso 3).
+- **Hover-scale** en cada delegate (Places y listado de carpeta): `scale` atado a `HoverHandler.hovered` con `Behavior on scale` (`durFast`/`easeOutBack`) — mismo patrón que `Bar.qml`/`Capsule.qml` de QuickShell.
+- **Glow de proximidad**: `Rectangle` con gradiente detrás de cada ítem de carpeta, opacidad animada (`durMed`/`easeOutCubic`) al pasar el mouse — sin equivalente nativo en Kirigami (confirmado ya en el plan §4), portado del mismo efecto que usa `Capsule.qml` en QuickShell.
+- **Apertura real de archivos** (nuevo esta ronda, no estaba en ningún paso anterior — ver nota abajo): `FileOperations::openFile()` usa `KIO::OpenUrlJob`, que lee la misma `xdg.mimeApps`/`~/.config/mimeapps.list` que `home.nix` ya declara (plan §5.1) — no una tabla de asociaciones paralela. Se dispara al hacer click en un archivo (no carpeta) en el listado.
+- **Flash de apertura**: `SequentialAnimation` sobre `opacity` (no `scale` — `scale` ya tiene un `Behavior` atado a un binding declarativo de hover; asignarlo con una animación imperativa además rompería ese binding permanentemente, QML no los combina) al abrir un archivo.
+- Selección/hover de fila: ya nativo desde el paso 3 (`Kirigami.Theme.highlightColor` pisado en la raíz, `QQC2.ItemDelegate` ya anima sus propios estados `highlighted`/`hovered` con eso) — sin trabajo adicional acá, tal como anticipaba la tabla del plan §4.
+
+### 5.2 Por qué no se agregó `Kirigami.PageRow`, aunque el plan lo recomendaba
+
+El plan (§4) recomendaba explícitamente construir la navegación de carpetas sobre `Kirigami.PageRow` ("vale la pena... en vez de reinventar breadcrumbs a mano") — se intentó en esta sesión, se encontró un bug real, y se revirtió. Detalle completo:
+
+- Se reestructuró la navegación: cada entrada a una carpeta empujaba (`push()`) un `Kirigami.Page` nuevo, cada uno con su **propio** `FolderModel` (no uno compartido) — así "atrás" muestra la carpeta anterior tal cual estaba, sin restaurar nada a mano.
+- **Verificación en vivo, no solo lectura del código**: dado que no hay `ydotool`/`wlrctl` para clicks sintéticos confiables en esta sesión (ver también §2.3/§4.3), se probó `folderPageRow.push()`/`pop()` **directamente**, vía un self-test temporal con dos `Timer`s (revertido antes de commitear) que llamaba a los métodos reales y volcaba su estado por `console.log`.
+- **Resultado real**: el estado *lógico* de `PageRow` es correcto — `depth` pasó de 1 a 2 al empujar, `currentItem.targetFolder` cambió exactamente al valor esperado (`file:///home/jerimy/Pictures`), y `pop()` lo revirtió bien (`depth` de vuelta a 1, `currentItem.targetFolder` de vuelta a `$HOME`) — todo confirmado por consola, sin ambigüedad.
+- **Pero el panel visible nunca cambió** — un screenshot real tomado justo después del `push()` (con `currentItem.targetFolder` ya apuntando a `Pictures`, confirmado por el log en el mismo instante) seguía mostrando el listado de `$HOME`, no el de `Pictures`. `PageRow` estaba empujando la página correctamente a nivel de datos, pero el layout visual no la mostraba.
+- No se identificó la causa exacta en el tiempo disponible de esta sesión — sospecha sin confirmar: `PageRow` embebido angosto (dentro de un `ColumnLayout`, sin ancho para su modo multi-columna nativo) y fuera del `pageStack` propio de `ApplicationWindow` (se usó como componente anidado aparte) puede estar interactuando mal con el modelo de layout por columnas que `PageRow` calcula internamente según ancho disponible.
+- El plan (§7, "riesgos") ya había anticipado exactamente este escenario: *"PageRow... es una recomendación basada en para qué está diseñado el componente, no en una prueba en vivo... tiene salida de emergencia (breadcrumb a mano + StackView) si no convence"*. Se tomó esa salida: la versión final de `Main.qml` vuelve al modelo de navegación de los pasos 2-4 (un `FolderModel` compartido, reasignar `folder` in-place) — probado y confirmado visualmente en vivo en cada paso anterior — en vez de dejar en el código una navegación que se ve elegante pero está visualmente rota.
+- **Pendiente real para una sesión futura** (no bloqueante para el resto de Hito 005): diagnosticar a fondo por qué el layout de `PageRow` no refleja el push — probablemente necesita más tiempo dedicado específicamente a eso, con quizás un caso de prueba aislado (un solo `PageRow` sin el resto de la app alrededor) para descartar variables más rápido.
+
+### 5.3 Verificación en vivo (versión final, revertida)
+
+Build limpio tras revertir a la navegación probada: **cero** warnings/errores en el log (durante el experimento de `PageRow` sí apareció una advertencia propia de ese intento, `"QML Page: Created graphical object was not placed in the graphics scene"` — desapareció junto con el resto del código de `PageRow` al revertir). Screenshot real confirma el layout completo (sidebar, toolbar, listado, swatch de acento) renderizando igual que en los pasos 2-4, con todo el código de animación ya presente (invisible en una captura estática porque son transiciones disparadas por hover, pero el hecho de que compile/cargue sin warnings de binding es la confirmación real disponible sin input sintético).
+
+### 5.4 Estado de Dolphin
+
+Sin cambios — mismo estado que §1.4/§2.4/§3.4/§4.4. **Fase 2 completa** — Dolphin sigue siendo el file manager activo del sistema hasta que se apruebe explícitamente el plan de migración (plan §6).
 
 ---
 
