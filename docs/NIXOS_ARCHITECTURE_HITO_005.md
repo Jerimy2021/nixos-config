@@ -2,7 +2,7 @@
 ## Jerimy's Laptop | Hito 005 — File Manager Kirigami+KIO (reemplazo de Dolphin)
 
 **Fecha del hito:** 2026-08-06 (Fase 1, investigación, y Fase 2, implementación — misma fecha, sesión larga).
-**Estado:** **Fase 2 completa** (los 5 pasos acordados, cada uno verificado en vivo y commiteado por separado). Dolphin sigue siendo el file manager activo (`keybinds.lua`/`xdg.mimeApps` sin tocar) — `nixfm` se instala en paralelo para probar sin reemplazar nada, misma disciplina que QuickShell en Hito 004. Falta aprobación explícita del usuario antes de ejecutar cualquier paso del plan de migración (plan §6).
+**Estado:** **Fase 2 completa** (los 5 pasos acordados, cada uno verificado en vivo y commiteado por separado) **+ un follow-up** (§6: bug real de style QQC2 no aplicado, corregido y re-verificado en vivo con screenshots). Dolphin sigue siendo el file manager activo (`keybinds.lua`/`xdg.mimeApps` sin tocar) — `nixfm` se instala en paralelo para probar sin reemplazar nada, misma disciplina que QuickShell en Hito 004. Falta aprobación explícita del usuario antes de ejecutar cualquier paso del plan de migración (plan §6 del plan, no confundir con el §6 de este documento).
 **Precede a:** `NIXOS_ARCHITECTURE_HITO_004.md` (2026-08-01 en adelante) y `NIXOS_FILEMANAGER_HITO05_PLAN.md` (2026-08-06, Fase 1 — plan de investigación aprobado antes de tocar código). Este documento asume ambos.
 **Por qué un documento nuevo y no un addendum a Hito 004:** Hito 004 documenta QuickShell (QML/Qt, sin C++ compilado, sin KIO). Hito 005 es un subsistema técnicamente distinto — primer C++ compilado en este flake, primera dependencia de KDE Frameworks (KIO) más allá de Dolphin como app ya empaquetada — mezclarlo en el documento de QuickShell habría hecho más difícil encontrar cualquiera de los dos temas después. Mismo criterio que separó Hito 004 de Hito 001-003.
 **Uso:** Adjuntar junto a `NIXOS_FILEMANAGER_HITO05_PLAN.md` y `NIXOS_ARCHITECTURE_HITO_004.md` al inicio de cualquier sesión futura que toque `modules/filemanager/` o `hosts/laptop/filemanager.nix`.
@@ -18,10 +18,41 @@ Fase 2 sigue la secuencia numerada acordada explícitamente antes de escribir c�
 - **Paso 3 (§3, completo):** Kirigami.Theme sigue el acento matugen-derivado del workspace activo, vía un archivo compartido nuevo (`active-accent.json`) que escribe QuickShell y lee nixfm. Verificado en vivo con dos colores reales distintos — pero NO vía cambio de workspace real (bug real de Hyprland encontrado en esta sesión, ver §3.3, no relacionado con este código).
 - **Paso 4 (§4, completo):** copiar/mover/renombrar/crear carpeta/eliminar/papelera vía coreutils + una implementación propia del freedesktop.org Trash spec (kioclient confirmado ausente, ver plan §1.6) — verificado en vivo contra archivos reales, incluyendo el bridge C++ completo con un self-test temporal.
 - **Paso 5 (§5, completo):** animación/glow (hover-scale, glow de proximidad, flash de apertura) + apertura real de archivos (KIO::OpenUrlJob). `Kirigami.PageRow` para navegación (lo que el plan recomendaba) se intentó, se encontró un bug real en vivo, y se revirtió a la salida que el propio plan ya autorizaba — ver §5.3. **Fase 2 completa.**
+- **Follow-up (§6, completo):** bug real reportado por el usuario tras ver un screenshot — nixfm renderizaba con el style QQC2 "Basic" genérico de Qt (fondo blanco plano, sin ningún color de tema), no con "org.kde.desktop" (el que sí lee Kirigami.Theme/KColorScheme). Causa raíz: faltaba `kdePackages.qqc2-desktop-style` como buildInput y nada forzaba el style en runtime. Corregido, y de paso se consiguió sintetizar clicks/hover reales por primera vez en esta sesión (`wlrctl pointer move` con deltas relativos + `hyprctl cursorpos` para apuntar), cerrando varios gaps de verificación que los pasos 2/4/5 habían dejado documentados como "no verificable en este entorno". Ver §6 para el detalle completo.
 
 ---
 
-## 5. Paso 5 — Animación/glow + apertura de archivos (COMPLETO)
+## 6. Follow-up — bug real: nixfm renderizaba con el style QQC2 "Basic" genérico, no "org.kde.desktop"
+
+### 6.1 Síntoma reportado
+
+El usuario mandó un screenshot real y lo resumió así: *"no se parece en nada a lo que vi en el mockup"* — fondo blanco plano, fuente del sistema (no la de Kirigami/Breeze), checkboxes/controles genéricos de Qt, cero color de acento visible en ningún lado (ni el swatch, ni el hover, ni el header). Los pasos 3 y 5 de Fase 2 habían implementado y "verificado" la integración de tema y el glow/hover, pero contra un `Kirigami.Theme` cuyos colores nunca se estaban pintando de verdad — el style QQC2 activo era "Basic" (el fallback que trae Qt de fábrica), que ignora por completo las propiedades adjuntas de Kirigami.Theme y a Kirigami mismo le faltan sus colores de plataforma sin "org.kde.desktop" detrás.
+
+### 6.2 Causa raíz real (dos partes, confirmadas en el código antes de tocar nada)
+
+1. **`filemanager.nix` no tenía `kdePackages.qqc2-desktop-style` en `buildInputs`** — solo `qtbase`/`qtdeclarative`/`kirigami`/`kio`. Este paquete es el que trae el plugin QML real `org.kde.desktop` (el style que pinta con KColorScheme/Kirigami.Theme). La circularidad de build "Kirigami depende de qqc2-desktop-style" documentada en el plan (§1.2) es a nivel de cómo nixpkgs resuelve el propio paquete `kdePackages.kirigami`, no implica que quede disponible en tiempo de ejecución para OTRA app que solo declara `kirigami` como dependencia — hay que pedirlo explícitamente.
+2. **Nada forzaba el style en runtime.** `main.cpp` no tenía ningún `QQuickStyle::setStyle(...)`, y no había `QT_QUICK_CONTROLS_STYLE` seteado en ningún lado específico de esta app. Sin una instrucción explícita, Qt cae al style "Basic" compilado por defecto — exactamente el síntoma del screenshot.
+
+### 6.3 Fix
+
+- `filemanager.nix`: agregado `kdePackages.qqc2-desktop-style` a `buildInputs`. Al ser un buildInput Qt6/KF6 normal, `wrapQtAppsHook` lo detecta y lo agrega al `QML2_IMPORT_PATH` del wrapper igual que ya hacía con `kirigami` — no hizo falta ninguna otra ceremonia.
+- `main.cpp`: `QQuickStyle::setStyle(QStringLiteral("org.kde.desktop"))`, llamado ANTES de instanciar `QQmlApplicationEngine`. Se eligió esto (en vez de `QT_QUICK_CONTROLS_STYLE` vía `qtWrapperArgs`) porque Qt documenta explícitamente que `QQuickStyle::setStyle()` tiene la prioridad MÁS ALTA de las cuatro formas de elegir style (por encima de `-style`, la variable de entorno y `qtquickcontrols2.conf`) — no se puede pisar por variables heredadas del contexto de lanzamiento (terminal interactivo, `.desktop`, keybind), que es justo la robustez que pedía el reporte del bug.
+- `CMakeLists.txt`: `QQuickStyle` vive en el módulo `QuickControls2` — ya estaba en `find_package(... COMPONENTS ... QuickControls2)` (necesario para los imports QML), pero nunca se había linkeado `Qt6::QuickControls2` en `target_link_libraries` porque hasta ahora nada de `main.cpp` usaba su API C++ directamente. Agregado.
+
+### 6.4 Verificación en vivo — screenshot real, antes/después
+
+Build de la derivación actualizada vía el patrón rápido ya establecido (`nix build --no-link --print-out-paths --impure --expr ...`), lanzado directamente desde el store path (no el `nixfm` instalado por home.nix, para no depender de un `nixos-rebuild switch` que esta sesión no puede correr sin sudo interactivo). Screenshot con `grim -g` recortado a la geometría real de la ventana (`hyprctl clients -j`).
+
+**Resultado**: fondo oscuro real (no blanco), sidebar de Places con iconos coloreados, swatch de acento visible con el color activo real (`#ffb869`, confirmado leyendo `~/.cache/quickshell/active-accent.json` en paralelo), toolbar con chrome KDE real en vez de Qt genérico. Diferencia visual inmediata y clara contra el bug reportado, no sutil.
+
+**Bonus real de esta ronda — se consiguió sintetizar input real por primera vez.** Todas las sesiones anteriores de este hito (§2.3, §4.3, §5.3) documentaron como "no verificable" cualquier interacción de mouse real (`wlrctl pointer move/click` "no producía efecto observable"). Esta vez se encontró la causa: `wlrctl pointer move X Y` es un movimiento RELATIVO, no absoluto — los intentos anteriores probablemente sí movían el cursor, pero a coordenadas impredecibles sin forma de apuntar. La técnica que funcionó: `hyprctl cursorpos` para leer la posición actual, calcular el delta exacto al punto objetivo, `wlrctl pointer move <dx> <dy>`, y confirmar con `hyprctl cursorpos` de nuevo antes de hacer click/hover. Con esto, verificado en vivo y con screenshot, todo lo que antes quedaba como gap documentado:
+- **Hover glow real** (§5, la fila "Software" en el screenshot): el `Rectangle` de glow se activa con `HoverHandler.hovered` real, con un degradé cálido que seguía el acento activo (`#ffb869`) — confirma que el código de glow del paso 5 siempre fue correcto, pero era invisible contra el fondo blanco del style roto.
+- **Menú contextual** (click derecho real): renderiza con chrome oscuro real, y el ítem "Pegar en esta carpeta" aparece correctamente deshabilitado (clipboard vacío) — primera confirmación en vivo de que el `TapHandler` de botón derecho y el estado del `QQC2.Menu` funcionan de punta a punta.
+- **Diálogo de renombrar** (click real en "Renombrar", luego "Cancel" real): `QQC2.Dialog` con `TextField` pre-poblado ("Software") y botones OK/Cancel, chrome oscuro real. Cancelado sin cambios — confirmado que el archivo no se renombró.
+
+### 6.5 Estado de Dolphin
+
+Sin cambios — sigue siendo el file manager activo. Este follow-up no toca `xdg.mimeApps`/`keybinds.lua`.
 
 ### 5.1 Qué se construyó
 

@@ -12,6 +12,7 @@
 #include <QGuiApplication>
 #include <QQmlApplicationEngine>
 #include <QQmlEngine>
+#include <QQuickStyle>
 
 int main(int argc, char *argv[])
 {
@@ -19,6 +20,19 @@ int main(int argc, char *argv[])
     app.setApplicationName(QStringLiteral("nixfm"));
     app.setOrganizationName(QStringLiteral("nixos"));
     app.setOrganizationDomain(QStringLiteral("nixos.local"));
+
+    // Bug real encontrado en vivo (ver NIXOS_ARCHITECTURE_HITO_005.md): sin
+    // esto, QQC2 cae al style "Basic" de Qt (fondo blanco plano, checkboxes
+    // genéricos, cero color de acento) — qqc2-desktop-style (ahora en
+    // filemanager.nix) trae el plugin "org.kde.desktop" pero nada lo pedía
+    // en tiempo de ejecución. QQuickStyle::setStyle() tiene la prioridad
+    // MÁS ALTA de las cuatro formas que Qt documenta de elegir style
+    // (por encima de -style, QT_QUICK_CONTROLS_STYLE y
+    // qtquickcontrols2.conf) — no se puede pisar por variables de entorno
+    // heredadas del contexto de lanzamiento (terminal/.desktop/keybind),
+    // que es justo la robustez que hacía falta acá. Tiene que llamarse
+    // ANTES de instanciar QQmlApplicationEngine.
+    QQuickStyle::setStyle(QStringLiteral("org.kde.desktop"));
 
     qmlRegisterType<FolderModel>("org.nixos.filemanager", 1, 0, "FolderModel");
     qmlRegisterType<KFilePlacesModel>("org.nixos.filemanager", 1, 0, "PlacesModel");

@@ -29,6 +29,18 @@ pkgs.stdenv.mkDerivation {
     kdePackages.qtbase
     kdePackages.qtdeclarative
     kdePackages.kirigami
+    # Bug real encontrado en vivo (screenshot: fondo blanco plano, fuente
+    # del sistema, checkboxes genéricos, cero color de acento) — el style
+    # plugin QQC2 real ("org.kde.desktop", el que pinta con KColorScheme/
+    # Kirigami.Theme) NO estaba acá. Kirigami no lo trae transitivamente
+    # pese a que hay un "Kirigami depende circularmente de qqc2-desktop-
+    # style" documentado en NIXOS_FILEMANAGER_HITO05_PLAN.md §1.2 — esa
+    # circularidad es a nivel de build de nixpkgs (cómo se resuelve
+    # kdePackages.kirigami a sí mismo), no implica que instalarlo como
+    # buildInput de OTRA app cargue este plugin en tiempo de ejecución.
+    # Sin este paquete, QQuickStyle cae al style "Basic" incluido en Qt
+    # (fondo blanco genérico, sin tema) — exactamente el síntoma visto.
+    kdePackages.qqc2-desktop-style
     # Paso 2: KCoreDirLister (listado de carpetas) + KFilePlacesModel
     # (sidebar) — ambos vienen de este único paquete nixpkgs.
     kdePackages.kio

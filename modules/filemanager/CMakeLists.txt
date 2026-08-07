@@ -62,11 +62,18 @@ qt_add_qml_module(nixfm
         qml/Main.qml
 )
 
+# Qt6::QuickControls2: agregado junto con el fix del style QQC2
+# (QQuickStyle::setStyle() en main.cpp, ver ese archivo) — la clase vive en
+# este módulo. Ya estaba en find_package(Qt6 ... COMPONENTS ... QuickControls2)
+# arriba (necesario para los imports QML de QtQuick.Controls), pero nunca se
+# había linkeado la librería C++ correspondiente porque hasta ahora nada de
+# main.cpp usaba su API directamente.
 target_link_libraries(nixfm PRIVATE
     Qt6::Core
     Qt6::Gui
     Qt6::Qml
     Qt6::Quick
+    Qt6::QuickControls2
     KF6::KIOCore
     KF6::KIOGui
     KF6::KIOFileWidgets
