@@ -73,4 +73,4 @@ Parte del sistema de QuickShell (menú de sesión, notificaciones, carrusel de t
 
 ## Historial de arquitectura
 
-Cada hito mayor de este repo está documentado en `NIXOS_ARCHITECTURE_HITO_*.md` (001 a 004) — decisiones tomadas, bugs reales encontrados y su causa raíz, y el estado exacto del sistema en ese momento. Léelos en orden si querés entender *por qué* algo está hecho como está, no solo qué hace.
+Cada hito mayor de este repo está documentado en [`docs/NIXOS_ARCHITECTURE_HITO_*.md`](docs/) (001 a 005) — decisiones tomadas, bugs reales encontrados y su causa raíz, y el estado exacto del sistema en ese momento. Léelos en orden si querés entender *por qué* algo está hecho como está, no solo qué hace. `docs/` también tiene el análisis de video del shell (`NIXOS_SHELL_VIDEO_ANALYSIS.md`) y el plan del file manager (`NIXOS_FILEMANAGER_HITO05_PLAN.md`).
