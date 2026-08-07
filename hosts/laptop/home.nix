@@ -63,7 +63,7 @@ in
     kdePackages.qt6ct
 	
     # Dolphin + Kvantum (Hito 004 follow-up 18 — antes Thunar, ver
-    # NIXOS_ARCHITECTURE_HITO_004.md). kio-extras/ffmpegthumbs/
+    # docs/NIXOS_ARCHITECTURE_HITO_004.md). kio-extras/ffmpegthumbs/
     # kdegraphics-thumbnailers son el equivalente KIO de lo que tumbler+
     # ffmpegthumbnailer+webp-pixbuf-loader+poppler_gi hacían para Thunar
     # (miniaturas de video/imagen/pdf) — Dolphin no usa el stack de
@@ -71,7 +71,12 @@ in
     # reemplaza thunar-archive-plugin (extraer/comprimir desde el
     # explorador). kimageformats amplía los formatos de imagen que Qt
     # entiende nativamente (necesario para que el visor integrado de
-    # Dolphin abra más que jpg/png).
+    # Dolphin abra más que jpg/png). webp-pixbuf-loader/poppler_gi (los
+    # decodificadores GTK/tumbler que este mismo comentario documentaba
+    # como reemplazados) sobrevivieron a la migración sin usarse — auditado
+    # en el paso "dead package audit" (grep sin resultados salvo esta
+    # línea de comentario, que además dice explícitamente que ya no hacen
+    # falta) y eliminados.
     kdePackages.dolphin
     kdePackages.kio-extras
     kdePackages.ark
@@ -81,8 +86,6 @@ in
     kdePackages.qtstyleplugin-kvantum
     kdePackages.kservice
     applicationsMenu
-    webp-pixbuf-loader
-    poppler_gi
     papirus-icon-theme
     imv
 
@@ -145,7 +148,11 @@ in
     rofimoji
     wtype
     qalculate-gtk
-    wl-clip-persist
+    # wl-clip-persist eliminado en el "dead package audit": es un demonio
+    # (mantiene vivo el portapapeles después de que la app origen cierra),
+    # cero referencias en el repo y — a diferencia de cliphist/wl-paste,
+    # que sí están en autostart.lua §5 — nunca se lanza en ningún lado, ni
+    # en autostart.lua ni en ningún script. Instalado, nunca corrido.
     spotify
     discord
     
