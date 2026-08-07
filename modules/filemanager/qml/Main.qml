@@ -202,6 +202,25 @@ Kirigami.ApplicationWindow {
                     model: placesModel
                     delegate: QQC2.ItemDelegate {
                         id: placeDelegate
+                        // Bug real encontrado en vivo (follow-up post-Fase 2,
+                        // ver NIXOS_ARCHITECTURE_HITO_005.md §7): "Modified
+                        // Today"/"Modified Yesterday" son bookmarks
+                        // timeline:/today y timeline:/yesterday que Dolphin
+                        // escribió en ~/.local/share/user-places.xbel (el
+                        // archivo de places COMPARTIDO entre cualquier app
+                        // KIO, no algo propio de nixfm) usando la plantilla
+                        // de defaults de KDE — pero el protocolo "timeline"
+                        // no existe en este kio-extras (confirmado: sin
+                        // .so/.protocol en todo el closure, aparentemente
+                        // reemplazado río arriba por "recentlyused", que sí
+                        // está). Clickear estas dos entradas siempre falla
+                        // ("couldn't create worker: Unknown protocol
+                        // 'timeline'") y deja el panel vacío para siempre —
+                        // no es arreglable desde acá (no podemos empaquetar
+                        // un worker que no existe), así que se ocultan.
+                        readonly property bool isBrokenTimeline: placesModel.url(placesModel.index(index, 0)).toString().indexOf("timeline:") === 0
+                        visible: !isBrokenTimeline
+                        height: isBrokenTimeline ? 0 : implicitHeight
                         width: placesView.width
                         text: model.display
                         // "icon.source: model.decoration" NO sirve — bug real

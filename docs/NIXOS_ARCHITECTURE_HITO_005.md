@@ -2,7 +2,7 @@
 ## Jerimy's Laptop | Hito 005 — File Manager Kirigami+KIO (reemplazo de Dolphin)
 
 **Fecha del hito:** 2026-08-06 (Fase 1, investigación, y Fase 2, implementación — misma fecha, sesión larga).
-**Estado:** **Fase 2 completa** (los 5 pasos acordados, cada uno verificado en vivo y commiteado por separado) **+ un follow-up** (§6: bug real de style QQC2 no aplicado, corregido y re-verificado en vivo con screenshots). Dolphin sigue siendo el file manager activo (`keybinds.lua`/`xdg.mimeApps` sin tocar) — `nixfm` se instala en paralelo para probar sin reemplazar nada, misma disciplina que QuickShell en Hito 004. Falta aprobación explícita del usuario antes de ejecutar cualquier paso del plan de migración (plan §6 del plan, no confundir con el §6 de este documento).
+**Estado:** **Fase 2 completa** (los 5 pasos acordados, cada uno verificado en vivo y commiteado por separado) **+ dos follow-ups** (§6: bug real de style QQC2 no aplicado, corregido; §7: el fix de §6 no había sido desplegado por el usuario todavía — no un bug de código — más un bug real y cosmético de dos bookmarks `timeline:` heredadas de Dolphin, corregido). **Pendiente de acción del usuario:** correr `sudo nixos-rebuild switch` para que los fixes de código (§6 y §7) tomen efecto en la sesión real — ningún agente de este hito tuvo sudo interactivo en ningún momento. Dolphin sigue siendo el file manager activo (`keybinds.lua`/`xdg.mimeApps` sin tocar) — `nixfm` se instala en paralelo para probar sin reemplazar nada, misma disciplina que QuickShell en Hito 004. Falta aprobación explícita del usuario antes de ejecutar cualquier paso del plan de migración (plan §6 del plan, no confundir con los §6/§7 de este documento).
 **Precede a:** `NIXOS_ARCHITECTURE_HITO_004.md` (2026-08-01 en adelante) y `NIXOS_FILEMANAGER_HITO05_PLAN.md` (2026-08-06, Fase 1 — plan de investigación aprobado antes de tocar código). Este documento asume ambos.
 **Por qué un documento nuevo y no un addendum a Hito 004:** Hito 004 documenta QuickShell (QML/Qt, sin C++ compilado, sin KIO). Hito 005 es un subsistema técnicamente distinto — primer C++ compilado en este flake, primera dependencia de KDE Frameworks (KIO) más allá de Dolphin como app ya empaquetada — mezclarlo en el documento de QuickShell habría hecho más difícil encontrar cualquiera de los dos temas después. Mismo criterio que separó Hito 004 de Hito 001-003.
 **Uso:** Adjuntar junto a `NIXOS_FILEMANAGER_HITO05_PLAN.md` y `NIXOS_ARCHITECTURE_HITO_004.md` al inicio de cualquier sesión futura que toque `modules/filemanager/` o `hosts/laptop/filemanager.nix`.
@@ -18,7 +18,60 @@ Fase 2 sigue la secuencia numerada acordada explícitamente antes de escribir c�
 - **Paso 3 (§3, completo):** Kirigami.Theme sigue el acento matugen-derivado del workspace activo, vía un archivo compartido nuevo (`active-accent.json`) que escribe QuickShell y lee nixfm. Verificado en vivo con dos colores reales distintos — pero NO vía cambio de workspace real (bug real de Hyprland encontrado en esta sesión, ver §3.3, no relacionado con este código).
 - **Paso 4 (§4, completo):** copiar/mover/renombrar/crear carpeta/eliminar/papelera vía coreutils + una implementación propia del freedesktop.org Trash spec (kioclient confirmado ausente, ver plan §1.6) — verificado en vivo contra archivos reales, incluyendo el bridge C++ completo con un self-test temporal.
 - **Paso 5 (§5, completo):** animación/glow (hover-scale, glow de proximidad, flash de apertura) + apertura real de archivos (KIO::OpenUrlJob). `Kirigami.PageRow` para navegación (lo que el plan recomendaba) se intentó, se encontró un bug real en vivo, y se revirtió a la salida que el propio plan ya autorizaba — ver §5.3. **Fase 2 completa.**
-- **Follow-up (§6, completo):** bug real reportado por el usuario tras ver un screenshot — nixfm renderizaba con el style QQC2 "Basic" genérico de Qt (fondo blanco plano, sin ningún color de tema), no con "org.kde.desktop" (el que sí lee Kirigami.Theme/KColorScheme). Causa raíz: faltaba `kdePackages.qqc2-desktop-style` como buildInput y nada forzaba el style en runtime. Corregido, y de paso se consiguió sintetizar clicks/hover reales por primera vez en esta sesión (`wlrctl pointer move` con deltas relativos + `hyprctl cursorpos` para apuntar), cerrando varios gaps de verificación que los pasos 2/4/5 habían dejado documentados como "no verificable en este entorno". Ver §6 para el detalle completo.
+- **Follow-up (§6, completo):** bug real reportado por el usuario tras ver un screenshot — nixfm renderizaba con el style QQC2 "Basic" genérico de Qt (fondo blanco plano, sin ningún color de tema), no con "org.kde.desktop" (el que sí lee Kirigami.Theme/KColorScheme). Fix real: `QQuickStyle::setStyle("org.kde.desktop")` en `main.cpp` (el diagnóstico sobre `buildInputs` en §6.2.1 resultó incompleto — ver corrección en §6.6/§7.1). De paso se consiguió sintetizar clicks/hover reales por primera vez en esta sesión (`wlrctl pointer move` con deltas relativos + `hyprctl cursorpos` para apuntar), cerrando varios gaps de verificación que los pasos 2/4/5 habían dejado documentados como "no verificable en este entorno".
+- **Follow-up 2 (§7, completo):** el usuario reportó que el fix de §6 "no se parece en nada" y pegó errores reales de consola de KIO. Investigado a fondo en vivo (dos causas separadas, tal como pidió): (a) el fix de §6 nunca se desplegó — el binario que corre `nixfm` en el PATH real del usuario es de antes del commit (confirmado con `strings` sobre el wrapper y el binario), no hace falta ningún cambio de código adicional, solo `nixos-rebuild switch`; (b) los errores de consola son un bookmark `timeline:/` heredado de Dolphin apuntando a un protocolo KIO que no existe en este `kio-extras` — cosmético, corregido ocultando esas dos entradas del sidebar. `kiod6`/D-Bus confirmado ausente pero, verificado en vivo, no bloquea nada que nixfm use hoy. Ver §7.
+
+---
+
+## 7. Follow-up 2 — dos bugs reales reportados por el usuario tras el fix de §6: style que "seguía sin verse", y errores de KIO worker en consola
+
+El usuario pegó los errores reales de consola (no una descripción) y un screenshot mostrando que el fix de §6 "no se parece en nada a lo que vi en el mockup" pese a estar commiteado. Pidió investigar en vivo las DOS causas raíz por separado antes de tocar nada, y explícitamente: si la infraestructura de kiod/D-Bus resultaba ser un gap sustancial, **parar y reportarlo honestamente en vez de parchear a ciegas**.
+
+#### 7.1 "El fix de §6 no tuvo efecto visual" — causa raíz real: nunca se desplegó, no un bug del código
+
+Diagnóstico, en orden:
+
+1. **Se revisó el wrapper generado real**, no se asumió que `buildInputs` alcanza. `wrapQtAppsHook` en esta versión de nixpkgs genera un wrapper en C compilado (no un script de shell) — `bin/nixfm` es un binario ELF de ~24KB que hace `execv` sobre `bin/.nixfm-wrapped` (el binario Qt real) después de setear variables de entorno. Se extrajeron esas variables con `strings bin/nixfm`, no adivinando: el wrapper mete las rutas de `qqc2-desktop-style` tanto en `QT_PLUGIN_PATH` como en `NIXPKGS_QT6_QML_IMPORT_PATH` (la variable interna que usa el Qt6 patcheado por nixpkgs — nunca `QML2_IMPORT_PATH` directamente; ninguna app de este flake, incluyendo Kirigami, la usa tampoco, así que no es una anomalía de nixfm). Conclusión: **el wrapper siempre estuvo bien armado.**
+2. Se verificó **por qué** `qqc2-desktop-style` ya aparecía ahí incluso antes de tocar `filemanager.nix`: `nix eval nixpkgs#kdePackages.kirigami.propagatedBuildInputs` → `["kirigami" "qqc2-desktop-style"]`. Kirigami se lo propaga a CUALQUIER cosa que lo use como buildInput. El diagnóstico de §6.2.1 (que hacía falta agregarlo explícitamente) estaba equivocado — ver corrección en §6.6.
+3. Con el wrapper descartado como causa, se comparó el binario que corre `nixfm` en el PATH real del usuario (`/etc/profiles/per-user/jerimy/bin/nixfm` → `/nix/store/404izgvjfmzq18...`) contra `strings bin/.nixfm-wrapped | grep QQuickStyle`: **0 resultados**, y tampoco linkea `libQt6QuickControls2.so.6`. Es decir, el binario que el usuario efectivamente ejecutó **no tiene el fix de §6 compilado adentro** — es un build de ANTES del commit. `readlink -f /run/current-system` tampoco coincide con lo que produjo el `nixos-rebuild build` de la ronda anterior.
+
+**Causa raíz real: `sudo nixos-rebuild switch` (o `home-manager switch`) no se corrió desde que el fix de §6 se commiteó y pusheó** — ni por el usuario todavía, ni por este agente (no tiene sudo interactivo en ningún momento de este hito). El código del fix es correcto — se re-verificó esta misma ronda compilando el mismo commit desde cero (`nix build --impure --expr ...`), que reprodujo el MISMO hash de store que la ronda anterior (`nkgg22vclwy50xaamxfwn06izjbfdr03-nixfm-0.1.0`, build determinístico) y el mismo resultado visual correcto por screenshot. **No hay fix de código pendiente acá** — el usuario necesita desplegar (su flujo habitual) para que lo que ya está commiteado tome efecto en su sesión real.
+
+#### 7.2 Errores de KIO worker en consola
+
+Texto real pegado por el usuario:
+```
+kf.kio.core.connection: Socket not connected QLocalSocket::PeerClosedError
+kf.kio.core: An error occurred during write. The worker terminates now.
+kf.kio.core: couldn't create worker: "Unknown protocol 'timeline.'"
+(x3, repetido)
+```
+
+**Investigado en vivo, dos preguntas separadas tal como pidió el usuario:**
+
+**¿Es kiod6/D-Bus un gap de infraestructura real?** Sí, parcialmente, pero **no bloquea nada que nixfm use hoy** — verificado, no asumido:
+- `ps aux | grep kiod` → ningún proceso `kiod6` corriendo. `dbus-send ... ListNames | grep kio` → vacío. Confirmado: kiod6 no está disponible en esta sesión.
+- Causa: `kdePackages.kio` es solo `buildInput` de `nixfm` (no un `home.packages`), así que su `share/dbus-1/services/org.kde.kiod6.service` nunca se mergea al `XDG_DATA_DIRS` real del usuario (revisado directamente: ausente en los cuatro directorios `share/` que componen el perfil). Sin ese archivo, D-Bus no puede activar `kiod6` bajo demanda.
+- **Pero — probado en vivo, con un `nixfm` ya con el fix de style, navegando de verdad**: `file:///home/jerimy` (Home, Downloads) y `remote:/` (el bookmark "Network") funcionan sin ningún error, y `pgrep -af kioworker` mostró un proceso `kioworker .../kio_remote.so remote ... local:/run/user/1000/nixfmWLYwXX.2.kioworker.socket` real y vivo, conectado por socket — es decir, **KIO spawea sus workers como proceso directo (fork/exec), no vía D-Bus/kiod**, para los protocolos que nixfm realmente usa (file/trash/remote). `kiod6` sirve funciones auxiliares (kpasswdserver, kssld/políticas SSL, kioexecd) que el scope de v1 no toca. Conclusión: **gap real pero no sustancial para v1** — no hace falta parar ni reportarlo como bloqueante; documentado acá como limitación conocida para si v2 alguna vez necesita SMB/protocolos con auth cacheada.
+
+**¿Y el error "Unknown protocol 'timeline.'"?** Causa raíz 100% confirmada, reproducida en vivo bajo demanda: `~/.local/share/user-places.xbel` (el archivo de bookmarks de KIO, COMPARTIDO por cualquier app KIO — lo escribió Dolphin la primera vez que corrió, con la plantilla de defaults estándar de KDE) contiene:
+```
+<bookmark href="timeline:/today">   <!-- "Modified Today" en el sidebar -->
+<bookmark href="timeline:/yesterday">   <!-- "Modified Yesterday" -->
+```
+El protocolo `timeline:` (navegación tipo Nepomuk/Baloo por fecha de modificación) **no existe en este `kdePackages.kio-extras` (26.04.3)** — se revisó el paquete completo (`find ... -iname "*.protocol"` y `*.so`): no hay ningún `timeline.so` ni archivo `.protocol`, solo `recentlyused.so` (su sucesor aparente, río arriba). Clickear cualquiera de esas dos entradas dispara exactamente el error pegado por el usuario, con panel vacío para siempre — reproducido en vivo con un click real (`wlrctl`), 1:1 con el texto reportado.
+
+**Esto no es un bug de nixfm** — es una entrada heredada de un archivo compartido, escrita por Dolphin usando defaults ya obsoletos río arriba; afectaría a Dolphin igual de mal si Dolphin intentara resolver esas mismas dos entradas. Las tres líneas de log del usuario (socket/write/"unknown protocol") no se lograron reproducir palabra por palabra juntas en esta sesión — solo la tercera línea se reprodujo limpia y a demanda cada vez — pero hay evidencia fuerte de que las tres pertenecen al mismo intento fallido de crear el worker (KIO intenta un handshake de socket que aborta apenas nota que no hay proceso real del otro lado), no a un problema de comunicación de sockets separado: toda navegación real (file/remote) que sí se probó en vivo esta ronda no mostró ningún error de socket.
+
+**Fix aplicado**: no se puede arreglar el protocolo faltante (no se puede empaquetar un worker que no existe río arriba), así que se oculta la entrada rota en vez de dejar un callejón sin salida clickeable — en `Main.qml`, el delegate del sidebar de Places ahora chequea `placesModel.url(...).toString()` por el prefijo `"timeline:"` y se colapsa (`visible: false`, `height: 0`) si matchea. No se toca `user-places.xbel` (archivo compartido y mutable por otras apps, fuera de alcance tocarlo declarativamente) ni el modelo de KIO — es puramente cosmético en la UI de nixfm.
+
+#### 7.3 Un hallazgo de seguridad operativa de esta ronda (no del código)
+
+Durante la verificación con clicks sintéticos (`wlrctl`), en un punto la geometría de pantalla cambió bajo el agente — una ventana de terminal del usuario en un workspace especial (con una sesión VPN/RDP real, `xfreerdp`) apareció superpuesta a la posición donde se esperaba `nixfm`. Un screenshot de verificación capturó por accidente contenido de esa sesión (una barra de tareas de Windows vía RDP). Se cortó de inmediato toda entrada sintética adicional, se confirmó — revisando el propio historial de comandos de esta ronda — que ningún click ni tecla se había enviado a esa ventana (solo un `pointer move`, sin click), se borró el screenshot sin analizarlo más, y se completó la verificación de §7.2 por log de consola en vez de por screenshot. Documentado acá porque es una limitación real de la técnica de "click sintético a coordenadas absolutas de pantalla" en una sesión compartida con el usuario activo — no algo para repetir sin cuidado en sesiones futuras.
+
+#### 7.4 Estado de Dolphin
+
+Sin cambios.
 
 ---
 
@@ -53,6 +106,10 @@ Build de la derivación actualizada vía el patrón rápido ya establecido (`nix
 ### 6.5 Estado de Dolphin
 
 Sin cambios — sigue siendo el file manager activo. Este follow-up no toca `xdg.mimeApps`/`keybinds.lua`.
+
+### 6.6 Corrección post-mortem (encontrada en §7): el punto 1 de §6.2 estaba mal diagnosticado
+
+La ronda siguiente (§7) encontró que **`kdePackages.qqc2-desktop-style` NUNCA hizo falta como `buildInputs` explícito** — `kdePackages.kirigami.propagatedBuildInputs` ya lo incluye (`nix eval nixpkgs#kdePackages.kirigami.propagatedBuildInputs` devuelve `["kirigami" "qqc2-desktop-style"]`), así que sus rutas de plugin/QML siempre estuvieron en el wrapper de nixfm, con o sin esa línea. El diagnóstico de §6.2.1 fue una hipótesis razonable pero nunca verificada contra el wrapper real antes de "corregirla" — el único fix que de verdad importó fue el de §6.2.2 (`QQuickStyle::setStyle` en `main.cpp`). La línea en `filemanager.nix` se dejó de todos modos (documentación explícita de una dependencia real, no hace daño), pero con el comentario corregido. Ver §7.1 para el detalle completo de cómo se encontró esto y por qué el usuario vio "el fix no tuvo efecto visual" — spoiler: no fue un bug del fix, fue que nunca se desplegó.
 
 ### 5.1 Qué se construyó
 
