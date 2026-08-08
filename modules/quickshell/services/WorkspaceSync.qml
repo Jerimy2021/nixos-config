@@ -109,10 +109,31 @@ Singleton {
         return "#" + h(c.r) + h(c.g) + h(c.b);
     }
 
+    // Hito 005 follow-up 3 (ver docs/NIXOS_ARCHITECTURE_HITO_005.md §8):
+    // active-accent.json ahora carga, además del acento suelto de siempre,
+    // el set de roles cream/terracotta/gold que workspace-wallpaper cachea
+    // por wallpaper en filemanager-palette.json (background/
+    // alternateBackground/text/disabledText/activeBackground/activeText/
+    // link — ver ese script para de dónde sale cada uno). Mergeado acá
+    // (no en C++) para no duplicar lectura/parseo de JSON en dos lenguajes
+    // — PaletteWatcher.cpp sigue leyendo un solo archivo, ahora con más
+    // claves. Si el wallpaper todavía no tiene roles cacheados (primera
+    // vez que se ve, matugen corriendo en background todavía) el merge
+    // jq simplemente no aporta esas claves — PaletteWatcher.cpp tiene sus
+    // propios defaults cream para ese caso, igual que ya hacía con accent.
     function writeActiveAccent() {
         var hex = root.colorToHex(Theme.activeAccent);
-        accentProc.command = ["bash", "-c",
-            "mkdir -p \"$HOME/.cache/quickshell\" && printf '{\"hex\":\"%s\"}' \"" + hex + "\" > \"$HOME/.cache/quickshell/active-accent.json\""];
+        var wallpaper = root.wallpaperFor(Hypr.activeId);
+        var script =
+            "mkdir -p \"$HOME/.cache/quickshell\"; " +
+            "FMPAL=\"$HOME/.cache/quickshell/filemanager-palette.json\"; " +
+            "OUT=\"$HOME/.cache/quickshell/active-accent.json\"; " +
+            "WALLPAPER=\"$1\"; HEX=\"$2\"; " +
+            "if [ -f \"$FMPAL\" ]; then " +
+            "  jq -c --arg w \"$WALLPAPER\" --arg hex \"$HEX\" '(.[$w] // {}) + {hex: $hex}' \"$FMPAL\" > \"$OUT\" 2>/dev/null; " +
+            "fi; " +
+            "[ -s \"$OUT\" ] || printf '{\"hex\":\"%s\"}' \"$HEX\" > \"$OUT\"";
+        accentProc.command = ["bash", "-c", script, "nixfm-accent", wallpaper, hex];
         accentProc.running = true;
     }
 

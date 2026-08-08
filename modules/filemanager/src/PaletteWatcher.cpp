@@ -8,10 +8,6 @@
 
 PaletteWatcher::PaletteWatcher(QObject *parent)
     : QObject(parent)
-    // Mismo lavender que Theme.qml usa como default antes de que matugen
-    // resuelva algo — así el primer frame de nixfm no arranca con un color
-    // random si todavía no hay cache (o si QuickShell nunca corrió).
-    , m_accent(QStringLiteral("#cba6f7"))
 {
     // GenericCacheLocation (no CacheLocation) a propósito: CacheLocation
     // le agrega el applicationName/organizationName propios de nixfm
@@ -55,17 +51,42 @@ void PaletteWatcher::reload()
         return;
     }
 
-    const auto doc = QJsonDocument::fromJson(f.readAll());
-    const QString hex = doc.object().value(QStringLiteral("hex")).toString();
-    if (hex.isEmpty()) {
+    const auto obj = QJsonDocument::fromJson(f.readAll()).object();
+    if (obj.isEmpty()) {
         return;
     }
 
-    const QColor color(hex);
-    if (!color.isValid() || color == m_accent) {
+    // Cada rol cae a su default cream si la clave falta (wallpaper todavía
+    // sin roles cacheados en filemanager-palette.json, ver
+    // WorkspaceSync.qml) o si el hex es inválido — nunca deja el color
+    // anterior a medias ni rompe con un color inválido.
+    auto colorOr = [&obj](const char *key, const QColor &fallback) {
+        const QColor c(obj.value(QLatin1String(key)).toString());
+        return c.isValid() ? c : fallback;
+    };
+
+    const QColor accent = colorOr("hex", m_accent);
+    const QColor background = colorOr("background", m_background);
+    const QColor surfaceVariant = colorOr("surfaceVariant", m_surfaceVariant);
+    const QColor text = colorOr("text", m_text);
+    const QColor textMuted = colorOr("textMuted", m_textMuted);
+    const QColor activeBackground = colorOr("activeBackground", m_activeBackground);
+    const QColor activeText = colorOr("activeText", m_activeText);
+    const QColor link = colorOr("link", m_link);
+
+    if (accent == m_accent && background == m_background && surfaceVariant == m_surfaceVariant
+        && text == m_text && textMuted == m_textMuted && activeBackground == m_activeBackground
+        && activeText == m_activeText && link == m_link) {
         return;
     }
 
-    m_accent = color;
-    Q_EMIT accentChanged();
+    m_accent = accent;
+    m_background = background;
+    m_surfaceVariant = surfaceVariant;
+    m_text = text;
+    m_textMuted = textMuted;
+    m_activeBackground = activeBackground;
+    m_activeText = activeText;
+    m_link = link;
+    Q_EMIT paletteChanged();
 }

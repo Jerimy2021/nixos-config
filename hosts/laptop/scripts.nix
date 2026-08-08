@@ -92,10 +92,19 @@
     TRANSITION_TYPE="''${2:-wipe}"
     CACHE_DIR="$HOME/.cache/quickshell"
     PALETTE_FILE="$CACHE_DIR/palette.json"
+    # Hito 005 follow-up 3 (ver docs/NIXOS_ARCHITECTURE_HITO_005.md §8):
+    # nixfm necesita más que un acento suelto — fondo/texto/superficie
+    # realmente claros y cálidos (paleta "cream/terracotta/gold" del
+    # mockup aprobado), con pares de contraste garantizado, no algo que un
+    # solo hex pueda derivar de forma segura a mano. Cache SEPARADO de
+    # palette.json a propósito — nunca se toca ese archivo ni
+    # WallpaperPalette.qml (el tema oscuro de la barra), cero riesgo ahí.
+    FM_PALETTE_FILE="$CACHE_DIR/filemanager-palette.json"
 
     [ -f "$WALLPAPER" ] || exit 0
     mkdir -p "$CACHE_DIR"
     [ -f "$PALETTE_FILE" ] || echo '{}' > "$PALETTE_FILE"
+    [ -f "$FM_PALETTE_FILE" ] || echo '{}' > "$FM_PALETTE_FILE"
 
     "$AWWW" img "$WALLPAPER" \
         --transition-type "$TRANSITION_TYPE" \
@@ -104,21 +113,62 @@
         --transition-duration 0.65 \
         --transition-fps 60
 
-    if ! "$JQ" -e --arg w "$WALLPAPER" 'has($w)' "$PALETTE_FILE" >/dev/null 2>&1; then
+    NEED_ACCENT=1
+    "$JQ" -e --arg w "$WALLPAPER" 'has($w)' "$PALETTE_FILE" >/dev/null 2>&1 && NEED_ACCENT=0
+    NEED_ROLES=1
+    "$JQ" -e --arg w "$WALLPAPER" 'has($w)' "$FM_PALETTE_FILE" >/dev/null 2>&1 && NEED_ROLES=0
+
+    if [ "$NEED_ACCENT" -eq 1 ] || [ "$NEED_ROLES" -eq 1 ]; then
       (
-        COLOR=$("$MATUGEN" image "$WALLPAPER" \
+        # --json hex siempre incluye AMBOS modos (.light y .dark) para
+        # cada rol en una sola invocación (confirmado en vivo con
+        # --mode dark: .colors.primary.light.color sigue presente) — un
+        # solo proceso matugen alimenta las dos caches, no hace falta
+        # correrlo dos veces.
+        MATUGEN_JSON=$("$MATUGEN" image "$WALLPAPER" \
             --mode dark \
             --type scheme-vibrant \
             --prefer saturation \
             --json hex \
             --dry-run \
-            --quiet 2>/dev/null | "$JQ" -r '.colors.primary.dark.color // empty')
+            --quiet 2>/dev/null)
 
-        if [ -n "$COLOR" ]; then
-          exec 9>"$CACHE_DIR/palette.lock"
-          "$FLOCK" -x 9
-          TMP=$("$MKTEMP" "$CACHE_DIR/palette.XXXXXX.json")
-          "$JQ" --arg w "$WALLPAPER" --arg c "$COLOR" '.[$w] = $c' "$PALETTE_FILE" > "$TMP" && mv "$TMP" "$PALETTE_FILE"
+        if [ "$NEED_ACCENT" -eq 1 ]; then
+          COLOR=$(printf '%s' "$MATUGEN_JSON" | "$JQ" -r '.colors.primary.dark.color // empty')
+          if [ -n "$COLOR" ]; then
+            exec 9>"$CACHE_DIR/palette.lock"
+            "$FLOCK" -x 9
+            TMP=$("$MKTEMP" "$CACHE_DIR/palette.XXXXXX.json")
+            "$JQ" --arg w "$WALLPAPER" --arg c "$COLOR" '.[$w] = $c' "$PALETTE_FILE" > "$TMP" && mv "$TMP" "$PALETTE_FILE"
+          fi
+        fi
+
+        if [ "$NEED_ROLES" -eq 1 ]; then
+          # background/alternateBackground/text/disabledText: par
+          # background+on_background y surface_variant+on_surface_variant
+          # de Material — matugen ya garantiza contraste legible acá, no
+          # es un cálculo HSL a ojo. activeBackground/activeText:
+          # primary_container/on_primary_container — el PAR que Material
+          # diseña específicamente para "superficie tintada de acento +
+          # texto legible encima", que es exactamente activeBackgroundColor/
+          # activeTextColor de Kirigami. link: tertiary (tono oro/oliva,
+          # la pata "gold" de la paleta cream/terracotta/gold).
+          ROLES=$(printf '%s' "$MATUGEN_JSON" | "$JQ" -c '{
+              background: (.colors.background.light.color // empty),
+              surfaceVariant: (.colors.surface_variant.light.color // empty),
+              text: (.colors.on_background.light.color // empty),
+              textMuted: (.colors.on_surface_variant.light.color // empty),
+              activeBackground: (.colors.primary_container.light.color // empty),
+              activeText: (.colors.on_primary_container.light.color // empty),
+              link: (.colors.tertiary.light.color // empty)
+          }')
+
+          if [ -n "$ROLES" ] && [ "$ROLES" != "null" ]; then
+            exec 8>"$CACHE_DIR/filemanager-palette.lock"
+            "$FLOCK" -x 8
+            TMP2=$("$MKTEMP" "$CACHE_DIR/filemanager-palette.XXXXXX.json")
+            "$JQ" --arg w "$WALLPAPER" --argjson r "$ROLES" '.[$w] = $r' "$FM_PALETTE_FILE" > "$TMP2" && mv "$TMP2" "$FM_PALETTE_FILE"
+          fi
         fi
       ) &
     fi
