@@ -33,6 +33,7 @@
 import QtQuick
 import QtQuick.Controls as QQC2
 import QtQuick.Layouts
+import QtQuick.Effects
 import org.kde.kirigami as Kirigami
 import org.nixos.filemanager
 
@@ -106,6 +107,26 @@ Kirigami.ApplicationWindow {
 
     function joinPath(dirUrl, name) {
         return dirUrl.toString().replace(/\/$/, "") + "/" + name;
+    }
+
+    // --- Glow de carpeta (follow-up post-Fase 2, ver
+    // docs/NIXOS_ARCHITECTURE_HITO_005.md §9): categorización REAL por
+    // palabra clave en el nombre (no un hash) — el pedido ofrecía un
+    // fallback más simple ("un solo gradiente para todas las carpetas")
+    // si esto complicaba demasiado, pero clasificar por keyword resultó
+    // igual de simple, así que se hizo. Los tres colores salen siempre de
+    // paletteWatcher (roles reales derivados de matugen) — nunca hex fijo.
+    // Como la paleta solo trae 8 roles de uso general (no cuatro roles
+    // "gold/coral/berry/terracotta" dedicados), "terracota"/"baya" se
+    // derivan con Qt.darker() de accent/link (una TRANSFORMACIÓN de un
+    // color real, no un valor inventado aparte).
+    function folderGlowColors(name) {
+        const n = name.toLowerCase();
+        if (/dev|code|proj|software|work/.test(n))
+            return { a: paletteWatcher.accent, b: Qt.darker(paletteWatcher.accent, 1.45) }; // terracota
+        if (/doc|reference|note|stud|univers|research/.test(n))
+            return { a: paletteWatcher.link, b: Qt.darker(paletteWatcher.link, 1.3) }; // baya
+        return { a: paletteWatcher.activeBackground, b: paletteWatcher.accent }; // oro (default)
     }
 
     // --- Texto de los ToolButton (follow-up post-Fase 2, ver
@@ -364,26 +385,79 @@ Kirigami.ApplicationWindow {
                             }
                         }
 
-                        // --- Halo de proximidad (mismo idiom que
-                        // Capsule.qml de QuickShell: borde translúcido más
-                        // grande que el ítem, opacity nunca instantánea) —
-                        // más intenso si es el place seleccionado.
+                        // --- Elevación real (follow-up post-Fase 2, ver
+                        // docs/NIXOS_ARCHITECTURE_HITO_005.md §9): antes
+                        // esto era un borde translúcido fino (Rectangle
+                        // solo con border, sin desenfoque) — pedido
+                        // explícito: "colored box-shadow bleeding out from
+                        // the accent, not just a background fill".
+                        // Reemplazado por un blur real vía MultiEffect
+                        // (QtQuick.Effects — Kirigami no trae nada
+                        // parecido "out of the box", mismo criterio que el
+                        // resto del proyecto: se construye a mano).
+                        //
+                        // Dos bugs reales encontrados en vivo con
+                        // screenshot antes de llegar a esta versión (ver
+                        // docs §9 para el detalle completo):
+                        // 1. `shadowBlur` en escala 0..1 de MultiEffect
+                        //    mapea a un radio bastante más grande de lo
+                        //    esperable para un ítem de 40px — con 0.7-0.8
+                        //    el halo de una fila se mezclaba con las
+                        //    vecinas. 0.18 lo mantiene proporcional.
+                        // 2. Más importante: `MultiEffect.source` renderiza
+                        //    su pase principal (una copia nítida, sin
+                        //    blur, de la fuente) IGNORANDO la opacity/
+                        //    visible DEL ITEM FUENTE — confirmado en vivo
+                        //    probando `visible: false` en placeShadowShape
+                        //    y viendo que el bloque sólido seguía ahí
+                        //    igual. La fuente, al ser usada como `source`
+                        //    de un efecto, se cachea vía layering interno
+                        //    de Qt Quick — ese layering ignora el opacity/
+                        //    visible normal del item porque el efecto
+                        //    necesita los píxeles para poder procesarlos,
+                        //    sin importar si el item "debería" verse.
+                        // Fix real: la fuente queda SIEMPRE sólida/visible
+                        // (color fijo, sin condicional), y el control de
+                        // intensidad se mueve a `MultiEffect.opacity` — una
+                        // propiedad normal de Item, sin el problema de
+                        // arriba porque no es la fuente cacheada, es la
+                        // salida final del efecto. `MultiEffect.opacity`
+                        // (con Behavior) anima el pase principal Y la
+                        // sombra juntos, de forma confiable. La fuente en
+                        // sí también se esconde (visible booleano, sin
+                        // Behavior propio — no hace falta, lo que el ojo
+                        // percibe lo anima el Behavior del MultiEffect de
+                        // abajo, no este) para que su copia sólida no
+                        // quede pegada permanentemente detrás cuando no
+                        // hay nada opaco encima que la tape (fila en
+                        // reposo, sin selección ni hover).
                         Rectangle {
+                            id: placeShadowShape
                             anchors.fill: parent
-                            anchors.margins: -3
-                            radius: 9
-                            color: "transparent"
-                            border.width: 2
-                            border.color: paletteWatcher.accent
+                            radius: 6
+                            color: paletteWatcher.accent
                             z: -1
-                            opacity: placeDelegate.highlighted ? 0.35 : (placeHover.hovered ? 0.18 : 0)
+                            visible: placeDelegate.highlighted || placeHover.hovered
+                        }
+                        MultiEffect {
+                            anchors.fill: placeShadowShape
+                            source: placeShadowShape
+                            z: -1
+                            opacity: placeDelegate.highlighted ? 0.85 : (placeHover.hovered ? 0.4 : 0.0)
+                            shadowEnabled: true
+                            shadowColor: paletteWatcher.accent
+                            shadowBlur: 0.18
+                            shadowVerticalOffset: 1
                             Behavior on opacity {
                                 NumberAnimation { duration: root.durMed; easing.type: root.easeOutCubic }
                             }
                         }
 
-                        // --- Hover-scale (paso 5) ---
-                        scale: placeHover.hovered ? 1.02 : 1.0
+                        // --- Hover-scale (paso 5) — extendido esta ronda
+                        // para incluir el estado seleccionado, no solo
+                        // hover ("slight scale-up on the selected/hot
+                        // item", pedido explícito).
+                        scale: placeDelegate.highlighted ? 1.02 : (placeHover.hovered ? 1.015 : 1.0)
                         Behavior on scale {
                             NumberAnimation { duration: root.durFast; easing.type: root.easeOutBack }
                         }
@@ -594,22 +668,41 @@ Kirigami.ApplicationWindow {
                             }
                         }
 
-                        // --- Halo de proximidad — sin equivalente
-                        // Kirigami (100% custom, ver plan §4), mismo idiom
-                        // de borde translúcido que Capsule.qml de
-                        // QuickShell: más grande que el ítem, z:-1 para que
-                        // quede detrás, opacity nunca instantánea. Más
-                        // intenso si el ítem está seleccionado que si solo
-                        // tiene el mouse encima.
+                        // --- Elevación real (follow-up post-Fase 2, ver
+                        // docs/NIXOS_ARCHITECTURE_HITO_005.md §9) —
+                        // reemplaza el halo de solo-borde de antes por un
+                        // blur real vía MultiEffect. Mismo mecanismo y
+                        // mismos bugs/fixes reales que placeDelegate en el
+                        // sidebar (ver ese comentario para el detalle
+                        // completo): blur desproporcionado para un ítem de
+                        // 40px, y — el bug real — MultiEffect ignora la
+                        // opacity de su `source` para el pase principal
+                        // (confirmado en vivo). Fix: `MultiEffect.opacity`
+                        // (con Behavior) anima el pase principal + sombra
+                        // de forma confiable; la fuente además se esconde
+                        // con un `visible` booleano simple (sin Behavior
+                        // propio, no hace falta) para que su copia sólida
+                        // no quede pegada detrás en reposo, sin nada
+                        // opaco encima que la tape. Más intensa si el
+                        // ítem está seleccionado que si solo tiene el
+                        // mouse encima.
                         Rectangle {
+                            id: cardShadowShape
                             anchors.fill: parent
-                            anchors.margins: -3
                             radius: 8
-                            color: "transparent"
-                            border.width: 2
-                            border.color: paletteWatcher.accent
+                            color: paletteWatcher.accent
                             z: -1
-                            opacity: itemDelegate.highlighted ? 0.4 : (hoverHandler.hovered ? 0.22 : 0)
+                            visible: itemDelegate.highlighted || hoverHandler.hovered
+                        }
+                        MultiEffect {
+                            anchors.fill: cardShadowShape
+                            source: cardShadowShape
+                            z: -1
+                            opacity: itemDelegate.highlighted ? 0.5 : (hoverHandler.hovered ? 0.26 : 0.0)
+                            shadowEnabled: true
+                            shadowColor: paletteWatcher.accent
+                            shadowBlur: 0.18
+                            shadowVerticalOffset: 2
                             Behavior on opacity {
                                 NumberAnimation { duration: root.durMed; easing.type: root.easeOutCubic }
                             }
@@ -664,13 +757,117 @@ Kirigami.ApplicationWindow {
                                 columns: 2
                                 rowSpacing: itemDelegate.spacing
                                 columnSpacing: itemDelegate.spacing
-                                Kirigami.Icon {
-                                    selected: itemDelegate.highlighted || itemDelegate.down
+                                // Wrapper agregado esta ronda SOLO para
+                                // poder meter el glow detrás del ícono sin
+                                // tocar el tamaño/binding del Kirigami.Icon
+                                // real — Layout.preferredWidth/Height siguen
+                                // siendo itemDelegate.icon.width/height
+                                // dinámico (la lección de la ronda pasada:
+                                // un tamaño fijo rompía la resolución del
+                                // ícono, ver comentario grande arriba).
+                                Item {
+                                    id: iconSlot
                                     Layout.preferredHeight: itemDelegate.icon.height
                                     Layout.preferredWidth: itemDelegate.icon.width
                                     Layout.alignment: Qt.AlignVCenter | Qt.AlignHCenter
-                                    visible: itemDelegate.icon.name.length > 0
-                                    source: itemDelegate.icon.name
+
+                                    // Colores solo para carpetas (pedido
+                                    // explícito: "folder icons" — los
+                                    // archivos sueltos no llevan esta
+                                    // categorización, se quedan con su
+                                    // ícono real sin glow agregado).
+                                    readonly property var glow: model.isDir ? root.folderGlowColors(model.name) : null
+
+                                    // --- Glow de carpeta (pedido
+                                    // explícito, ver docs §9): gradiente +
+                                    // drop-shadow reales detrás del ícono
+                                    // vía MultiEffect. A propósito NO se
+                                    // re-colorea el ícono real
+                                    // (Kirigami.Icon.color/isMask) — la
+                                    // ronda anterior encontró en vivo que
+                                    // tocar eso rompe la resolución del
+                                    // ícono de Breeze y lo reemplaza por un
+                                    // placeholder roto (ver §8.3 punto 2).
+                                    // En cambio: un blob con gradiente
+                                    // cálido detrás, desenfocado — su
+                                    // núcleo nítido queda tapado por el
+                                    // ícono real de encima (declarado
+                                    // después = pinta arriba), solo el
+                                    // desenfoque bordeando el ícono queda
+                                    // visible.
+                                    //
+                                    // Bug real encontrado en vivo con
+                                    // screenshot (mismo para los otros dos
+                                    // usos de MultiEffect en este archivo,
+                                    // ver el comentario completo en
+                                    // placeShadowShape del sidebar): el
+                                    // pase principal de MultiEffect ignora
+                                    // la opacity DEL ITEM FUENTE — probado
+                                    // con `visible:false` en este mismo
+                                    // Rectangle y el glow seguía ahí igual,
+                                    // fila tras fila, sumando hasta verse
+                                    // como un bloque sólido en todo el
+                                    // listado. Fix: DOS Behaviors
+                                    // separados con la misma expresión —
+                                    // uno acá (controla el anillo que se
+                                    // ve directo, alrededor del ícono real,
+                                    // ya que la opacity de un item SÍ
+                                    // aplica normal a su propio render en
+                                    // pantalla) y otro en el
+                                    // `MultiEffect.opacity` de abajo
+                                    // (controla el desenfoque/sombra, que
+                                    // no hereda del primero por el bug de
+                                    // arriba). Para archivos sueltos
+                                    // (iconSlot.glow === null) ambos stops
+                                    // del gradiente son "transparent" —
+                                    // eso SÍ funciona sin importar la
+                                    // opacity, porque es alpha de píxel,
+                                    // no opacity de item. Opacity base
+                                    // > 0 (no 0) a propósito — pedido
+                                    // explícito: "read as glowing softly"
+                                    // incluso en reposo, no solo al pasar
+                                    // el mouse.
+                                    Rectangle {
+                                        id: iconGlowShape
+                                        anchors.fill: parent
+                                        anchors.margins: -2
+                                        radius: width / 2
+                                        opacity: itemDelegate.highlighted ? 0.6 : (hoverHandler.hovered ? 0.45 : 0.3)
+                                        gradient: Gradient {
+                                            GradientStop { position: 0.0; color: iconSlot.glow ? iconSlot.glow.a : "transparent" }
+                                            GradientStop { position: 1.0; color: iconSlot.glow ? iconSlot.glow.b : "transparent" }
+                                        }
+                                        Behavior on opacity {
+                                            NumberAnimation { duration: root.durMed; easing.type: root.easeOutCubic }
+                                        }
+                                    }
+                                    MultiEffect {
+                                        anchors.fill: iconGlowShape
+                                        source: iconGlowShape
+                                        visible: iconSlot.glow !== null
+                                        opacity: itemDelegate.highlighted ? 0.6 : (hoverHandler.hovered ? 0.45 : 0.3)
+                                        shadowEnabled: true
+                                        shadowColor: iconSlot.glow ? iconSlot.glow.a : "transparent"
+                                        // Blur chico a propósito — acá el
+                                        // "ítem" es el ícono de ~22px,
+                                        // mucho más chico que las filas de
+                                        // 40px de cardShadowShape/
+                                        // placeShadowShape, así que
+                                        // necesita un radio todavía más
+                                        // contenido para no bleedear sobre
+                                        // las filas vecinas.
+                                        shadowBlur: 0.15
+                                        shadowVerticalOffset: 1
+                                        Behavior on opacity {
+                                            NumberAnimation { duration: root.durMed; easing.type: root.easeOutCubic }
+                                        }
+                                    }
+                                    Kirigami.Icon {
+                                        anchors.fill: parent
+                                        selected: itemDelegate.highlighted || itemDelegate.down
+                                        visible: itemDelegate.icon.name.length > 0
+                                        source: itemDelegate.icon.name
+                                    }
                                 }
                                 QQC2.Label {
                                     Layout.fillWidth: true
@@ -682,9 +879,12 @@ Kirigami.ApplicationWindow {
                                 }
                             }
 
-                            // --- Hover-scale (paso 5) — mismo patrón que
-                            // Bar.qml/Capsule.qml de QuickShell.
-                            scale: hoverHandler.hovered ? 1.015 : 1.0
+                            // --- Hover-scale (paso 5) — extendido esta
+                            // ronda para incluir el estado seleccionado,
+                            // no solo hover ("slight scale-up on the
+                            // selected/hot item", pedido explícito). Mismo
+                            // patrón que Bar.qml/Capsule.qml de QuickShell.
+                            scale: itemDelegate.highlighted ? 1.03 : (hoverHandler.hovered ? 1.015 : 1.0)
                             Behavior on scale {
                                 NumberAnimation { duration: root.durFast; easing.type: root.easeOutBack }
                             }
@@ -739,6 +939,59 @@ Kirigami.ApplicationWindow {
                     elide: Text.ElideRight
                     color: paletteWatcher.text
                 }
+            }
+        }
+    }
+
+    // --- Franja de acento superior (pedido explícito, ver
+    // docs/NIXOS_ARCHITECTURE_HITO_005.md §9): barra de 3px con gradiente
+    // cálido cruzando todo el ancho de la ventana, mismo idiom que
+    // ".panel::before" del mockup aprobado (hito05-filemanager-mockup.html
+    // — ya no accesible en esta sesión, se sigue la descripción textual
+    // del pedido). Hijo directo de `root`: QQC2.ApplicationWindow
+    // reparenta los hijos declarados así dentro de `contentItem` (ver
+    // AbstractApplicationWindow.qml de Kirigami — mismo mecanismo que ya
+    // usan QQC2.Menu/QQC2.Dialog más arriba), por eso alcanza con anclar a
+    // `parent` sin buscar un contentItem explícito. z alto a propósito:
+    // tiene que quedar SIEMPRE arriba del pageStack, sin importar el
+    // orden de declaración real dentro de contentItem.
+    //
+    // Colores: paletteWatcher.* directo, sin hex fijo — dos de los cuatro
+    // stops son Qt.darker() de accent/activeBackground porque la paleta
+    // de 8 roles no trae cuatro tonos "gold/coral/berry/terracotta"
+    // dedicados (sigue siendo una TRANSFORMACIÓN de un rol real, no un
+    // color inventado aparte). Behavior en cada stop — si el workspace
+    // activo cambia de wallpaper/acento en vivo, la franja funde el color
+    // nuevo en vez de saltar de golpe (mismo criterio de motion que el
+    // resto del archivo).
+    Rectangle {
+        id: topAccentStripe
+        z: 1000
+        anchors.top: parent.top
+        anchors.left: parent.left
+        anchors.right: parent.right
+        height: 3
+        gradient: Gradient {
+            orientation: Gradient.Horizontal
+            GradientStop {
+                position: 0.0
+                color: paletteWatcher.link // "oro"
+                Behavior on color { ColorAnimation { duration: root.durSlow } }
+            }
+            GradientStop {
+                position: 0.38
+                color: paletteWatcher.accent // "coral"
+                Behavior on color { ColorAnimation { duration: root.durSlow } }
+            }
+            GradientStop {
+                position: 0.68
+                color: Qt.darker(paletteWatcher.accent, 1.4) // "baya" — derivado del acento real
+                Behavior on color { ColorAnimation { duration: root.durSlow } }
+            }
+            GradientStop {
+                position: 1.0
+                color: Qt.darker(paletteWatcher.activeBackground, 1.3) // "terracota" — derivado del contenedor real
+                Behavior on color { ColorAnimation { duration: root.durSlow } }
             }
         }
     }
