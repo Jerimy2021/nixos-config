@@ -724,6 +724,11 @@ Kirigami.ApplicationWindow {
 
                 ListView {
                     id: placesView
+                    // Fix (ver docs §12): mismo criterio que folderView
+                    // más abajo — sin esto, el mismo scale de hover/
+                    // selección de las filas del sidebar (ver más abajo)
+                    // no tenía nada que lo recortara contra sus bounds.
+                    clip: true
                     model: placesModel
 
                     // --- Agrupado real (follow-up post-Fase 2, ver
@@ -1277,6 +1282,31 @@ Kirigami.ApplicationWindow {
 
                 ListView {
                     id: folderView
+                    // Fix (ver docs §12, investigado a fondo antes de
+                    // tocar nada — no se pudo reproducir un overflow
+                    // dramático en un ícono estático de archivo probando
+                    // .json/.yaml/.js reales, ni en hover, así que esto
+                    // NO es el mismo bug que el de la costura de doble-
+                    // borde de FolderIcon (§ronda anterior) — esa era
+                    // una silueta pintada a mano con Rectangle+border,
+                    // los archivos usan Kirigami.Icon (ícono real del
+                    // sistema, otro camino de renderizado por completo,
+                    // no puede compartir esa causa). Lo que SÍ se
+                    // confirmó por inspección de código: este ListView
+                    // (y placesView del sidebar) no tenían `clip: true`
+                    // — QtQuick NO recorta el contenido de un Item por
+                    // default, así que el `scale:` del hover/selección
+                    // (1.015x–1.03x, ver más abajo) podía en principio
+                    // dejar que el contenido de una fila se saliera de
+                    // su banda hacia una fila vecina o el borde de la
+                    // lista, sin nada que lo contuviera — una causa
+                    // estructural real, aunque no se logró capturar un
+                    // caso dramático en este entorno de prueba
+                    // específico. Fix defensivo y correcto de cualquier
+                    // forma: recortar la lista a sus propios bounds,
+                    // mismo criterio que ya usan el resto de los
+                    // Flickable de este archivo (breadcrumbFlick, etc).
+                    clip: true
                     Layout.fillWidth: true
                     Layout.fillHeight: true
                     model: filteredFolderModel
