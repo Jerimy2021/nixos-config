@@ -13,14 +13,19 @@ let
   # Plasma/GNOME/XFCE) instala /etc/xdg/menus/applications.menu, el
   # archivo base de la XDG Desktop Menu Specification que kbuildsycoca6
   # necesita para indexar CUALQUIER aplicación (confirmado en vivo vía
-  # journalctl — ver modules/kvantum/applications.menu para el detalle
-  # completo de la investigación). Se empaqueta acá como una derivación
-  # mínima en vez de buscar un paquete nixpkgs que lo traiga — el archivo
-  # real (gnome-menus, plasma-workspace) viene siempre atado a una DE
-  # completa, exactamente lo que este sistema evita a propósito.
+  # journalctl — ver modules/kde-integration/applications.menu para el
+  # detalle completo de la investigación). Se empaqueta acá como una
+  # derivación mínima en vez de buscar un paquete nixpkgs que lo traiga —
+  # el archivo real (gnome-menus, plasma-workspace) viene siempre atado a
+  # una DE completa, exactamente lo que este sistema evita a propósito.
+  # Re-confirmado real (no solo un resto de Dolphin) en la migración
+  # final a nixfm (Hito 005 §6/§12): KIO::OpenUrlJob, que
+  # FileOperations::openFile() de nixfm usa para abrir archivos,
+  # depende del mismo índice kbuildsycoca6/KService que este archivo
+  # arregla — sigue haciendo falta con Dolphin fuera del todo.
   applicationsMenu = pkgs.runCommand "applications-menu" { } ''
     mkdir -p $out/etc/xdg/menus
-    cp ${../../modules/kvantum/applications.menu} $out/etc/xdg/menus/applications.menu
+    cp ${../../modules/kde-integration/applications.menu} $out/etc/xdg/menus/applications.menu
   '';
 in
 {
@@ -34,14 +39,23 @@ in
     TERM = "foot";
     # QuickShell corre sobre Qt6 en un escritorio GTK — qt6ct evita que sus
     # ventanas (si las hubiera) se vean ajenas a la paleta del sistema.
+    # CONFIRMADO además (no solo hipotético) como dependencia real de
+    # nixfm (Hito 005 §12): su tema de íconos activo (icon_theme=
+    # Papirus-Dark, ver modules/kde-integration/qt6ct.conf) es lo que
+    # resuelve los íconos del toolbar de nixfm — investigado en vivo esa
+    # ronda comparando contra qt6ct.conf, no es una suposición.
     QT_QPA_PLATFORMTHEME = "qt6ct";
-    # Hito 004 follow-up 18 (migración Thunar -> Dolphin+Kvantum): Kvantum
-    # es el motor de estilo real (paleta a medida de Theme.qml, ver
-    # modules/kvantum/NixCyber/), pero Qt solo lo aplica si algo fuerza el
-    # style plugin — sin esto, Dolphin renderiza con el estilo Qt genérico
-    # (Fusion) e ignora Kvantum por completo aunque esté instalado y
-    # configurado.
-    QT_STYLE_OVERRIDE = "kvantum";
+    # QT_STYLE_OVERRIDE=kvantum (Hito 004 follow-up 18) se quitó en la
+    # migración final a nixfm (Hito 005 §6/§12): Kvantum es un QStyle
+    # plugin, solo afecta apps QWidget — Dolphin era la única en este
+    # sistema. nixfm es QML puro y fuerza su propio style
+    # (QQuickStyle::setStyle("org.kde.desktop") en main.cpp, ver ese
+    # archivo), un mecanismo completamente distinto que Kvantum nunca
+    # tocó. Auditado el resto de home.packages: ninguna otra app QWidget/
+    # Qt queda en el sistema (spotify/discord/firefox son Electron/GTK,
+    # pavucontrol/blueman/qalculate-gtk son GTK) — sin ningún consumidor,
+    # tanto la variable como el paquete/tema de Kvantum se retiran del
+    # todo (ver más abajo).
   };
 
   # --- PAQUETES (LOS OBREROS) ---
@@ -62,28 +76,36 @@ in
     quickshell
     kdePackages.qt6ct
 	
-    # Dolphin + Kvantum (Hito 004 follow-up 18 — antes Thunar, ver
-    # docs/NIXOS_ARCHITECTURE_HITO_004.md). kio-extras/ffmpegthumbs/
-    # kdegraphics-thumbnailers son el equivalente KIO de lo que tumbler+
-    # ffmpegthumbnailer+webp-pixbuf-loader+poppler_gi hacían para Thunar
-    # (miniaturas de video/imagen/pdf) — Dolphin no usa el stack de
-    # miniaturas de GTK (tumbler), tiene el suyo propio vía KIO. ark
-    # reemplaza thunar-archive-plugin (extraer/comprimir desde el
-    # explorador). kimageformats amplía los formatos de imagen que Qt
-    # entiende nativamente (necesario para que el visor integrado de
-    # Dolphin abra más que jpg/png). webp-pixbuf-loader/poppler_gi (los
-    # decodificadores GTK/tumbler que este mismo comentario documentaba
-    # como reemplazados) sobrevivieron a la migración sin usarse — auditado
-    # en el paso "dead package audit" (grep sin resultados salvo esta
-    # línea de comentario, que además dice explícitamente que ya no hacen
-    # falta) y eliminados.
+    # Dolphin (todavía instalado — retiro real en Hito 005 §6 paso 4, ver
+    # docs/NIXOS_ARCHITECTURE_HITO_005.md §12) + KIO. kio-extras/
+    # kimageformats/kservice/applicationsMenu se quedan pase lo que pase
+    # con Dolphin — confirmado que nixfm los necesita también (ver
+    # auditoría de dependencias compartidas, §12): kio-extras trae el
+    # protocolo "network:/" que alimenta el grupo "Red" del sidebar de
+    # nixfm (los .desktop de remoteview, sin esto esa sección del sidebar
+    # queda vacía/rota); kimageformats nunca dependió de Dolphin (lo usa
+    # imv, ver plan §6); kservice es dependencia transitiva de kio
+    # (cualquier app que linkee KIO se lo trae); applicationsMenu arregla
+    # kbuildsycoca6 para CUALQUIER .desktop del sistema, incluido el
+    # propio KIO::OpenUrlJob que usa FileOperations::openFile() de nixfm.
+    # ffmpegthumbs/kdegraphics-thumbnailers (miniaturas) y ark (extraer/
+    # comprimir) SÍ son específicos de Dolphin — nixfm no genera
+    # miniaturas ni tiene UI de compresión en v1 (fuera de scope, ver
+    # plan §5.2) — quedan pendientes de retirar en el paso 4.
+    #
+    # Kvantum (motor de estilo QWidget, Hito 004 follow-up 18) SE RETIRÓ
+    # del todo esta ronda (Hito 005 §12): auditado el resto de
+    # home.packages, ninguna app QWidget/Qt queda en el sistema aparte de
+    # Dolphin (que se va en el paso 4 de todos modos) — nixfm es QML puro
+    # y nunca lo usó. qt6ct SÍ se queda (ver QT_QPA_PLATFORMTHEME arriba)
+    # — separable de Kvantum, confirmado como dependencia real de nixfm
+    # (su propio tema de íconos).
     kdePackages.dolphin
     kdePackages.kio-extras
     kdePackages.ark
     kdePackages.ffmpegthumbs
     kdePackages.kdegraphics-thumbnailers
     kdePackages.kimageformats
-    kdePackages.qtstyleplugin-kvantum
     kdePackages.kservice
     applicationsMenu
     papirus-icon-theme
@@ -234,31 +256,18 @@ in
     "matugen".source = ../../modules/matugen;
     "gtk-3.0/gtk.css".source = ../../modules/gtk/gtk.css;
     "gtk-global/base.css".source = ../../modules/gtk-global/base.css;
-    # Hito 004 follow-up 18: Thunar -> Dolphin+Kvantum. El tema vive en
-    # ~/.config/Kvantum/<nombre>/ (una carpeta por tema, convención de
-    # Kvantum) — acá solo se instala el nuestro (NixCyber), no se toca
-    # ningún tema de fábrica de qtstyleplugin-kvantum. kvantum.kvconfig es
-    # el selector global: le dice a Kvantum qué carpeta usar.
-    "Kvantum/NixCyber/NixCyber.kvconfig".source = ../../modules/kvantum/NixCyber/NixCyber.kvconfig;
-    "Kvantum/kvantum.kvconfig".text = ''
-      [General]
-      theme=NixCyber
-    '';
-    # Encontrado en vivo probando esto: Kvantum solo (el style plugin de
-    # Qt) no alcanza para que Dolphin calce con Theme.qml — las apps KDE
-    # pintan su chrome nativo (sidebar, selección, header de columnas) vía
-    # KColorScheme (kdeglobals), una capa PARALELA al QPalette que expone
-    # el estilo Qt. Sin este archivo, el resultado medido fue gris oscuro
-    # genérico, no nuestra paleta — ver el archivo para el detalle de qué
-    # se probó y qué quedó pendiente (la vista de detalles/lista no calca
-    # el fondo oscuro en todos los casos, gap real no resuelto esta ronda).
-    "kdeglobals".source = ../../modules/kvantum/kdeglobals;
-    # Hito 004 follow-up 20: no existía NINGÚN qt6ct.conf pese a que
-    # QT_QPA_PLATFORMTHEME=qt6ct está seteado (confirmado en vivo con
-    # `ls ~/.config/qt6ct/` -> "No such file or directory") — sin config,
-    # qt6ct no tiene nada declarado y Qt cae a sus defaults compilados en
-    # vez de a lo que decimos acá. Ver el archivo para más detalle.
-    "qt6ct/qt6ct.conf".source = ../../modules/kvantum/qt6ct.conf;
+    # Hito 005 §6/§12 (migración final) — modules/kvantum/ se renombró a
+    # modules/kde-integration/ y perdió Kvantum/NixCyber/ por completo
+    # (el tema de Kvantum en sí, el "Kvantum/kvantum.kvconfig" selector
+    # de tema, y las líneas de este bloque que los instalaban) — auditado
+    # en vivo (ver home.sessionVariables arriba y docs §12): ninguna app
+    # QWidget queda en el sistema una vez que Dolphin se retire (paso 4),
+    # nixfm nunca usó Kvantum (QML puro, style propio). kdeglobals y
+    # qt6ct.conf SÍ siguen — confirmados como dependencias reales de
+    # nixfm mismo, no solo restos de Dolphin, ver el comentario de cada
+    # archivo para el detalle real de qué necesita cada uno.
+    "kdeglobals".source = ../../modules/kde-integration/kdeglobals;
+    "qt6ct/qt6ct.conf".source = ../../modules/kde-integration/qt6ct.conf;
   };
   
   dconf.settings = {

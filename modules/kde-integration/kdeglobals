@@ -40,18 +40,24 @@
 # propio, no un gris plano.
 #
 # Contraste de íconos: Papirus-Dark ya está configurado como icon theme de
-# GTK (home.nix, gtk.iconTheme) pero eso NO propaga a apps Qt/KDE — Dolphin
-# resuelve tema de íconos vía [Icons] Theme= acá (agregado abajo) y/o
-# qt6ct.conf (ver modules/kvantum/qt6ct.conf, mismo problema: no existía
-# ningún archivo de config para qt6ct pese a estar seteado como
-# QT_QPA_PLATFORMTHEME, confirmado en vivo con `ls ~/.config/qt6ct/` -> "No
-# such file or directory" — sin config, Qt cae a sus defaults compilados,
-# no a lo que declaramos en ningún lado).
+# GTK (home.nix, gtk.iconTheme) pero eso NO propaga a apps Qt/KDE — las
+# apps Qt/KDE (Dolphin en su momento, ahora nixfm) resuelven tema de
+# íconos vía [Icons] Theme= acá (agregado abajo) y/o qt6ct.conf (ver
+# modules/kde-integration/qt6ct.conf).
+#
+# Hito 005 §6/§12 (migración final: Dolphin -> nixfm) — "widgetStyle=
+# kvantum" se quitó de las dos secciones de abajo ([General] y [KDE]):
+# Kvantum (el QStyle plugin) se retiró del todo esta ronda, ningún app
+# QWidget queda en el sistema para leerlo — nixfm es QML puro y nunca lo
+# usó. El resto de este archivo ([Icons]/[Colors:*]/[WM]) SÍ se queda:
+# confirmado como dependencia real de nixfm (no solo de Dolphin) — su
+# propio backend "org.kde.desktop" (PlatformTheme) lee este archivo
+# directamente, ver el comentario grande en Main.qml sobre por qué
+# `Kirigami.Theme.*` no alcanza.
 
 [General]
 ColorScheme=NixCyber
 Name=NixCyber
-widgetStyle=kvantum
 
 [Icons]
 Theme=Papirus-Dark
@@ -104,6 +110,3 @@ activeBackground=10,10,18
 activeForeground=241,230,255
 inactiveBackground=13,13,22
 inactiveForeground=184,174,207
-
-[KDE]
-widgetStyle=kvantum
