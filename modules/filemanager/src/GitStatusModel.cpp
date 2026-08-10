@@ -1,5 +1,6 @@
 #include "GitStatusModel.h"
 
+#include <QDir>
 #include <QProcess>
 
 GitStatusModel::GitStatusModel(QObject *parent)
@@ -59,6 +60,7 @@ void GitStatusModel::startToplevelCheck(const QUrl &folder, int generation)
         if (generation != m_generation)
             return;
         if (status == QProcess::NormalExit && exitCode == 0) {
+            m_repoRoot = QString::fromUtf8(proc->readAllStandardOutput()).trimmed();
             m_isRepo = true;
             Q_EMIT isRepoChanged();
             startStatusQuery(folder, generation);
@@ -84,7 +86,7 @@ void GitStatusModel::startStatusQuery(const QUrl &folder, int generation)
     proc->setProgram(QStringLiteral("git"));
     proc->setArguments({QStringLiteral("-C"), folder.toLocalFile(), QStringLiteral("status"), QStringLiteral("--porcelain"), QStringLiteral("--ignored"), QStringLiteral(".")});
 
-    connect(proc, &QProcess::finished, this, [this, proc, generation](int, QProcess::ExitStatus) {
+    connect(proc, &QProcess::finished, this, [this, proc, folder, generation](int, QProcess::ExitStatus) {
         proc->deleteLater();
         if (generation != m_generation)
             return;
@@ -92,11 +94,21 @@ void GitStatusModel::startStatusQuery(const QUrl &folder, int generation)
         const QString output = QString::fromUtf8(proc->readAllStandardOutput());
         QVariantMap result;
 
+        // Fix (bug real, ver comentario grande en el .h): `git status
+        // --porcelain` SIEMPRE entrega paths relativos a la RAÍZ del
+        // repo, nunca a `-C <folder>` ni al pathspec — confirmado en
+        // vivo. Acá se recorta ese prefijo a mano: `browsedRel` es la
+        // carpeta que se está mostrando, relativa a m_repoRoot (vacío
+        // si se está parado justo en la raíz).
+        QString browsedRel = QDir(m_repoRoot).relativeFilePath(folder.toLocalFile());
+        if (browsedRel == QStringLiteral("."))
+            browsedRel.clear();
+        else
+            browsedRel += QLatin1Char('/');
+
         // Formato porcelain v1: "XY PATH" (o "XY PATH -> NEWPATH" para
         // renames — nos importa NEWPATH, es el que existe hoy en la
-        // carpeta). `-C <folder> ... .` ya entrega PATH relativo a
-        // `folder`, no a la raíz del repo — sin eso habría que recortar
-        // el prefijo a mano acá.
+        // carpeta).
         const QStringList lines = output.split(QLatin1Char('\n'), Qt::SkipEmptyParts);
         for (const QString &line : lines) {
             if (line.size() < 4)
@@ -109,6 +121,19 @@ void GitStatusModel::startStatusQuery(const QUrl &folder, int generation)
                 path = path.mid(arrow + 4);
             if (path.startsWith(QLatin1Char('"')) && path.endsWith(QLatin1Char('"')) && path.size() >= 2)
                 path = path.mid(1, path.size() - 2);
+
+            // path llega relativo a la RAÍZ del repo — recortar contra
+            // browsedRel para dejarlo relativo a la carpeta que se está
+            // mostrando. Un path que no empieza con browsedRel es un
+            // cambio FUERA de esta carpeta (ej. en una carpeta hermana)
+            // — el pathspec "." ya debería excluir la mayoría de esos,
+            // pero por las dudas se descarta acá también, no corresponde
+            // a ninguna fila visible.
+            if (!browsedRel.isEmpty()) {
+                if (!path.startsWith(browsedRel))
+                    continue;
+                path = path.mid(browsedRel.length());
+            }
             if (path.isEmpty())
                 continue;
 
