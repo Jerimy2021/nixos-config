@@ -559,7 +559,14 @@ Kirigami.ApplicationWindow {
                         font.bold: true
                         font.capitalization: Font.AllUppercase
                         font.letterSpacing: 1.5
-                        color: paletteWatcher.accent
+                        // Fix (pedido explícito, ver docs §11): ÚNICA
+                        // excepción deliberada a "todo sigue el acento" en
+                        // todo este archivo — un literal fijo, no
+                        // paletteWatcher.*, a propósito NO cambia si
+                        // cambia el workspace/acento activo. Todo lo demás
+                        // (colores de carpeta, glow de selección, franja
+                        // superior) sigue derivado en vivo como siempre.
+                        color: "#1c140d"
                     }
 
                     delegate: QQC2.ItemDelegate {
