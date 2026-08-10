@@ -2,10 +2,13 @@
  * GTK MASTER STYLESHEET — Zero-Noise Architecture (igual que hyprland.conf)
  * ============================================================================== */
 @import url("../gtk-global/base.css");
-/* thunar.css se retiró del import (Hito 004 follow-up 18: Thunar ->
-   Dolphin+Kvantum, ver modules/kvantum/NixCyber/) — el archivo se queda en
-   el repo sin referenciar, por si se vuelve a necesitar GTK puro. Dolphin
-   es Qt/KDE, no lee CSS de GTK; su estilo ahora es 100% Kvantum. */
+/* thunar.css (Hito 004 follow-up 18: Thunar -> Dolphin+Kvantum) se había
+   dejado sin importar pero presente "por si se volvía a necesitar GTK
+   puro" — retirado del repo del todo en la migración final a nixfm
+   (Hito 005 §6/§12): dos migraciones de file manager después (Thunar ->
+   Dolphin -> nixfm, QML/KIO), la posibilidad de volver a un explorador
+   GTK quedó remota, y el archivo (208 líneas de CSS específico de
+   Thunar) no tenía ninguna otra referencia en todo el repo. */
 
 /* Aquí puedes seguir agregando más módulos a futuro, ej: */
 /* @import url("../rofi/rofi-gtk.css"); */
