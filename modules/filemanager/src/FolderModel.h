@@ -21,6 +21,11 @@ class FolderModel : public QAbstractListModel
     // porque QStandardPaths::HomeLocation no cambia en la vida del
     // proceso, no hace falta NOTIFY.
     Q_PROPERTY(QUrl homeUrl READ homeUrl CONSTANT)
+    // Feature 7 (toggle de ocultos, ver docs §11): KCoreDirLister YA
+    // trae esto (showHiddenFiles/setShowHiddenFiles, oculto por default
+    // — ver kcoredirlister.h) — se expone tal cual, no se reinventa
+    // filtrado de dotfiles a mano sobre m_items.
+    Q_PROPERTY(bool showHiddenFiles READ showHiddenFiles WRITE setShowHiddenFiles NOTIFY showHiddenFilesChanged)
 
 public:
     enum Roles {
@@ -38,6 +43,8 @@ public:
     QUrl folder() const;
     void setFolder(const QUrl &url);
     QUrl homeUrl() const;
+    bool showHiddenFiles() const;
+    void setShowHiddenFiles(bool show);
 
     int rowCount(const QModelIndex &parent = QModelIndex()) const override;
     QVariant data(const QModelIndex &index, int role) const override;
@@ -45,6 +52,7 @@ public:
 
 Q_SIGNALS:
     void folderChanged();
+    void showHiddenFilesChanged();
 
 private Q_SLOTS:
     void onItemsAdded(const QUrl &directoryUrl, const KFileItemList &items);

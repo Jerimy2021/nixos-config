@@ -34,6 +34,7 @@ import QtQuick
 import QtQuick.Controls as QQC2
 import QtQuick.Layouts
 import QtQuick.Effects
+import Qt.labs.settings
 import org.kde.kirigami as Kirigami
 import org.nixos.filemanager
 
@@ -238,17 +239,30 @@ Kirigami.ApplicationWindow {
         property string iconName
         property string label
         property bool buttonEnabled: true
+        // Feature 7 (toggle de ocultos, ver docs §11): extensión mínima
+        // — checkable/checked en false por default, así los cinco usos
+        // ya existentes (Subir/Nueva carpeta/Pegar/Terminal/Sidepad, ver
+        // más abajo) quedan sin cambios de comportamiento. Cuando
+        // checkable es true, el fondo del ToolButton nativo ya refleja
+        // el estado (checked) con el mismo look que highlighted en el
+        // resto del archivo — no hace falta reinventar un indicador
+        // aparte.
+        property bool checkable: false
+        property bool checked: false
         signal activated()
         spacing: Kirigami.Units.smallSpacing
         QQC2.ToolButton {
             icon.name: tbRow.iconName
             display: QQC2.AbstractButton.IconOnly
             enabled: tbRow.buttonEnabled
+            checkable: tbRow.checkable
+            checked: tbRow.checked
             onClicked: tbRow.activated()
         }
         QQC2.Label {
             text: tbRow.label
             color: tbRow.buttonEnabled ? paletteWatcher.text : paletteWatcher.textMuted
+            font.bold: tbRow.checkable && tbRow.checked
             TapHandler {
                 enabled: tbRow.buttonEnabled
                 onTapped: tbRow.activated()
@@ -385,6 +399,19 @@ Kirigami.ApplicationWindow {
 
     FolderModel {
         id: folderModel
+    }
+
+    // Feature 7 (toggle de ocultos, ver docs §11): Qt.labs.settings —
+    // persiste vía QSettings (formato INI real bajo
+    // ~/.config/nixos/nixfm.conf, organización/nombre ya fijados en
+    // main.cpp con QGuiApplication::setOrganizationName/setApplicationName)
+    // sin escribir ninguna lectura/escritura de archivo a mano. `property
+    // alias` ató directo al Q_PROPERTY real de FolderModel (mismo
+    // showHiddenFiles que ya expone KCoreDirLister) — un solo dato, un
+    // solo lugar de verdad, sin duplicar el bool acá.
+    Settings {
+        category: "filemanager"
+        property alias showHiddenFiles: folderModel.showHiddenFiles
     }
 
     PlacesModel {
@@ -854,6 +881,20 @@ Kirigami.ApplicationWindow {
                             iconName: "view-right-new"
                             label: "Sidepad aquí"
                             onActivated: fileOps.openSidepadHere(folderModel.folder)
+                        }
+                        // Feature 7 (ver docs §11): toggle real, no una
+                        // acción de un solo disparo — checkable/checked
+                        // atados directo a folderModel.showHiddenFiles
+                        // (KCoreDirLister, ver FolderModel.h/.cpp), la
+                        // persistencia entre sesiones la maneja el
+                        // Settings de más arriba, este botón solo refleja
+                        // y cambia ese único valor.
+                        ToolButtonEntry {
+                            iconName: "show-hidden"
+                            label: "Ocultos"
+                            checkable: true
+                            checked: folderModel.showHiddenFiles
+                            onActivated: folderModel.showHiddenFiles = !folderModel.showHiddenFiles
                         }
                         // Ruta actual — vivía en la barra de título
                         // automática de Kirigami, apagada más arriba

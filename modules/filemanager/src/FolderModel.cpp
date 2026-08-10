@@ -32,6 +32,25 @@ QUrl FolderModel::homeUrl() const
     return QUrl::fromLocalFile(QStandardPaths::writableLocation(QStandardPaths::HomeLocation));
 }
 
+bool FolderModel::showHiddenFiles() const
+{
+    return m_lister->showHiddenFiles();
+}
+
+void FolderModel::setShowHiddenFiles(bool show)
+{
+    if (m_lister->showHiddenFiles() == show)
+        return;
+    m_lister->setShowHiddenFiles(show);
+    // setShowHiddenFiles() por sí sola no re-lista nada — emitChanges()
+    // es lo que efectivamente aplica el filtro nuevo sobre la carpeta ya
+    // abierta (documentado así en kcoredirlister.h). Sin esto el toggle
+    // cambiaría el property pero el listado visible quedaría igual hasta
+    // la próxima navegación real.
+    m_lister->emitChanges();
+    Q_EMIT showHiddenFilesChanged();
+}
+
 void FolderModel::setFolder(const QUrl &url)
 {
     if (!url.isValid() || url == m_folder)
