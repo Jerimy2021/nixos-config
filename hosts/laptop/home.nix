@@ -3,9 +3,9 @@
 let
   mis-scripts = import ./scripts.nix { inherit pkgs; };
 
-  # Hito 005 — File manager Kirigami+KIO (ver NIXOS_FILEMANAGER_HITO05_PLAN.md).
-  # Fase 2, paso 1: scaffold desnudo, sin funcionalidad de archivos todavía
-  # (Dolphin sigue siendo el file manager activo — ver keybinds.lua).
+  # Hito 005 — File manager Kirigami+KIO (ver NIXOS_FILEMANAGER_HITO05_PLAN.md
+  # §6, migración final). Reemplaza a Dolphin — ver keybinds.lua
+  # (fileManager), xdg.desktopEntries.nixfm y xdg.mimeApps más abajo.
   nixfm = import ./filemanager.nix { inherit pkgs; };
 
   # Hito 004 follow-up 19 — causa raíz real del bug "Dolphin no abre
@@ -309,6 +309,28 @@ in
       ];
 	};
 
+    # 1b. Hito 005 §6 (migración final) — nixfm no traía ningún .desktop
+    # propio (el CMakeLists.txt de modules/filemanager solo instala el
+    # binario, ver install(TARGETS...) ahí — confirmado, no hay ningún
+    # install(FILES *.desktop) en todo el archivo). Sin esto no hay forma
+    # de que xdg.mimeApps lo referencie por id, ni de que aparezca como
+    # una app normal (rofi drun, "Abrir con", etc.), solo un binario
+    # crudo. Mismo mecanismo declarativo que nvim-foot arriba, no un
+    # .desktop escrito a mano en /etc.
+    desktopEntries.nixfm = {
+      name = "nixfm";
+      genericName = "File Manager";
+      comment = "Explorador de archivos Kirigami + KIO";
+      exec = "nixfm %u";
+      # system-file-manager: ícono genérico freedesktop, confirmado
+      # presente en Papirus-Dark (el icon theme activo, ver qt6ct.conf)
+      # — nixfm no tiene todavía un ícono propio diseñado.
+      icon = "system-file-manager";
+      terminal = false;
+      categories = [ "Qt" "System" "FileTools" "FileManager" ];
+      mimeType = [ "inode/directory" ];
+    };
+
     # 2. Le decimos al sistema qué usar para cada archivo
     mimeApps = {
       enable = true;
@@ -345,11 +367,13 @@ in
         "image/webp" = "imv.desktop";
         "image/svg+xml" = "imv.desktop";
 
-        # Hito 004 follow-up 18: Thunar -> Dolphin. inode/directory es el
-        # mimetype que xdg-open y otras apps consultan para "abrir esta
-        # carpeta con el explorador de archivos" — sin esto, quedaría sin
-        # default explícito tras sacar Thunar.
-        "inode/directory" = "org.kde.dolphin.desktop";
+        # Hito 005 §6 (migración final: Dolphin -> nixfm). inode/directory
+        # es el mimetype que xdg-open y otras apps consultan para "abrir
+        # esta carpeta con el explorador de archivos" — apunta al
+        # xdg.desktopEntries.nixfm declarado arriba (mismo mecanismo que
+        # ya usa nvim-foot.desktop/imv.desktop en este mismo bloque, no
+        # un .desktop escrito a mano).
+        "inode/directory" = "nixfm.desktop";
       };
     };
   };

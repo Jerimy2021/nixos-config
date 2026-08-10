@@ -31,13 +31,19 @@ hl.window_rule({
 })
 
 hl.window_rule({ match = { class = "^(foot)$" }, opacity = "0.80 override 0.70 override 1.0 override" })
--- Hito 004 follow-up 18: thunar -> dolphin. Clase real verificada en vivo
--- (lanzado en la sesión real, `hyprctl clients -j` contra la ventana
--- resultante) antes de asumir "org.kde.dolphin" a ciegas — ver
--- NIXOS_ARCHITECTURE_HITO_004.md para el valor confirmado.
+-- Hito 005 §6 (migración final: dolphin -> nixfm). Clase real verificada
+-- en vivo (lanzado en la sesión real, `hyprctl clients -j` contra la
+-- ventana resultante) antes de asumir nada — mismo criterio que ya
+-- exigía este comentario para Dolphin. nixfm no llama
+-- QGuiApplication::setDesktopFileName() en main.cpp, así que Qt cae a
+-- su heurística de app_id por default (dominio de organización
+-- invertido — setOrganizationDomain("nixos.local") en main.cpp da
+-- "local.nixos.", confirmado con hyprctl, con el punto final incluido)
+-- — no cambia aunque exista un .desktop instalado, verificado en vivo
+-- lanzando el binario con el .desktop ya construido en el store.
 hl.window_rule({
-  name = "dolphin-float",
-  match = { class = "^(org.kde.dolphin)$" },
+  name = "nixfm-float",
+  match = { class = "^(local.nixos.)$" },
   float = true,
   size = "60% 70%",
   center = true,

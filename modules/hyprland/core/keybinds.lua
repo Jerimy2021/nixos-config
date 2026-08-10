@@ -7,7 +7,7 @@ local mainMod = "SUPER"
 -- --- VARIABLES DE APLICACIONES ---
 local terminal = "foot"
 local browser = "firefox"
-local fileManager = "dolphin" -- Hito 004 follow-up 18: thunar -> dolphin+Kvantum
+local fileManager = "nixfm" -- Hito 005 §6 (migración final): dolphin -> nixfm
 local menu = "rofi -show drun -theme ~/.config/rofi/rofi-border.rasi"
 
 -- ==============================================================================
