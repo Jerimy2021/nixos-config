@@ -439,6 +439,17 @@ Kirigami.ApplicationWindow {
                 root.clipboardUrl = "";
             }
         }
+        // Feature 5 (ver docs §11): copiar ruta vía wl-copy (mismo binario
+        // que Súper+V/PRINT en keybinds.lua) — FileOperations.
+        // copyAbsolutePath/copyRelativePath, ver ese archivo.
+        QQC2.MenuItem {
+            text: "Copiar ruta absoluta"
+            onTriggered: fileOps.copyAbsolutePath(contextMenu.targetUrl)
+        }
+        QQC2.MenuItem {
+            text: "Copiar ruta relativa (git)"
+            onTriggered: fileOps.copyRelativePath(contextMenu.targetUrl)
+        }
         QQC2.MenuItem {
             text: "Renombrar"
             onTriggered: {

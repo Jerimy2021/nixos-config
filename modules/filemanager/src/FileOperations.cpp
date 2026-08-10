@@ -2,6 +2,8 @@
 
 #include <KIO/OpenUrlJob>
 #include <KJob>
+#include <QDir>
+#include <QFileInfo>
 #include <QProcess>
 #include <memory>
 
@@ -46,6 +48,61 @@ void FileOperations::openFile(const QUrl &path)
         }
     });
     job->start();
+}
+
+void FileOperations::copyAbsolutePath(const QUrl &path)
+{
+    copyTextToClipboard(path.toLocalFile(), QStringLiteral("copy-absolute-path"));
+}
+
+void FileOperations::copyRelativePath(const QUrl &path)
+{
+    const QString local = path.toLocalFile();
+    const QFileInfo info(local);
+    const QString searchDir = info.isDir() ? local : info.absolutePath();
+
+    // Síncrono a propósito: es una acción de un solo click de menú
+    // contextual, no algo en el camino de repintado (mismo criterio que
+    // GitStatusModel, que SÍ es async porque corre en cada navegación de
+    // carpeta) — `git rev-parse` local es casi instantáneo, y bloquear
+    // brevemente acá es más simple que armar un flujo de señales para un
+    // menú que ya se cerró apenas se hizo click.
+    QProcess proc;
+    proc.setProgram(QStringLiteral("git"));
+    proc.setArguments({QStringLiteral("-C"), searchDir, QStringLiteral("rev-parse"), QStringLiteral("--show-toplevel")});
+    proc.start();
+
+    QString text = local; // fallback: ruta absoluta si no hay repo git
+    if (proc.waitForFinished(2000) && proc.exitStatus() == QProcess::NormalExit && proc.exitCode() == 0) {
+        const QString root = QString::fromUtf8(proc.readAllStandardOutput()).trimmed();
+        if (!root.isEmpty()) {
+            const QString rel = QDir(root).relativeFilePath(local);
+            if (!rel.isEmpty())
+                text = rel;
+        }
+    }
+    copyTextToClipboard(text, QStringLiteral("copy-relative-path"));
+}
+
+void FileOperations::copyTextToClipboard(const QString &text, const QString &opName)
+{
+    // wl-copy (Súper+V y PRINT en keybinds.lua ya lo usan) lee el
+    // contenido por stdin y se independiza (fork) para servir el
+    // portapapeles — no hace falta esperar a que termine, solo escribirle
+    // y cerrar el canal.
+    auto *proc = new QProcess(this);
+    proc->setProgram(QStringLiteral("wl-copy"));
+    connect(proc, &QProcess::started, proc, [proc, text]() {
+        proc->write(text.toUtf8());
+        proc->closeWriteChannel();
+    });
+    connect(proc, &QProcess::finished, proc, &QObject::deleteLater);
+    connect(proc, &QProcess::errorOccurred, this, [this, proc, opName](QProcess::ProcessError) {
+        Q_EMIT operationFailed(opName, proc->errorString());
+        proc->deleteLater();
+    });
+    proc->start();
+    Q_EMIT operationSucceeded(opName);
 }
 
 void FileOperations::run(const QString &opName, const QStringList &args)

@@ -30,10 +30,24 @@ public:
     // de asociaciones paralela.
     Q_INVOKABLE void openFile(const QUrl &path);
 
+    // Feature 5 (ver docs/NIXOS_ARCHITECTURE_HITO_005.md §11): copiar la
+    // ruta de la selección al portapapeles vía wl-copy (el mismo binario
+    // que ya usan PRINT y Súper+V en keybinds.lua — ver comentario grande
+    // en el .cpp) — no QGuiApplication::clipboard() ni ningún API Qt de
+    // clipboard, mismo criterio de "reusar la herramienta externa ya
+    // establecida" que FileOperations::run() con nixfm-fileops y
+    // GitStatusModel con git.
+    Q_INVOKABLE void copyAbsolutePath(const QUrl &path);
+    // Relativa a la raíz del repo git más cercana — si `path` no está
+    // adentro de un repo, cae de vuelta a la ruta absoluta (mismo
+    // resultado que copyAbsolutePath en ese caso, no un error).
+    Q_INVOKABLE void copyRelativePath(const QUrl &path);
+
 Q_SIGNALS:
     void operationSucceeded(const QString &operation);
     void operationFailed(const QString &operation, const QString &message);
 
 private:
     void run(const QString &opName, const QStringList &args);
+    void copyTextToClipboard(const QString &text, const QString &opName);
 };
