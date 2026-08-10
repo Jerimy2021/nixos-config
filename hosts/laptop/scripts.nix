@@ -64,24 +64,6 @@
     # (pkill -SIGUSR2) o swaync (swaync-client -rs), ambos retirados.
   '';
 
-  # 2b. WALLPAPER POR WORKSPACE (Hito 004 / QuickShell)
-  # Deliberadamente separado de set-wallpaper: la transición visual (awww)
-  # corre siempre y en primer plano para sentirse instantánea, sin esperar
-  # a pywal. matugen sí corre acá, pero solo la PRIMERA vez que se ve un
-  # wallpaper dado (cacheado por ruta absoluta en palette.json) y en
-  # segundo plano — así los workspaces ya visitados siguen siendo
-  # instantáneos, y solo la primera visita paga el costo de extracción de
-  # color. services/Palette.qml (QML) lee este archivo y lo vigila con
-  # FileView.watchChanges, así que el acento de la barra se actualiza solo
-  # en cuanto matugen termina, sin bloquear el cambio de workspace.
-  # Hito 004 follow-up 15: segundo argumento opcional, tipo de transición
-  # de awww (antes hardcodeado a "wipe" siempre). WorkspaceSync.qml ahora
-  # hashea el id de workspace contra una lista fija de tipos
-  # (transitionTypeFor()) para que cada workspace tenga una transición
-  # visualmente distinta y consistente (mismo criterio que el wallpaper
-  # por workspace: identidad reconocible, no aleatorio en cada cambio).
-  # Default "wipe" si no se pasa — mantiene compatible cualquier llamador
-  # viejo que no mande este argumento.
   workspace-wallpaper = pkgs.writeShellScriptBin "workspace-wallpaper" ''
     AWWW=${pkgs.awww}/bin/awww
     MATUGEN=${pkgs.matugen}/bin/matugen
@@ -277,11 +259,6 @@
     esac
   '';
 
-  # 6. ESTADÍSTICAS DEL SISTEMA PARA LA PESTAÑA "PERFORMANCE" DEL DASHBOARD
-  # (Hito 004 follow-up 8). Toda la lógica frágil (buscar el hwmon correcto,
-  # tolerar que la GPU no responda) vive acá, auditable/testeable a mano con
-  # `system-stats` desde una terminal — no como strings de shell sueltas
-  # dentro del QML.
   system-stats = pkgs.writeShellScriptBin "system-stats" ''
     JQ=${pkgs.jq}/bin/jq
     AWK=${pkgs.gawk}/bin/awk
@@ -342,13 +319,6 @@
       '{cpuTempC:$cpuTempC, gpuTempC:$gpuTempC, memUsedPercent:$memUsedPercent, memUsedGiB:$memUsedGiB, memTotalGiB:$memTotalGiB}'
   '';
 
-  # 5. LANZADOR/FOCUS DE APPS EXTERNAS (Discord, Spotify — Hito 004 follow-up 4)
-  # Genérico y parametrizado (clase de ventana + comando de lanzamiento) en
-  # vez de un script por app, mismo criterio que nm-applet-ctl. El foco por
-  # selector de ventana usa la sintaxis Lua de este fork de Hyprland
-  # (hl.dsp.focus({window=...})) — la sintaxis clásica `hyprctl dispatch
-  # focuswindow "class:^(...)$"` falla acá ("expected a dispatcher"),
-  # confirmado en vivo antes de escribir esto.
   app-toggle = pkgs.writeShellScriptBin "app-toggle" ''
     HYPRCTL=${pkgs.hyprland}/bin/hyprctl
     JQ=${pkgs.jq}/bin/jq
@@ -362,111 +332,6 @@
     fi
   '';
 
-  # 6. CONTROL DE SALIDA HDMI (Hito 004 follow-up 17, corregido en follow-up 20)
-  # Hardware real (ver NIXOS_ARCHITECTURE_HITO_001.md §1.1): perfil híbrido
-  # Intel iGPU + NVIDIA PRIME offload. Verificado en vivo antes de escribir
-  # esto (no asumido): los conectores HDMI-A-1/HDMI-A-2 en
-  # /sys/class/drm/card1-HDMI-A-* pertenecen a card1, cuyo device path
-  # (/sys/devices/pci0000:00/0000:00:02.0) coincide exacto con el Bus ID
-  # documentado del iGPU Intel (PCI:0:2:0) — el HDMI de este laptop lo
-  # maneja Intel, no la dGPU NVIDIA (que es offload-bajo-demanda, ni
-  # siquiera despierta para esto). No hay conector HDMI en card0 (NVIDIA).
-  # Esto también significa que la detección de hotplug/auto-placement de
-  # Hyprland NO tiene la complejidad de un switch de GPU en el medio — se
-  # comporta exactamente como en un laptop solo-Intel, sin carrera PRIME
-  # que agregue inestabilidad extra al bug de abajo.
-  #
-  # `hyprctl monitors -j`/`monitors all -j` NO lista conectores sin señal
-  # (confirmado en vivo: con el cable desconectado, ninguna de las dos
-  # variantes muestra HDMI-A-1/2 en absoluto) — así que la detección real
-  # de "¿hay un cable enchufado?" tiene que ir por sysfs (status), no por
-  # hyprctl.
-  #
-  # Hito 004 follow-up 20 — bug real de solape ("HDMI-A-1 overlaps with
-  # other monitor(s)") diagnosticado por el usuario y confirmado acá:
-  # la versión anterior de este script usaba `wlr-randr` (protocolo
-  # wlr-output-management-v1, hablado directo al compositor) para
-  # posicionar monitores, corriendo COMPLETAMENTE POR FUERA del motor de
-  # reglas de monitores propio de Hyprland (monitors.lua/hl.monitor()). Al
-  # conectar el TV, Hyprland aplica primero su propia regla de fallback
-  # (position="auto") — nuestro script recién corre DESPUÉS, cuando el
-  # usuario elige un modo en HdmiMenu.qml, y wlr-randr reposicionaba sin
-  # que el estado interno de Hyprland se enterara correctamente: dos
-  # sistemas de posicionamiento peleando por el mismo output.
-  #
-  # Fix: usar `hl.monitor()` (la misma función Lua que monitors.lua llama
-  # al parsear la config) EN VIVO vía `hyprctl eval`, no wlr-randr.
-  # `hyprctl keyword monitor ...` sigue fallando igual que antes ("keyword
-  # can't work with non-legacy parsers. Use eval") y no existe un
-  # dispatcher hl.dsp.* para monitores — pero `hyprctl eval` sí ejecuta Lua
-  # arbitrario contra el runtime de Hyprland, y `hl.monitor` resultó ser
-  # una función real invocable ahí (confirmado en vivo: `hyprctl eval
-  # 'hl.monitor({output="eDP-1", mode="1366x768@60", position="0x0",
-  # scale=1})'` corrió sin error y `hyprctl monitors -j` confirmó el
-  # estado esperado después). Esto mantiene todo el posicionamiento DENTRO
-  # del mismo motor de reglas que ya usa Hyprland — ya no hay dos sistemas
-  # separados.
-  #
-  # position="mirror,eDP-1" y mode="disable" son sintaxis estándar de
-  # Hyprland para el keyword `monitor=` clásico (no cambiaron entre
-  # versiones) — se asume que `hl.monitor()` acepta los mismos valores en
-  # sus campos ya que es un wrapper directo sobre el mismo parser, pero
-  # SIN un segundo monitor real conectado en esta sesión no se pudo
-  # verificar en vivo el comportamiento de mirror/hdmi-only/laptop-only
-  # específicamente — solo la llamada base a hl.monitor() en sí (sobre
-  # eDP-1) está confirmada funcionando. Ver
-  # NIXOS_ARCHITECTURE_HITO_004.md §27 para el detalle completo y qué
-  # falta reconfirmar con un TV real.
-  #
-  # Hito 004 follow-up 20 (audio, pedido explícito: "match the wpctl
-  # pattern already used elsewhere" — wpctl SÍ está establecido en este
-  # repo para audio, ver keybinds.lua/gestures.lua para las teclas de
-  # volumen; VolumeMixer.qml en cambio usa la API nativa
-  # Quickshell.Services.Pipewire, no wpctl — corrección honesta sobre lo
-  # que el pedido asumía, pero wpctl sigue siendo el patrón correcto para
-  # ESTE script porque es shell, no QML). Versión ORIGINAL de este bloque
-  # (primera pasada del follow-up 20) solo buscaba un sink por nombre
-  # ("hdmi"/"built-in") en `wpctl status` — funcionaba contra el audio de
-  # laptop pero NUNCA podía encontrar un sink HDMI real, ver el fix de
-  # abajo (follow-up 21) para la causa raíz real.
-  #
-  # Hito 004 follow-up 21 — causa raíz real del audio HDMI encontrada en
-  # vivo junto al usuario (dmesg/proc/pactl/pw-dump), diagnóstico completo
-  # documentado en NIXOS_ARCHITECTURE_HITO_004.md §27+1: la tarjeta de
-  # audio (alsa_card.pci-0000_00_1f.3, "HDA Intel PCH") expone UN SOLO
-  # sink activo a la vez, determinado por su PERFIL ALSA (vía PipeWire's
-  # ALSA Card Profile / "acp"), no por qué sinks existan. Con
-  # api.acp.auto-port=false Y api.acp.auto-profile=false (confirmado en
-  # vivo con `wpctl inspect 47`), nada cambia de perfil solo — el sink
-  # HDMI NO EXISTE hasta que el perfil de la tarjeta cambia primero. Por
-  # eso el matching-por-nombre original nunca podía funcionar: no había
-  # nada que matchear.
-  #
-  # Fix: antes de buscar/setear un sink, cambiar el perfil de la tarjeta.
-  # `pactl` no está instalado en este sistema (confirmado: "command not
-  # found") y agregarlo solo para esto habría sido una dependencia nueva
-  # innecesaria — en cambio se usa `wpctl set-profile ID INDEX`, que ya
-  # cubre exactamente esto sin agregar ningún paquete nuevo (wpctl ya es
-  # una dependencia de este script). El INDEX no se hardcodea: varía según
-  # qué construya PipeWire en cada boot/hardware, así que se resuelve en
-  # vivo vía `pw-dump` (parte de pipewire, ya en el sistema) + `jq`,
-  # buscando el primer Audio/Device cuyo EnumProfile tenga el perfil
-  # deseado con available="yes". Se prefiere la variante "+input:..."
-  # (duplex, mantiene el micrófono funcionando) sobre la variante solo-
-  # output, con esta última como fallback si la duplex no estuviera
-  # disponible en algún hardware distinto.
-  #
-  # Verificado en vivo, con el TV real conectado en esta sesión
-  # (/sys/class/drm/card1-HDMI-A-1/status = "connected"): `wpctl
-  # set-profile 47 3` (perfil "output:hdmi-stereo+input:analog-stereo")
-  # hizo aparecer un sink "Built-in Audio Digital Stereo (HDMI)" nuevo, que
-  # PipeWire promovió a default automáticamente (al ser el único sink de
-  # salida ahora disponible) — `set_default_sink_matching "hdmi"` de abajo
-  # sigue llamándose de todos modos como resguardo explícito por si hay
-  # más de una tarjeta/sink en juego. Restaurar a `wpctl set-profile 47 1`
-  # (perfil duplex analógico original) devolvió el sink "Built-in Audio
-  # Analog Stereo" a default sin intervención manual — ciclo completo
-  # confirmado en ambas direcciones antes de commitear.
   hdmi-control = pkgs.writeShellScriptBin "hdmi-control" ''
     HYPRCTL=${pkgs.hyprland}/bin/hyprctl
     WPCTL=${pkgs.wireplumber}/bin/wpctl
@@ -679,16 +544,6 @@
     esac
   '';
 
-  # 7. OPERACIONES DE ARCHIVO PARA nixfm (Hito 005, ver
-  # NIXOS_FILEMANAGER_HITO05_PLAN.md §1.6/§5.1). `kioclient` (el
-  # intermediario originalmente pedido para esto) se investigó y se
-  # confirmó AUSENTE en este nixpkgs/KF6 — ni binario, ni paquete, ni
-  # documentación empaquetada, ver plan §1.6. Esto usa coreutils directo en
-  # su lugar, invocado por FileOperations.cpp (QProcess) — mismo patrón de
-  # "script empaquetado + proceso hijo" que hdmi-control/workspace-wallpaper
-  # ya establecen en este archivo, sólo que llamado desde C++ (QProcess) en
-  # vez de QML (Quickshell.Io.Process), porque nixfm no tiene ese módulo de
-  # QuickShell disponible.
   nixfm-fileops = pkgs.writeShellScriptBin "nixfm-fileops" ''
     CP=${pkgs.coreutils}/bin/cp
     MV=${pkgs.coreutils}/bin/mv
