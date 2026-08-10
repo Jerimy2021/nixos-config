@@ -153,6 +153,58 @@ Kirigami.ApplicationWindow {
         return segments;
     }
 
+    // --- Colapso real de breadcrumb (fix, ver docs
+    // /NIXOS_ARCHITECTURE_HITO_005.md §12): primer segmento + "…" +
+    // últimos hasta-3, el "…" es un MenuItem-per-segmento-oculto (ver
+    // breadcrumbEllipsisMenu más abajo), no solo un scroll horizontal
+    // más. La decisión de SI colapsar (breadcrumbFlick.overflow) y el
+    // tamaño de cola acá adentro usan el ancho REAL medido de cada pill
+    // (`breadcrumbMeasureRepeater.itemAt(i).width`, ver measureRow en
+    // el Flickable), no un estimado por cantidad de caracteres —
+    // primer intento en vivo con cola fija en 3 dejó el primer
+    // segmento ("Home") empujado casi entero fuera de vista en una
+    // ventana angosta con nombres de carpeta largos, contradiciendo el
+    // pedido explícito de "first segment ALWAYS visible" — acá la cola
+    // se reduce 3→2→1 hasta que el candidato realmente entre en el
+    // ancho disponible.
+    function collapsedBreadcrumbSegments() {
+        const all = root.breadcrumbSegments;
+        if (all.length <= 2)
+            return all;
+
+        const sepWidth = 20; // ">" + spacing, aprox — measureRow no incluye separadores
+        const ellipsisWidth = 34; // pill "…" sin ícono, angosta
+        const available = breadcrumbFlick.width;
+        const firstWidth = breadcrumbMeasureRepeater.count > 0 ? breadcrumbMeasureRepeater.itemAt(0).width : 80;
+
+        for (let tail = Math.min(3, all.length - 1); tail >= 1; tail--) {
+            const tailStart = all.length - tail;
+            if (tailStart <= 1)
+                continue; // cola = todo lo que hay después de "Home", nada que colapsar de verdad
+            let tailWidth = 0;
+            for (let i = tailStart; i < all.length; i++) {
+                const item = breadcrumbMeasureRepeater.itemAt(i);
+                tailWidth += (item ? item.width : 80) + sepWidth;
+            }
+            const candidateTotal = firstWidth + sepWidth + ellipsisWidth + sepWidth + tailWidth;
+            if (candidateTotal <= available || tail === 1) {
+                const hidden = all.slice(1, tailStart);
+                if (hidden.length === 0)
+                    return all;
+                const result = [all[0], { label: "…", iconName: "", url: "", isEllipsis: true, hidden: hidden }];
+                for (let i = tailStart; i < all.length; i++)
+                    result.push(all[i]);
+                return result;
+            }
+        }
+        // Ni con cola=1 entra (nombre de la carpeta actual larguísimo,
+        // más ancho que toda la ventana) — el auto-scroll-al-final del
+        // Flickable (ver Connections en la fila de breadcrumb) es el
+        // resguardo real para este caso extremo, no algo que valga la
+        // pena resolver acá con más lógica.
+        return all;
+    }
+
     // --- Glow de carpeta (follow-up post-Fase 2, ver
     // docs/NIXOS_ARCHITECTURE_HITO_005.md §9): categorización REAL por
     // palabra clave en el nombre (no un hash) — el pedido ofrecía un
@@ -445,6 +497,29 @@ Kirigami.ApplicationWindow {
         id: fileOps
         onOperationSucceeded: (op) => statusLabel.text = "OK: " + op
         onOperationFailed: (op, msg) => statusLabel.text = "Error (" + op + "): " + msg
+    }
+
+    // --- Menú de segmentos ocultos del breadcrumb (fix, ver docs §12):
+    // clickear el "…" (ver collapsedBreadcrumbSegments()) abre esto en
+    // vez de expandir la fila entera in-line — revela específicamente
+    // los segmentos escondidos, cada uno navega directo al click, mismo
+    // patrón de Instantiator+Menu que ya usa este archivo en otro lado
+    // (ver placesView más arriba para el section.delegate, aunque ahí
+    // es ListView.section — acá es la primera vez que se arma un Menu
+    // con contenido dinámico).
+    QQC2.Menu {
+        id: breadcrumbEllipsisMenu
+        property var hiddenSegments: []
+        Instantiator {
+            model: breadcrumbEllipsisMenu.hiddenSegments
+            delegate: QQC2.MenuItem {
+                required property var modelData
+                text: modelData.label
+                onTriggered: folderModel.folder = modelData.url
+            }
+            onObjectAdded: (index, object) => breadcrumbEllipsisMenu.insertItem(index, object)
+            onObjectRemoved: (index, object) => breadcrumbEllipsisMenu.removeItem(object)
+        }
     }
 
     QQC2.Menu {
@@ -909,56 +984,18 @@ Kirigami.ApplicationWindow {
                             checked: folderModel.showHiddenFiles
                             onActivated: folderModel.showHiddenFiles = !folderModel.showHiddenFiles
                         }
-                        // Ruta actual — vivía en la barra de título
-                        // automática de Kirigami, apagada más arriba
-                        // (pageStack.globalToolBar.style: None) porque esa
-                        // barra tampoco resolvía sus colores de forma
-                        // confiable. Fix (ver docs §11): el Label de solo
-                        // texto con la URL file:// cruda se reemplazó por
-                        // un breadcrumb real de pills clickeables
-                        // (root.breadcrumbSegments, ver función y
-                        // componente BreadcrumbPill arriba). Sigue siendo
-                        // un Flickable, no un Row directo, por el MISMO
-                        // gotcha que tenía el Label (el mínimo implícito
-                        // de un item de ancho fijo empuja el swatch de
-                        // acento fuera de la ventana en vez de recortar)
-                        // — acá Layout.minimumWidth: 0 + clip: true en el
-                        // Flickable cumplen el mismo rol que elide
-                        // cumplía en el Label.
-                        Flickable {
-                            id: breadcrumbFlick
+                        // Espaciador — reemplaza al breadcrumb que vivía
+                        // acá (fix, ver docs §12): el breadcrumb se movió
+                        // a su propia fila de ancho completo debajo de
+                        // este ToolBar (ver más abajo, "Fila de
+                        // breadcrumb") porque compartir la barra de
+                        // acciones con 6 botones lo dejaba sin espacio
+                        // real para una ruta larga — pedido explícito del
+                        // usuario. Este Item mantiene el swatch de acento
+                        // pegado al borde derecho, mismo rol que
+                        // Layout.fillWidth cumplía en el breadcrumb antes.
+                        Item {
                             Layout.fillWidth: true
-                            Layout.minimumWidth: 0
-                            Layout.leftMargin: 8
-                            Layout.preferredHeight: breadcrumbRow.implicitHeight
-                            contentWidth: breadcrumbRow.implicitWidth
-                            contentHeight: breadcrumbRow.implicitHeight
-                            clip: true
-                            boundsBehavior: Flickable.StopAtBounds
-                            Row {
-                                id: breadcrumbRow
-                                spacing: 2
-                                Repeater {
-                                    model: root.breadcrumbSegments
-                                    delegate: RowLayout {
-                                        id: segmentRow
-                                        required property var modelData
-                                        required property int index
-                                        spacing: 2
-                                        BreadcrumbPill {
-                                            iconName: segmentRow.modelData.iconName
-                                            label: segmentRow.modelData.label
-                                            isCurrent: segmentRow.index === root.breadcrumbSegments.length - 1
-                                            onActivated: folderModel.folder = segmentRow.modelData.url
-                                        }
-                                        QQC2.Label {
-                                            visible: segmentRow.index < root.breadcrumbSegments.length - 1
-                                            text: ">"
-                                            color: paletteWatcher.textMuted
-                                        }
-                                    }
-                                }
-                            }
                         }
                         // Indicador del acento activo (paso 3) — sigue al
                         // workspace de Hyprland en vivo, sin relanzar la app.
@@ -969,6 +1006,137 @@ Kirigami.ApplicationWindow {
                             color: paletteWatcher.accent
                             border.color: paletteWatcher.text
                             border.width: 1
+                        }
+                    }
+                }
+
+                // --- Fila de breadcrumb (fix, ver docs
+                // /NIXOS_ARCHITECTURE_HITO_005.md §12): fila propia de
+                // ancho completo, debajo del ToolBar de acciones y
+                // encima del listado — mismo estilo/altura que la barra
+                // de filtro (feature 8, §11) para que las dos lean como
+                // parte del mismo header en capas, no paneles sueltos.
+                // measureRow (invisible) mide el ancho REAL que ocuparía
+                // la lista de segmentos COMPLETA (sin colapsar); si eso
+                // no entra en el ancho disponible del Flickable, el
+                // Repeater visible pasa a mostrar la versión colapsada
+                // (root.collapsedBreadcrumbSegments(), ver función en la
+                // raíz) en vez de confiar solo en el scroll horizontal
+                // del Flickable — la decisión es sobre ancho MEDIDO, no
+                // un estimado de píxeles por letra ni un umbral fijo de
+                // cantidad de segmentos.
+                Rectangle {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 36
+                    color: paletteWatcher.surfaceVariant
+                    Flickable {
+                        id: breadcrumbFlick
+                        // anchors.verticalCenter + height propia (NO
+                        // anchors.fill) a propósito: height se fija al
+                        // implicitHeight real de breadcrumbRow, así el
+                        // Flickable mide exactamente su contenido y
+                        // "centrado vertical en la barra de 36px" es
+                        // un anchor normal contra el Rectangle padre —
+                        // sin esto, `parent` DENTRO del Flickable es su
+                        // contentItem (height = contentHeight =
+                        // breadcrumbRow.implicitHeight), no el
+                        // Rectangle de 36px, y centrar contra eso es
+                        // una referencia circular que da y:0 siempre.
+                        anchors.left: parent.left
+                        anchors.right: parent.right
+                        anchors.verticalCenter: parent.verticalCenter
+                        anchors.leftMargin: 12
+                        anchors.rightMargin: 12
+                        height: breadcrumbRow.implicitHeight
+                        contentWidth: breadcrumbRow.implicitWidth
+                        contentHeight: breadcrumbRow.implicitHeight
+                        clip: true
+                        boundsBehavior: Flickable.StopAtBounds
+                        // Auto-scroll al extremo derecho en cada
+                        // navegación (fix, ver docs §12, encontrado en
+                        // vivo navegando varios niveles con nombres
+                        // largos): incluso YA colapsado, el resultado
+                        // puede seguir sin entrar completo en el ancho
+                        // disponible (nombres de carpeta largos) — sin
+                        // esto el Flickable quedaba scrolleado a la
+                        // IZQUIERDA por default, tapando justo el
+                        // segmento actual (el más importante, el que
+                        // tiene el pill resaltado) detrás del borde
+                        // derecho de la ventana. Qt.callLater() a
+                        // propósito: contentWidth todavía no reflejó el
+                        // Repeater con los segmentos de la carpeta NUEVA
+                        // en el mismo tick en que folderChanged se
+                        // dispara — sin el callLater, este scroll usa el
+                        // contentWidth de la carpeta ANTERIOR.
+                        Connections {
+                            target: folderModel
+                            function onFolderChanged() {
+                                Qt.callLater(function () {
+                                    breadcrumbFlick.contentX = Math.max(0, breadcrumbFlick.contentWidth - breadcrumbFlick.width);
+                                });
+                            }
+                        }
+                        // Property calculada acá porque acá viven tanto
+                        // measureRow como el width real disponible
+                        // (width propio del Flickable) — ver comentario
+                        // grande arriba.
+                        readonly property bool overflow: measureRow.implicitWidth > width
+
+                        Row {
+                            id: measureRow
+                            visible: false
+                            spacing: 2
+                            // id acá (feature del fix, ver
+                            // collapsedBreadcrumbSegments() en la raíz):
+                            // measureRepeater.itemAt(i).width da el ancho
+                            // REAL de cada pill ya renderizado, no un
+                            // estimado por cantidad de caracteres — eso
+                            // es lo que permite reducir la cola del
+                            // colapso (3→2→1) hasta que el resultado
+                            // realmente entre, en vez de asumir que 3
+                            // siempre alcanza.
+                            Repeater {
+                                id: breadcrumbMeasureRepeater
+                                model: root.breadcrumbSegments
+                                delegate: BreadcrumbPill {
+                                    required property var modelData
+                                    iconName: modelData.iconName
+                                    label: modelData.label
+                                }
+                            }
+                        }
+
+                        Row {
+                            id: breadcrumbRow
+                            spacing: 2
+                            readonly property var displaySegments: breadcrumbFlick.overflow ? root.collapsedBreadcrumbSegments() : root.breadcrumbSegments
+                            Repeater {
+                                model: breadcrumbRow.displaySegments
+                                delegate: RowLayout {
+                                    id: segmentRow
+                                    required property var modelData
+                                    required property int index
+                                    spacing: 2
+                                    BreadcrumbPill {
+                                        iconName: segmentRow.modelData.iconName
+                                        label: segmentRow.modelData.label
+                                        isCurrent: segmentRow.index === breadcrumbRow.displaySegments.length - 1
+                                        onActivated: {
+                                            if (segmentRow.modelData.isEllipsis) {
+                                                breadcrumbEllipsisMenu.hiddenSegments = segmentRow.modelData.hidden;
+                                                breadcrumbEllipsisMenu.popup();
+                                            } else {
+                                                folderModel.folder = segmentRow.modelData.url;
+                                            }
+                                        }
+                                    }
+                                    QQC2.Label {
+                                        visible: segmentRow.index < breadcrumbRow.displaySegments.length - 1
+                                        text: ">"
+                                        color: paletteWatcher.textMuted
+                                    }
+                                }
+                            }
                         }
                     }
                 }
