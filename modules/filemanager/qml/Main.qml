@@ -129,6 +129,32 @@ Kirigami.ApplicationWindow {
         return { a: paletteWatcher.activeBackground, b: paletteWatcher.accent }; // oro (default)
     }
 
+    // --- Agrupado real del sidebar (follow-up post-Fase 2, ver
+    // docs/NIXOS_ARCHITECTURE_HITO_005.md §10): KFilePlacesModel YA trae
+    // un rol "group" (GroupRole, ver kfileplacesmodel.h) con el nombre de
+    // sección real de KDE ("Places"/"Remote"/"Devices"/etc, sin traducir
+    // acá — este proceso no carga catálogos i18n) — no hizo falta
+    // inventar una taxonomía propia ni tocar C++, sólo mapear esos
+    // strings a las etiquetas en español que ya usa el resto de la UI.
+    // "Recent"/"Recently Saved" mapea a "" a propósito: ese grupo en este
+    // sistema son las dos bookmarks timeline:/ rotas (ver §7.2, ya
+    // ocultas por completo) — sin esto, ListView.section.delegate
+    // mostraría un encabezado "Recientes" flotando sobre una sección
+    // vacía.
+    function placeGroupLabel(raw) {
+        switch (raw) {
+        case "Places": return "Accesos";
+        case "Remote": return "Red";
+        case "Devices":
+        case "Removable Devices": return "Sistema";
+        case "Recent":
+        case "Recently Saved": return "";
+        case "Search For": return "Buscar";
+        case "Tags": return "Etiquetas";
+        default: return raw;
+        }
+    }
+
     // --- Texto de los ToolButton (follow-up post-Fase 2, ver
     // docs/NIXOS_ARCHITECTURE_HITO_005.md §8): a diferencia de
     // ItemDelegate (donde "contentItem:" SÍ reemplaza el texto pintado
@@ -166,6 +192,68 @@ Kirigami.ApplicationWindow {
             TapHandler {
                 enabled: tbRow.buttonEnabled
                 onTapped: tbRow.activated()
+            }
+        }
+    }
+
+    // --- Ícono de carpeta real, no un aura detrás del ícono del sistema
+    // (follow-up post-Fase 2, ver docs/NIXOS_ARCHITECTURE_HITO_005.md
+    // §10): pedido explícito del usuario tras ver el resultado de §9 —
+    // "the icon itself needs to read as colored, not just have a colored
+    // aura around a grey/blue system icon". Silueta de carpeta de dos
+    // piezas (solapa + cuerpo) pintada a mano con dos Rectangle de radio
+    // por esquina (Rectangle.topLeftRadius/etc — Qt 6.7+, disponible acá
+    // en 6.11) en vez de QtQuick.Shapes/PathSvg: mismo resultado visual,
+    // sin agregar un import ni un mecanismo nuevo a un archivo que ya
+    // pinta todo lo demás con Rectangle a mano. La solapa queda sólida
+    // (colorA) y el cuerpo lleva el gradiente real de dos stops
+    // (colorA→colorB) — el mismo par que ya calculaba folderGlowColors()
+    // para el aura de §9, ahora alimentando el RELLENO del ícono en vez
+    // de (además de, ver más abajo) la sombra detrás.
+    component FolderIcon: Item {
+        id: folderIconRoot
+        property color colorA: "#ffb77c"
+        property color colorB: "#ffb77c"
+        // Borde real (follow-up en vivo, mismo §10): a 22px y con la
+        // familia "oro" (colorA/colorB muy cercanos entre sí Y cercanos
+        // al fondo cálido de la fila), la silueta se perdía por completo
+        // contra el halo borroso de iconGlowShape detrás — confirmado en
+        // vivo con screenshot, se veía como un blob circular liso, no una
+        // carpeta. Un trazo 1px con Qt.darker(colorB) le da un borde
+        // definido que no depende de que colorA/colorB tengan contraste
+        // entre sí ni contra lo que haya detrás.
+        readonly property color strokeColor: Qt.darker(colorB, 1.35)
+
+        Rectangle {
+            id: tab
+            x: 0
+            y: parent.height * 0.08
+            width: parent.width * 0.52
+            height: parent.height * 0.30
+            topLeftRadius: Math.max(1, parent.width * 0.08)
+            topRightRadius: Math.max(1, parent.width * 0.08)
+            bottomLeftRadius: 0
+            bottomRightRadius: 0
+            color: folderIconRoot.colorA
+            border.color: folderIconRoot.strokeColor
+            border.width: 1
+        }
+
+        Rectangle {
+            id: body
+            x: 0
+            y: parent.height * 0.26
+            width: parent.width
+            height: parent.height * 0.66
+            topLeftRadius: Math.max(1, parent.width * 0.05)
+            topRightRadius: Math.max(1, parent.width * 0.14)
+            bottomLeftRadius: Math.max(1, parent.width * 0.14)
+            bottomRightRadius: Math.max(1, parent.width * 0.14)
+            border.color: folderIconRoot.strokeColor
+            border.width: 1
+            gradient: Gradient {
+                GradientStop { position: 0.0; color: folderIconRoot.colorA }
+                GradientStop { position: 1.0; color: folderIconRoot.colorB }
             }
         }
     }
@@ -330,6 +418,46 @@ Kirigami.ApplicationWindow {
                 ListView {
                     id: placesView
                     model: placesModel
+
+                    // --- Agrupado real (follow-up post-Fase 2, ver
+                    // docs/NIXOS_ARCHITECTURE_HITO_005.md §10): pedido
+                    // explícito — encabezados de sección tipo
+                    // "Accesos"/"Sistema" agrupando Home/Downloads/
+                    // Pictures/Trash aparte de Network aparte de las
+                    // particiones/discos, en vez de una lista plana.
+                    // `section.property` es el primitivo NATIVO de
+                    // ListView para esto — no hizo falta reinventar
+                    // agrupado a mano (Repeater anidado, etc.):
+                    // KFilePlacesModel ya expone el rol "group" (ver
+                    // placeGroupLabel() en la raíz para el mapeo a
+                    // español) y ya entrega los ítems ordenados por
+                    // grupo, así que las secciones quedan contiguas de
+                    // por sí.
+                    section.property: "group"
+                    section.criteria: ViewSection.FullString
+                    section.delegate: QQC2.Label {
+                        id: sectionLabel
+                        required property string section
+                        readonly property string label: root.placeGroupLabel(section)
+                        width: placesView.width
+                        // label vacío (grupo "Recent"/"Recently Saved" —
+                        // ver placeGroupLabel) colapsa el encabezado en
+                        // vez de mostrar un título sobre una sección
+                        // vacía (las dos bookmarks timeline:/ rotas de
+                        // §7.2, ya ocultas por completo más abajo).
+                        visible: label.length > 0
+                        height: label.length > 0 ? implicitHeight : 0
+                        topPadding: 14
+                        bottomPadding: 4
+                        leftPadding: 12
+                        text: label
+                        font.pixelSize: 11
+                        font.bold: true
+                        font.capitalization: Font.AllUppercase
+                        font.letterSpacing: 1.5
+                        color: paletteWatcher.accent
+                    }
+
                     delegate: QQC2.ItemDelegate {
                         id: placeDelegate
                         // Bug real encontrado en vivo (follow-up post-Fase 2,
@@ -827,12 +955,29 @@ Kirigami.ApplicationWindow {
                                     // explícito: "read as glowing softly"
                                     // incluso en reposo, no solo al pasar
                                     // el mouse.
+                                    // Re-ajustado esta ronda (§10, en vivo con
+                                    // screenshot): con FolderIcon encima ya
+                                    // pintando el color real del ícono, este
+                                    // anillo full-size (margins:-2, radius
+                                    // width/2, hasta 0.6 de opacity) quedaba
+                                    // tan grande y tan cerca en tono a
+                                    // colorA/colorB del ícono que se comía la
+                                    // silueta entera — el resultado se veía
+                                    // como un blob circular liso, no una
+                                    // carpeta (confirmado: mismo bug para
+                                    // "oro" default, donde colorA/colorB ya
+                                    // son parecidos entre sí). Se encoge
+                                    // (margins positivo, adentro del ícono en
+                                    // vez de por fuera) y se baja la opacity a
+                                    // la mitad — sigue dando un halo de
+                                    // profundidad detrás del borde de
+                                    // FolderIcon, ya no compite con él.
                                     Rectangle {
                                         id: iconGlowShape
                                         anchors.fill: parent
-                                        anchors.margins: -2
+                                        anchors.margins: 3
                                         radius: width / 2
-                                        opacity: itemDelegate.highlighted ? 0.6 : (hoverHandler.hovered ? 0.45 : 0.3)
+                                        opacity: itemDelegate.highlighted ? 0.3 : (hoverHandler.hovered ? 0.22 : 0.15)
                                         gradient: Gradient {
                                             GradientStop { position: 0.0; color: iconSlot.glow ? iconSlot.glow.a : "transparent" }
                                             GradientStop { position: 1.0; color: iconSlot.glow ? iconSlot.glow.b : "transparent" }
@@ -845,7 +990,7 @@ Kirigami.ApplicationWindow {
                                         anchors.fill: iconGlowShape
                                         source: iconGlowShape
                                         visible: iconSlot.glow !== null
-                                        opacity: itemDelegate.highlighted ? 0.6 : (hoverHandler.hovered ? 0.45 : 0.3)
+                                        opacity: itemDelegate.highlighted ? 0.5 : (hoverHandler.hovered ? 0.38 : 0.26)
                                         shadowEnabled: true
                                         shadowColor: iconSlot.glow ? iconSlot.glow.a : "transparent"
                                         // Blur chico a propósito — acá el
@@ -862,10 +1007,35 @@ Kirigami.ApplicationWindow {
                                             NumberAnimation { duration: root.durMed; easing.type: root.easeOutCubic }
                                         }
                                     }
+                                    // --- Ícono real de carpeta, no el del
+                                    // sistema (follow-up post-Fase 2, ver
+                                    // docs/NIXOS_ARCHITECTURE_HITO_005.md
+                                    // §10): el gap real que quedaba de §9
+                                    // — el ícono de Breeze (gris/azul,
+                                    // "unmodified system icon") seguía
+                                    // ahí, solo con un aura de color
+                                    // detrás. Para carpetas (iconSlot.glow
+                                    // !== null) se reemplaza por completo
+                                    // por FolderIcon, coloreado con el
+                                    // mismo par a/b de folderGlowColors()
+                                    // que ya alimentaba el aura de arriba
+                                    // — ahora el RELLENO real del ícono
+                                    // lee como color de verdad, no gris
+                                    // con un halo. Para archivos sueltos
+                                    // (glow === null) se mantiene el ícono
+                                    // real del sistema sin tocar — igual
+                                    // que siempre.
+                                    FolderIcon {
+                                        anchors.fill: parent
+                                        anchors.margins: 1
+                                        visible: iconSlot.glow !== null
+                                        colorA: iconSlot.glow ? iconSlot.glow.a : "transparent"
+                                        colorB: iconSlot.glow ? iconSlot.glow.b : "transparent"
+                                    }
                                     Kirigami.Icon {
                                         anchors.fill: parent
                                         selected: itemDelegate.highlighted || itemDelegate.down
-                                        visible: itemDelegate.icon.name.length > 0
+                                        visible: iconSlot.glow === null && itemDelegate.icon.name.length > 0
                                         source: itemDelegate.icon.name
                                     }
                                 }
