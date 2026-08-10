@@ -5,6 +5,7 @@
 // KIO, no hace falta envolverlo, solo registrarlo como tipo QML
 // instanciable).
 #include "FileOperations.h"
+#include "FolderFilterProxy.h"
 #include "FolderModel.h"
 #include "GitStatusModel.h"
 #include "PaletteWatcher.h"
@@ -40,6 +41,7 @@ int main(int argc, char *argv[])
     qmlRegisterType<PaletteWatcher>("org.nixos.filemanager", 1, 0, "PaletteWatcher");
     qmlRegisterType<FileOperations>("org.nixos.filemanager", 1, 0, "FileOperations");
     qmlRegisterType<GitStatusModel>("org.nixos.filemanager", 1, 0, "GitStatusModel");
+    qmlRegisterType<FolderFilterProxy>("org.nixos.filemanager", 1, 0, "FolderFilterProxy");
 
     QQmlApplicationEngine engine;
     QObject::connect(

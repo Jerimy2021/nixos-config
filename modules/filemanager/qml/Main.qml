@@ -428,6 +428,19 @@ Kirigami.ApplicationWindow {
         folder: folderModel.folder
     }
 
+    // Feature 8 (filtro rápido, ver docs §11): QSortFilterProxyModel
+    // real (ver FolderFilterProxy.h) sentado ENCIMA de folderModel, no
+    // una lista JS filtrada a mano — folderView pasa a apuntar acá (ver
+    // más abajo) y hereda roleNames()/data() del FolderModel real sin
+    // que ningún delegate necesite tocarse. Solo filtra lo que
+    // FolderModel ya listó para la carpeta actual — nunca dispara un
+    // listado nuevo ni busca en subcarpetas.
+    FolderFilterProxy {
+        id: filteredFolderModel
+        sourceModel: folderModel
+        filterText: filterField.text
+    }
+
     FileOperations {
         id: fileOps
         onOperationSucceeded: (op) => statusLabel.text = "OK: " + op
@@ -960,11 +973,71 @@ Kirigami.ApplicationWindow {
                     }
                 }
 
+                // Feature 8 (ver docs §11): barra de filtro propia en
+                // vez de meter un campo más en el ToolBar de arriba, ya
+                // apretado a los anchos de ventana angostos que se
+                // probaron en la feature 6 — mismo `surfaceVariant` que
+                // el ToolBar para que lea como parte del mismo header,
+                // no un panel aparte.
+                Rectangle {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 36
+                    color: paletteWatcher.surfaceVariant
+                    RowLayout {
+                        anchors.fill: parent
+                        anchors.leftMargin: 12
+                        anchors.rightMargin: 12
+                        spacing: 6
+                        Kirigami.Icon {
+                            Layout.preferredWidth: 16
+                            Layout.preferredHeight: 16
+                            source: "search"
+                            color: paletteWatcher.textMuted
+                        }
+                        QQC2.TextField {
+                            id: filterField
+                            Layout.fillWidth: true
+                            Layout.minimumWidth: 0
+                            placeholderText: "Filtrar en esta carpeta…"
+                            background: null
+                            color: paletteWatcher.text
+                            placeholderTextColor: paletteWatcher.textMuted
+                            // Convención fzf-style ya establecida en el
+                            // resto del flujo de este usuario (rofi
+                            // -dmenu, etc.): Escape limpia el filtro en
+                            // vez de propagar y cerrar algo más.
+                            Keys.onEscapePressed: filterField.clear()
+                        }
+                        // Contador de resultados (N visibles) — se apoya
+                        // en ListView.count (folderView, ver más abajo),
+                        // NO en un rowCount() de QAbstractItemModel
+                        // llamado a mano: ese método no es una Q_PROPERTY
+                        // con NOTIFY, así que un binding QML sobre él no
+                        // se actualizaría solo al filtrar. count sí es
+                        // una property real de ListView.
+                        QQC2.Label {
+                            visible: filterField.text.length > 0
+                            text: folderView.count
+                            color: paletteWatcher.textMuted
+                        }
+                    }
+                    // Navegar a otra carpeta limpia el filtro — un
+                    // filtro que sigue de "dev" a "Pictures" mostraría
+                    // una lista vacía o resultados que no tienen que ver
+                    // con nada, sin ninguna pista visible de por qué.
+                    Connections {
+                        target: folderModel
+                        function onFolderChanged() {
+                            filterField.clear();
+                        }
+                    }
+                }
+
                 ListView {
                     id: folderView
                     Layout.fillWidth: true
                     Layout.fillHeight: true
-                    model: folderModel
+                    model: filteredFolderModel
 
                     // --- Transición de navegación (follow-up post-Fase 5,
                     // ver docs/NIXOS_ARCHITECTURE_HITO_005.md §8): PageRow
