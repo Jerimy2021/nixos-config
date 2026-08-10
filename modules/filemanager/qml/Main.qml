@@ -101,12 +101,55 @@ Kirigami.ApplicationWindow {
     property url clipboardUrl: ""
     property bool clipboardCut: false
 
+    // Breadcrumb (fix, ver §11): property binding, no solo función suelta
+    // — así se recalcula solo cada vez que folderModel.folder cambia,
+    // QML trackea la dependencia igual aunque la lectura ocurra DENTRO
+    // de la función llamada, no en la línea del binding.
+    property var breadcrumbSegments: root.computeBreadcrumbSegments()
+
     function baseName(u) {
         return u.toString().replace(/\/$/, "").split("/").pop();
     }
 
     function joinPath(dirUrl, name) {
         return dirUrl.toString().replace(/\/$/, "") + "/" + name;
+    }
+
+    // --- Breadcrumb real (fix, ver docs/NIXOS_ARCHITECTURE_HITO_005.md
+    // §11): reemplaza el Label de solo texto con la ruta file:// cruda.
+    // Trabaja siempre sobre la forma YA CODIFICADA de toString() (la
+    // misma que ya usaba el botón "Subir" — ver más abajo — para no
+    // introducir un segundo esquema de encode/decode en el archivo);
+    // decodeURIComponent() se aplica SOLO al label visible de cada
+    // segmento, nunca a la URL que se le asigna de vuelta a
+    // folderModel.folder. FolderModel.homeUrl (C++, nuevo — ver
+    // FolderModel.h) le da a esta función un punto de referencia real
+    // para poder mostrar "Home" en vez de listar /home/<user> a mano.
+    // Fuera de $HOME (particiones, /, dispositivos del sidebar) el primer
+    // segmento es "/" en vez de "Home".
+    function computeBreadcrumbSegments() {
+        const homeEnc = folderModel.homeUrl.toString().replace(/\/+$/, "");
+        const curEnc = folderModel.folder.toString().replace(/\/+$/, "");
+        const segments = [];
+        let baseEnc, remainderEnc;
+        if (curEnc === homeEnc || curEnc.startsWith(homeEnc + "/")) {
+            baseEnc = homeEnc;
+            remainderEnc = curEnc.slice(homeEnc.length);
+            segments.push({ label: "Home", iconName: "user-home", url: homeEnc + "/" });
+        } else {
+            const m = curEnc.match(/^([a-z]+:\/\/)(.*)$/);
+            const scheme = m ? m[1] : "file://";
+            baseEnc = scheme.replace(/\/$/, "");
+            remainderEnc = m ? m[2] : curEnc;
+            segments.push({ label: "/", iconName: "folder", url: scheme + "/" });
+        }
+        const parts = remainderEnc.split("/").filter(p => p.length > 0);
+        let acc = baseEnc;
+        for (const part of parts) {
+            acc += "/" + part;
+            segments.push({ label: decodeURIComponent(part), iconName: "folder", url: acc + "/" });
+        }
+        return segments;
     }
 
     // --- Glow de carpeta (follow-up post-Fase 2, ver
@@ -271,6 +314,51 @@ Kirigami.ApplicationWindow {
                 GradientStop { position: 0.0; color: folderIconRoot.colorA }
                 GradientStop { position: 1.0; color: folderIconRoot.colorB }
             }
+        }
+    }
+
+    // --- Pill de breadcrumb (fix, ver docs/NIXOS_ARCHITECTURE_HITO_005.md
+    // §11): reemplaza el Label de solo texto de la ruta cruda por
+    // segmentos clickeables estilo "pill" — ícono + nombre, redondeado,
+    // el segmento actual (isCurrent) resaltado con relleno + borde de
+    // acento, el resto transparente salvo hover. Paleta siempre
+    // paletteWatcher, mismo criterio que el resto del archivo.
+    component BreadcrumbPill: Rectangle {
+        id: pill
+        property string iconName
+        property string label
+        property bool isCurrent: false
+        signal activated()
+        radius: height / 2
+        implicitHeight: 24
+        implicitWidth: pillContent.implicitWidth + 16
+        color: pill.isCurrent ? paletteWatcher.activeBackground : (pillHover.hovered ? paletteWatcher.surfaceVariant : "transparent")
+        border.width: pill.isCurrent ? 1 : 0
+        border.color: paletteWatcher.accent
+        Behavior on color {
+            ColorAnimation { duration: root.durFast }
+        }
+        RowLayout {
+            id: pillContent
+            anchors.centerIn: parent
+            spacing: 4
+            Kirigami.Icon {
+                Layout.preferredWidth: 14
+                Layout.preferredHeight: 14
+                source: pill.iconName
+                selected: pill.isCurrent
+            }
+            QQC2.Label {
+                text: pill.label
+                font.bold: pill.isCurrent
+                color: pill.isCurrent ? paletteWatcher.activeText : paletteWatcher.text
+            }
+        }
+        HoverHandler {
+            id: pillHover
+        }
+        TapHandler {
+            onTapped: pill.activated()
         }
     }
 
@@ -711,23 +799,52 @@ Kirigami.ApplicationWindow {
                         // automática de Kirigami, apagada más arriba
                         // (pageStack.globalToolBar.style: None) porque esa
                         // barra tampoco resolvía sus colores de forma
-                        // confiable. Texto explícito acá en vez, mismo
-                        // paletteWatcher.text que el resto.
-                        QQC2.Label {
+                        // confiable. Fix (ver docs §11): el Label de solo
+                        // texto con la URL file:// cruda se reemplazó por
+                        // un breadcrumb real de pills clickeables
+                        // (root.breadcrumbSegments, ver función y
+                        // componente BreadcrumbPill arriba). Sigue siendo
+                        // un Flickable, no un Row directo, por el MISMO
+                        // gotcha que tenía el Label (el mínimo implícito
+                        // de un item de ancho fijo empuja el swatch de
+                        // acento fuera de la ventana en vez de recortar)
+                        // — acá Layout.minimumWidth: 0 + clip: true en el
+                        // Flickable cumplen el mismo rol que elide
+                        // cumplía en el Label.
+                        Flickable {
+                            id: breadcrumbFlick
                             Layout.fillWidth: true
-                            // Sin esto el Label nunca se achica por debajo
-                            // de su ancho natural (gotcha real de
-                            // QtQuick.Layouts: el mínimo implícito de un
-                            // Text es su implicitWidth) — con una ruta
-                            // larga esto empujaba el swatch de acento de
-                            // más abajo fuera del borde visible de la
-                            // ventana en vez de elidir. Confirmado en vivo
-                            // con screenshot (swatch invisible).
                             Layout.minimumWidth: 0
                             Layout.leftMargin: 8
-                            elide: Text.ElideMiddle
-                            text: folderModel.folder.toString()
-                            color: paletteWatcher.text
+                            Layout.preferredHeight: breadcrumbRow.implicitHeight
+                            contentWidth: breadcrumbRow.implicitWidth
+                            contentHeight: breadcrumbRow.implicitHeight
+                            clip: true
+                            boundsBehavior: Flickable.StopAtBounds
+                            Row {
+                                id: breadcrumbRow
+                                spacing: 2
+                                Repeater {
+                                    model: root.breadcrumbSegments
+                                    delegate: RowLayout {
+                                        id: segmentRow
+                                        required property var modelData
+                                        required property int index
+                                        spacing: 2
+                                        BreadcrumbPill {
+                                            iconName: segmentRow.modelData.iconName
+                                            label: segmentRow.modelData.label
+                                            isCurrent: segmentRow.index === root.breadcrumbSegments.length - 1
+                                            onActivated: folderModel.folder = segmentRow.modelData.url
+                                        }
+                                        QQC2.Label {
+                                            visible: segmentRow.index < root.breadcrumbSegments.length - 1
+                                            text: ">"
+                                            color: paletteWatcher.textMuted
+                                        }
+                                    }
+                                }
+                            }
                         }
                         // Indicador del acento activo (paso 3) — sigue al
                         // workspace de Hyprland en vivo, sin relanzar la app.

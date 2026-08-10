@@ -15,6 +15,12 @@ class FolderModel : public QAbstractListModel
 {
     Q_OBJECT
     Q_PROPERTY(QUrl folder READ folder WRITE setFolder NOTIFY folderChanged)
+    // Follow-up (breadcrumb real, ver docs §11): la barra de ruta en QML
+    // necesita saber dónde termina "Home" para poder mostrar el primer
+    // segmento como "Home" en vez de listar /home/<user> a mano — CONSTANT
+    // porque QStandardPaths::HomeLocation no cambia en la vida del
+    // proceso, no hace falta NOTIFY.
+    Q_PROPERTY(QUrl homeUrl READ homeUrl CONSTANT)
 
 public:
     enum Roles {
@@ -31,6 +37,7 @@ public:
 
     QUrl folder() const;
     void setFolder(const QUrl &url);
+    QUrl homeUrl() const;
 
     int rowCount(const QModelIndex &parent = QModelIndex()) const override;
     QVariant data(const QModelIndex &index, int role) const override;

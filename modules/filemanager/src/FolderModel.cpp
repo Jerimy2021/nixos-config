@@ -27,6 +27,11 @@ QUrl FolderModel::folder() const
     return m_folder;
 }
 
+QUrl FolderModel::homeUrl() const
+{
+    return QUrl::fromLocalFile(QStandardPaths::writableLocation(QStandardPaths::HomeLocation));
+}
+
 void FolderModel::setFolder(const QUrl &url)
 {
     if (!url.isValid() || url == m_folder)
