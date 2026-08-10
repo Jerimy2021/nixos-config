@@ -303,13 +303,63 @@ Kirigami.ApplicationWindow {
         property bool checked: false
         signal activated()
         spacing: Kirigami.Units.smallSpacing
-        QQC2.ToolButton {
-            icon.name: tbRow.iconName
-            display: QQC2.AbstractButton.IconOnly
-            enabled: tbRow.buttonEnabled
-            checkable: tbRow.checkable
-            checked: tbRow.checked
-            onClicked: tbRow.activated()
+        // Fix (contraste real, ver docs §12): el pedido decía "increase
+        // icon contrast/size" — el tamaño se puede agrandar de forma
+        // confiable (20px en vez del default ~16px del style), pero el
+        // COLOR del ícono no: el tema de ícono ACTIVO de este sistema es
+        // Papirus-Dark (confirmado en vivo en ~/.config/qt6ct/qt6ct.conf,
+        // icon_theme=Papirus-Dark — diseñado para fondos oscuros), y son
+        // SVGs multicolor, no símbolos monocromos — `icon.color` no
+        // tiene efecto sobre esos. Forzar todo el tema a "breeze" en
+        // cambio SE INVESTIGÓ y se descartó — breeze no trae
+        // "utilities-terminal" ni ningún ícono con "hidden" en el nombre
+        // (comprobado con find sobre el theme instalado), así que el
+        // swap habría arreglado 3 íconos pálidos a costa de dejar
+        // Terminal/Ocultos sin ícono.
+        //
+        // Fix real: un chip de fondo detrás de CADA ícono. Primer
+        // intento puesto directo en `ToolButton.background:` BORRÓ el
+        // ícono por completo (confirmado en vivo con screenshot) — el
+        // StyleItem nativo de qqc2-desktop-style que pinta el ÍCONO
+        // vive DENTRO de ese mismo slot `background:` (mismo mecanismo
+        // ya documentado en el comentario grande de arriba sobre el
+        // texto — acá alcanzó también al ícono, no solo al texto).
+        // Fix real: el chip va COMO HERMANO, detrás en z-order (Item
+        // wrapper con el Rectangle primero, el ToolButton nativo
+        // intacto encima, anchors.fill) — nunca se toca `background:`
+        // del ToolButton, así el StyleItem nativo (ícono incluido)
+        // sigue pintando exactamente igual que siempre.
+        Item {
+            implicitWidth: toolBtn.implicitWidth
+            implicitHeight: toolBtn.implicitHeight
+            Rectangle {
+                anchors.fill: parent
+                radius: 6
+                color: toolBtn.checked ? paletteWatcher.activeBackground : paletteWatcher.background
+                border.width: 1
+                border.color: toolBtn.checked ? paletteWatcher.accent : Qt.rgba(paletteWatcher.text.r, paletteWatcher.text.g, paletteWatcher.text.b, 0.18)
+                opacity: toolBtn.enabled ? 1.0 : 0.5
+            }
+            QQC2.ToolButton {
+                id: toolBtn
+                anchors.fill: parent
+                icon.name: tbRow.iconName
+                icon.width: 20
+                icon.height: 20
+                display: QQC2.AbstractButton.IconOnly
+                enabled: tbRow.buttonEnabled
+                checkable: tbRow.checkable
+                checked: tbRow.checked
+                onClicked: tbRow.activated()
+                // Fix (tooltips, ver docs §12): con display: IconOnly el
+                // texto real vive en el QQC2.Label hermano de acá abajo,
+                // no en el botón — sin esto, pasar el mouse sobre SOLO
+                // el ícono (sin tocar el label) no mostraba ninguna
+                // pista de qué hace el botón.
+                QQC2.ToolTip.text: tbRow.label
+                QQC2.ToolTip.visible: toolBtn.hovered
+                QQC2.ToolTip.delay: 500
+            }
         }
         QQC2.Label {
             text: tbRow.label
@@ -927,6 +977,15 @@ Kirigami.ApplicationWindow {
                     background: Rectangle {
                         color: paletteWatcher.surfaceVariant
                     }
+                    // Fix (mapa mental, ver docs §12 — pedido explícito:
+                    // "los iconos no se notan, no funciona el mapa
+                    // mental, ordénalo"): cuatro clusters separados por
+                    // Kirigami.Separator en vez de seis botones en fila
+                    // sin ninguna jerarquía visual — navegación (Subir)
+                    // | operaciones de archivo (Nueva carpeta/Pegar) |
+                    // lanzadores externos (Terminal/Sidepad) | vista
+                    // (Ocultos — Filtrar ya tiene su propia fila debajo,
+                    // ver más abajo, así que acá solo va el toggle).
                     RowLayout {
                         anchors.fill: parent
                         ToolButtonEntry {
@@ -936,6 +995,11 @@ Kirigami.ApplicationWindow {
                                 const parentUrl = folderModel.folder.toString().replace(/\/[^/]+\/?$/, "/");
                                 folderModel.folder = parentUrl;
                             }
+                        }
+                        Kirigami.Separator {
+                            Layout.fillHeight: true
+                            Layout.topMargin: 8
+                            Layout.bottomMargin: 8
                         }
                         ToolButtonEntry {
                             iconName: "folder-new"
@@ -955,6 +1019,11 @@ Kirigami.ApplicationWindow {
                                 root.clipboardUrl = "";
                             }
                         }
+                        Kirigami.Separator {
+                            Layout.fillHeight: true
+                            Layout.topMargin: 8
+                            Layout.bottomMargin: 8
+                        }
                         // Feature 6 (ver docs §11): reusan foot/
                         // sidepad-toggle tal cual ya instalados
                         // (home.nix/scripts.nix), FileOperations solo les
@@ -969,6 +1038,11 @@ Kirigami.ApplicationWindow {
                             iconName: "view-right-new"
                             label: "Sidepad aquí"
                             onActivated: fileOps.openSidepadHere(folderModel.folder)
+                        }
+                        Kirigami.Separator {
+                            Layout.fillHeight: true
+                            Layout.topMargin: 8
+                            Layout.bottomMargin: 8
                         }
                         // Feature 7 (ver docs §11): toggle real, no una
                         // acción de un solo disparo — checkable/checked
