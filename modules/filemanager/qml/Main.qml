@@ -840,6 +840,21 @@ Kirigami.ApplicationWindow {
                                 root.clipboardUrl = "";
                             }
                         }
+                        // Feature 6 (ver docs §11): reusan foot/
+                        // sidepad-toggle tal cual ya instalados
+                        // (home.nix/scripts.nix), FileOperations solo les
+                        // pasa la carpeta actual — nada de lanzar
+                        // terminales se reimplementa acá.
+                        ToolButtonEntry {
+                            iconName: "utilities-terminal"
+                            label: "Terminal aquí"
+                            onActivated: fileOps.openTerminalHere(folderModel.folder)
+                        }
+                        ToolButtonEntry {
+                            iconName: "view-right-new"
+                            label: "Sidepad aquí"
+                            onActivated: fileOps.openSidepadHere(folderModel.folder)
+                        }
                         // Ruta actual — vivía en la barra de título
                         // automática de Kirigami, apagada más arriba
                         // (pageStack.globalToolBar.style: None) porque esa

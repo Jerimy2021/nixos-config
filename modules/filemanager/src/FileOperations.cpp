@@ -84,6 +84,41 @@ void FileOperations::copyRelativePath(const QUrl &path)
     copyTextToClipboard(text, QStringLiteral("copy-relative-path"));
 }
 
+void FileOperations::openTerminalHere(const QUrl &folder)
+{
+    auto *proc = new QProcess(this);
+    proc->setProgram(QStringLiteral("foot"));
+    proc->setArguments({QStringLiteral("-D"), folder.toLocalFile()});
+    connect(proc, &QProcess::finished, proc, &QObject::deleteLater);
+    connect(proc, &QProcess::errorOccurred, this, [this, proc](QProcess::ProcessError) {
+        Q_EMIT operationFailed(QStringLiteral("open-terminal"), proc->errorString());
+        proc->deleteLater();
+    });
+    proc->start();
+    Q_EMIT operationSucceeded(QStringLiteral("open-terminal"));
+}
+
+void FileOperations::openSidepadHere(const QUrl &folder)
+{
+    // sidepad-toggle (ver scripts.nix — argumento $1 agregado esta
+    // ronda) solo usa esta carpeta para ventanas NUEVAS; si el sidepad
+    // claude/term ya existe, esto simplemente lo muestra/oculta como
+    // siempre — una limitación real del script reusado, no de este
+    // wrapper, documentada en docs §11 en vez de forzar un cd por fuera
+    // (que requeriría inyectar texto en una shell ya corriendo, fuera de
+    // alcance de esta ronda).
+    auto *proc = new QProcess(this);
+    proc->setProgram(QStringLiteral("sidepad-toggle"));
+    proc->setArguments({folder.toLocalFile()});
+    connect(proc, &QProcess::finished, proc, &QObject::deleteLater);
+    connect(proc, &QProcess::errorOccurred, this, [this, proc](QProcess::ProcessError) {
+        Q_EMIT operationFailed(QStringLiteral("open-sidepad"), proc->errorString());
+        proc->deleteLater();
+    });
+    proc->start();
+    Q_EMIT operationSucceeded(QStringLiteral("open-sidepad"));
+}
+
 void FileOperations::copyTextToClipboard(const QString &text, const QString &opName)
 {
     // wl-copy (Súper+V y PRINT en keybinds.lua ya lo usan) lee el

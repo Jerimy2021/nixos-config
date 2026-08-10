@@ -192,8 +192,19 @@
   echo "$clients" | "$JQ" -e '.[] | select(.class=="term-sidepad" or .initialClass=="term-sidepad")' >/dev/null 2>&1 && need_term=0
 
   if [ "$need_claude" -eq 1 ] || [ "$need_term" -eq 1 ]; then
-    dir=$("$ZOXIDE" query -l | "$ROFI" -dmenu -i -p '󰉋 Proyecto' -theme "$HOME/.config/rofi/projects.rasi")
-    if [ -z "$dir" ]; then dir="$HOME"; fi
+    # Argumento opcional $1 (feature "Open in sidepad" de nixfm, ver
+    # docs/NIXOS_ARCHITECTURE_HITO_005.md §11): el keybind real
+    # (keybinds.lua) sigue llamando este script SIN argumentos, así que
+    # ese camino no cambia — el picker rofi/zoxide de siempre. Cuando SÍ
+    # llega un argumento (nixfm pasando la carpeta que tiene abierta) se
+    # salta el picker y usa esa carpeta directo, sin tocar nada del
+    # lanzamiento de foot/claude/flock de más abajo.
+    if [ -n "''${1:-}" ]; then
+      dir="$1"
+    else
+      dir=$("$ZOXIDE" query -l | "$ROFI" -dmenu -i -p '󰉋 Proyecto' -theme "$HOME/.config/rofi/projects.rasi")
+      if [ -z "$dir" ]; then dir="$HOME"; fi
+    fi
 
     if [ "$need_claude" -eq 1 ]; then
       cmd="[workspace special:sidepad silent] $FOOT --app-id claude-sidepad -D '$dir' -e $BASH -lc 'exec 9>/tmp/claude-sidepad.lock; $FLOCK -n 9 || exit 0; $CLAUDE'"

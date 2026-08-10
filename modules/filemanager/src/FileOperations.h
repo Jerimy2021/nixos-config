@@ -43,6 +43,15 @@ public:
     // resultado que copyAbsolutePath en ese caso, no un error).
     Q_INVOKABLE void copyRelativePath(const QUrl &path);
 
+    // Feature 6 (ver docs §11): lanzar `foot`/`sidepad-toggle` ya
+    // instalados (ver home.nix/scripts.nix) — NO se reimplementa nada de
+    // cómo se lanza una terminal, solo se le pasa la carpeta actual. Sin
+    // seguimiento de "terminó bien" (a diferencia de run()): son procesos
+    // de vida propia (una ventana, no un comando de una pasada), no hay
+    // "resultado" real que reportar más allá de si pudieron arrancar.
+    Q_INVOKABLE void openTerminalHere(const QUrl &folder);
+    Q_INVOKABLE void openSidepadHere(const QUrl &folder);
+
 Q_SIGNALS:
     void operationSucceeded(const QString &operation);
     void operationFailed(const QString &operation, const QString &message);
