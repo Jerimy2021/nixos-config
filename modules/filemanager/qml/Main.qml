@@ -224,19 +224,35 @@ Kirigami.ApplicationWindow {
         // entre sí ni contra lo que haya detrás.
         readonly property color strokeColor: Qt.darker(colorB, 1.35)
 
+        // --- Fix "sticks out" (reportado por el usuario tras §10, en vivo
+        // con crop+zoom de un solo ícono, ver docs §11): la solapa y el
+        // cuerpo son dos Rectangle separados, cada uno con SU PROPIO
+        // border de 1px. Antes la solapa se extendía hasta 0.38 (bien
+        // adentro del cuerpo, que empieza en 0.26) — la mitad de esa
+        // altura queda tapada por el cuerpo (dibujado después = encima),
+        // pero el trazo de 1px de la solapa en ese tramo tapado SÍ se
+        // veía asomando apenas por el borde derecho del cuerpo (la
+        // solapa es más angosta, 52%, que el cuerpo, 100%), como un
+        // segundo trazo/nudo saliendo del contorno principal —
+        // confirmado visualmente en el crop, se leía como una pieza
+        // rectangular de más "pegada" al borde, no una silueta limpia.
+        // Fix real, dos partes: (1) la solapa ya NO se superpone con el
+        // cuerpo — termina exactamente donde el cuerpo empieza (altura
+        // 0.18, de 0.08 a 0.26) — nada que tapar; (2) la solapa pierde
+        // su propio border — el cuerpo ya aporta el contorno visible de
+        // toda la silueta, un segundo trazo en la solapa solo duplicaba
+        // la línea justo en la costura y era la fuente real del "nudo".
         Rectangle {
             id: tab
             x: 0
             y: parent.height * 0.08
             width: parent.width * 0.52
-            height: parent.height * 0.30
+            height: parent.height * 0.18
             topLeftRadius: Math.max(1, parent.width * 0.08)
             topRightRadius: Math.max(1, parent.width * 0.08)
             bottomLeftRadius: 0
             bottomRightRadius: 0
             color: folderIconRoot.colorA
-            border.color: folderIconRoot.strokeColor
-            border.width: 1
         }
 
         Rectangle {
