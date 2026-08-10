@@ -76,35 +76,27 @@ in
     quickshell
     kdePackages.qt6ct
 	
-    # Dolphin (todavía instalado — retiro real en Hito 005 §6 paso 4, ver
-    # docs/NIXOS_ARCHITECTURE_HITO_005.md §12) + KIO. kio-extras/
-    # kimageformats/kservice/applicationsMenu se quedan pase lo que pase
-    # con Dolphin — confirmado que nixfm los necesita también (ver
-    # auditoría de dependencias compartidas, §12): kio-extras trae el
-    # protocolo "network:/" que alimenta el grupo "Red" del sidebar de
-    # nixfm (los .desktop de remoteview, sin esto esa sección del sidebar
-    # queda vacía/rota); kimageformats nunca dependió de Dolphin (lo usa
-    # imv, ver plan §6); kservice es dependencia transitiva de kio
-    # (cualquier app que linkee KIO se lo trae); applicationsMenu arregla
+    # Dolphin SE RETIRÓ (Hito 005 §6 paso 4 — migración final a nixfm,
+    # ver docs/NIXOS_ARCHITECTURE_HITO_005.md §12). Lo que queda acá es
+    # KIO y lo que nixfm mismo necesita, confirmado por auditoría real
+    # (§12), no supuesto: kio-extras trae el protocolo "network:/" que
+    # alimenta el grupo "Red" del sidebar de nixfm (los .desktop de
+    # remoteview — sin esto esa sección del sidebar queda vacía/rota);
+    # kimageformats nunca dependió de Dolphin (lo usa imv, ver plan §6);
+    # kservice es dependencia transitiva de kio (cualquier app que
+    # linkee KIO se lo trae, nixfm incluido); applicationsMenu arregla
     # kbuildsycoca6 para CUALQUIER .desktop del sistema, incluido el
-    # propio KIO::OpenUrlJob que usa FileOperations::openFile() de nixfm.
-    # ffmpegthumbs/kdegraphics-thumbnailers (miniaturas) y ark (extraer/
-    # comprimir) SÍ son específicos de Dolphin — nixfm no genera
-    # miniaturas ni tiene UI de compresión en v1 (fuera de scope, ver
-    # plan §5.2) — quedan pendientes de retirar en el paso 4.
-    #
-    # Kvantum (motor de estilo QWidget, Hito 004 follow-up 18) SE RETIRÓ
-    # del todo esta ronda (Hito 005 §12): auditado el resto de
-    # home.packages, ninguna app QWidget/Qt queda en el sistema aparte de
-    # Dolphin (que se va en el paso 4 de todos modos) — nixfm es QML puro
-    # y nunca lo usó. qt6ct SÍ se queda (ver QT_QPA_PLATFORMTHEME arriba)
-    # — separable de Kvantum, confirmado como dependencia real de nixfm
-    # (su propio tema de íconos).
-    kdePackages.dolphin
+    # propio KIO::OpenUrlJob que usa FileOperations::openFile() de
+    # nixfm. ark se queda como app standalone (extraer/comprimir
+    # manual) — nixfm no integra esa función en v1, decisión de v2
+    # explícitamente diferida en el plan (§6, punto 1). ffmpegthumbs/
+    # kdegraphics-thumbnailers (miniaturas de video/PDF) SÍ eran
+    # específicos de Dolphin — nixfm no genera miniaturas en v1 (fuera
+    # de scope, ver plan §5.2, todos los íconos de este hito son íconos
+    # de sistema por mimetype, nunca una miniatura real del contenido,
+    # confirmado en cada screenshot de este hito) — retirados.
     kdePackages.kio-extras
     kdePackages.ark
-    kdePackages.ffmpegthumbs
-    kdePackages.kdegraphics-thumbnailers
     kdePackages.kimageformats
     kdePackages.kservice
     applicationsMenu
@@ -112,10 +104,9 @@ in
     imv
 
     # Hito 005 (ver NIXOS_FILEMANAGER_HITO05_PLAN.md) — file manager
-    # Kirigami+KIO en construcción, instalado en paralelo a Dolphin para
-    # poder probarlo en vivo sin tocar el explorador activo todavía.
-    # NO reemplaza a Dolphin (xdg.mimeApps/fileManager de keybinds.lua
-    # siguen apuntando a Dolphin) hasta que el plan lo apruebe (§6).
+    # Kirigami+KIO. Migración final completa (§6): es el file manager
+    # default del sistema (xdg.mimeApps/fileManager de keybinds.lua
+    # apuntan acá) — Dolphin ya no está instalado, sin fallback.
     nixfm
     # Paso 4: operaciones de archivo (copy/move/mkdir/delete/trash) que
     # FileOperations.cpp invoca por nombre vía QProcess — tiene que estar

@@ -13,8 +13,10 @@
 #include <KFilePlacesModel>
 #include <QGuiApplication>
 #include <QQmlApplicationEngine>
+#include <QQmlContext>
 #include <QQmlEngine>
 #include <QQuickStyle>
+#include <QUrl>
 
 int main(int argc, char *argv[])
 {
@@ -22,6 +24,28 @@ int main(int argc, char *argv[])
     app.setApplicationName(QStringLiteral("nixfm"));
     app.setOrganizationName(QStringLiteral("nixos"));
     app.setOrganizationDomain(QStringLiteral("nixos.local"));
+
+    // Hito 005 §6 (migración final: dolphin -> nixfm) — gap real
+    // encontrado auditando quién más invocaba "dolphin" directo por
+    // fuera de keybinds.lua/xdg.mimeApps: modules/quickshell/modules/
+    // dashboard/Shortcuts.qml lo lanzaba como `["dolphin", ruta]` (un
+    // QProcess crudo, no vía Exec=%u de un .desktop) para sus accesos
+    // directos de carpeta — Dolphin soporta un path como argv[1] de
+    // fábrica, nixfm NO tenía NINGÚN manejo de argv (confirmado: el
+    // main() de antes ni siquiera miraba argc/argv más allá de
+    // pasárselo a QGuiApplication). Sin esto, el retiro de Dolphin
+    // habría roto ese widget del dashboard en silencio. QUrl::
+    // fromUserInput() de un solo argumento maneja los dos formatos
+    // reales que puede llegar acá — un path crudo (Shortcuts.qml de
+    // QuickShell) o una URI file:// (Exec=nixfm %u del .desktop, ver
+    // home.nix, si algún día algo más lo invoca así) — sin tener que
+    // distinguir a mano cuál de los dos es. Se expone a QML como
+    // context property (no una env var — este proceso ya tiene
+    // QQmlApplicationEngine, es la vía real para pasarle un dato de
+    // arranque, ver el Component.onCompleted en Main.qml).
+    QUrl startupFolder;
+    if (app.arguments().size() > 1)
+        startupFolder = QUrl::fromUserInput(app.arguments().at(1));
 
     // Bug real encontrado en vivo (ver NIXOS_ARCHITECTURE_HITO_005.md): sin
     // esto, QQC2 cae al style "Basic" de Qt (fondo blanco plano, checkboxes
@@ -44,6 +68,7 @@ int main(int argc, char *argv[])
     qmlRegisterType<FolderFilterProxy>("org.nixos.filemanager", 1, 0, "FolderFilterProxy");
 
     QQmlApplicationEngine engine;
+    engine.rootContext()->setContextProperty("startupFolderArg", startupFolder);
     QObject::connect(
         &engine, &QQmlApplicationEngine::objectCreationFailed, &app,
         []() { QCoreApplication::exit(-1); }, Qt::QueuedConnection);

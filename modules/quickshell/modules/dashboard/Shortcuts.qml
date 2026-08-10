@@ -2,8 +2,8 @@ import QtQuick
 import Quickshell.Io
 import qs.services
 
-// Accesos directos a carpetas — abren Thunar (el explorador ya declarado
-// en home.nix) en la ruta elegida.
+// Accesos directos a carpetas — abren nixfm (el explorador default, ver
+// keybinds.lua/xdg.mimeApps en home.nix) en la ruta elegida.
 Flow {
     id: root
     spacing: 8
@@ -67,8 +67,15 @@ Flow {
                 hoverEnabled: true
                 cursorShape: Qt.PointingHandCursor
                 onClicked: {
-                    // Hito 004 follow-up 18: thunar -> dolphin.
-                    opener.command = ["dolphin", "/home/jerimy/" + chip.modelData.path];
+                    // Hito 005 §6 (migración final): dolphin -> nixfm.
+                    // Gap real encontrado auditando quién más invocaba
+                    // "dolphin" fuera de keybinds.lua/xdg.mimeApps antes
+                    // de retirarlo — nixfm no soportaba un path como
+                    // argv[1] hasta esta ronda, agregado en main.cpp
+                    // específicamente para que este acceso directo
+                    // siguiera funcionando (ver docs
+                    // NIXOS_ARCHITECTURE_HITO_005.md §12).
+                    opener.command = ["nixfm", "/home/jerimy/" + chip.modelData.path];
                     opener.running = true;
                 }
             }

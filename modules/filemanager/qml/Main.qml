@@ -501,6 +501,23 @@ Kirigami.ApplicationWindow {
 
     FolderModel {
         id: folderModel
+        // Hito 005 §6 (migración final) — startupFolderArg es una
+        // context property real de C++ (ver main.cpp), no una QML var
+        // suelta: main.cpp parsea argv[1] (un path crudo o una URI
+        // file://, QUrl::fromUserInput() no distingue a mano) ANTES de
+        // cargar este módulo QML, así que ya está resuelta acá desde el
+        // primer frame. Si viene vacía (el 99% de los lanzamientos —
+        // SUPER+E, rofi drun, sin argumento) el constructor de
+        // FolderModel ya dejó folder en Home por su cuenta, este
+        // Component.onCompleted no hace nada. Necesario para que
+        // Shortcuts.qml de QuickShell (dashboard, ver ese archivo) siga
+        // pudiendo abrir una carpeta específica ahora que llama
+        // `nixfm <ruta>` en vez de `dolphin <ruta>` — Dolphin soportaba
+        // esto de fábrica, nixfm no tenía ningún manejo de argv antes.
+        Component.onCompleted: {
+            if (startupFolderArg.toString().length > 0)
+                folderModel.folder = startupFolderArg;
+        }
     }
 
     // Feature 7 (toggle de ocultos, ver docs §11): Qt.labs.settings —
