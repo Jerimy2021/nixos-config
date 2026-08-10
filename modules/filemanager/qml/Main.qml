@@ -172,6 +172,23 @@ Kirigami.ApplicationWindow {
         return { a: paletteWatcher.activeBackground, b: paletteWatcher.accent }; // oro (default)
     }
 
+    // --- Colores de git status (feature 4, ver docs §11): literales fijos
+    // a propósito, NO paletteWatcher — mismo criterio que los encabezados
+    // de sección (fix, ver §11 también): rojo/verde/ámbar para git son una
+    // convención universal (cualquier terminal, cualquier IDE, `git
+    // status` con color), cambiarlos con el acento del workspace activo
+    // rompería esa convención en vez de respetarla.
+    function gitStatusColor(category) {
+        switch (category) {
+        case "conflict": return "#e5534b";
+        case "staged": return "#3fb950";
+        case "modified": return "#e0a030";
+        case "untracked": return "#58a6ff";
+        case "ignored": return "#8b8b8b";
+        default: return "transparent";
+        }
+    }
+
     // --- Agrupado real del sidebar (follow-up post-Fase 2, ver
     // docs/NIXOS_ARCHITECTURE_HITO_005.md §10): KFilePlacesModel YA trae
     // un rol "group" (GroupRole, ver kfileplacesmodel.h) con el nombre de
@@ -372,6 +389,16 @@ Kirigami.ApplicationWindow {
 
     PlacesModel {
         id: placesModel
+    }
+
+    // Feature 4 (git status, ver docs §11): `folder` atado directo al
+    // FolderModel real — cada navegación real (breadcrumb/sidebar/listado/
+    // Subir) ya reasigna folderModel.folder, este binding declarativo
+    // dispara el chequeo de git una sola vez por esos mismos eventos, sin
+    // ningún Connections/onFolderChanged a mano.
+    GitStatusModel {
+        id: gitStatus
+        folder: folderModel.folder
     }
 
     FileOperations {
@@ -1177,6 +1204,33 @@ Kirigami.ApplicationWindow {
                                         selected: itemDelegate.highlighted || itemDelegate.down
                                         visible: iconSlot.glow === null && itemDelegate.icon.name.length > 0
                                         source: itemDelegate.icon.name
+                                    }
+
+                                    // --- Feature 4: badge de git status
+                                    // (ver docs §11) — un lookup de mapa
+                                    // por fila (gitStatus.statusMap ya
+                                    // llegó una sola vez por carpeta
+                                    // navegada, ver GitStatusModel.h),
+                                    // nunca un `git status` por fila ni
+                                    // por repintado. Afuera de un repo git
+                                    // el mapa está vacío, el lookup da
+                                    // undefined, la key cae en
+                                    // gitStatusColor(undefined) ->
+                                    // "transparent" -> invisible, sin
+                                    // condicional aparte.
+                                    Rectangle {
+                                        readonly property string category: gitStatus.statusMap[model.name] || ""
+                                        visible: gitStatus.isRepo && category.length > 0
+                                        anchors.right: parent.right
+                                        anchors.bottom: parent.bottom
+                                        anchors.rightMargin: -1
+                                        anchors.bottomMargin: -1
+                                        width: 9
+                                        height: 9
+                                        radius: 4.5
+                                        color: root.gitStatusColor(category)
+                                        border.width: 1
+                                        border.color: paletteWatcher.background
                                     }
                                 }
                                 QQC2.Label {

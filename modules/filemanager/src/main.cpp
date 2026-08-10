@@ -6,6 +6,7 @@
 // instanciable).
 #include "FileOperations.h"
 #include "FolderModel.h"
+#include "GitStatusModel.h"
 #include "PaletteWatcher.h"
 
 #include <KFilePlacesModel>
@@ -38,6 +39,7 @@ int main(int argc, char *argv[])
     qmlRegisterType<KFilePlacesModel>("org.nixos.filemanager", 1, 0, "PlacesModel");
     qmlRegisterType<PaletteWatcher>("org.nixos.filemanager", 1, 0, "PaletteWatcher");
     qmlRegisterType<FileOperations>("org.nixos.filemanager", 1, 0, "FileOperations");
+    qmlRegisterType<GitStatusModel>("org.nixos.filemanager", 1, 0, "GitStatusModel");
 
     QQmlApplicationEngine engine;
     QObject::connect(

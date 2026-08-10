@@ -33,6 +33,7 @@ qt_add_executable(nixfm
     src/FolderModel.cpp
     src/PaletteWatcher.cpp
     src/FileOperations.cpp
+    src/GitStatusModel.cpp
 )
 
 # QT_RESOURCE_ALIAS: sin esto, qt_add_qml_module preserva la subcarpeta
