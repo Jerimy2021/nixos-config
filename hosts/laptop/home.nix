@@ -99,6 +99,11 @@ in
     # 7. DESARROLLO
     nodejs_22
     claude-code
+    lua-language-server # LSP de Lua para nvim-config (Hito: fix LSP) — global porque
+                         # no es dependencia de un proyecto (no varía por flake.nix),
+                         # es la herramienta con la que se edita este mismo repo y
+                         # nvim-config. Los demás lenguajes (C++/Python/Rust/C#/Java/
+                         # web) se declaran per-proyecto en cada flake.nix, no acá.
 
     # 8. FUENTES E ICONOS
     nerd-fonts.jetbrains-mono
