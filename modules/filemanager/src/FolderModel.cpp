@@ -53,14 +53,28 @@ void FolderModel::setShowHiddenFiles(bool show)
 
 void FolderModel::setFolder(const QUrl &url)
 {
-    if (!url.isValid() || url == m_folder)
+    // Fix (ver docs/NIXOS_ARCHITECTURE_HITO_005.md §13 — bug real
+    // reportado en vivo: "Subir"/breadcrumb dejaban el listado en blanco):
+    // QML arma la URL de distintas formas según el camino de navegación —
+    // KFileItem::url() (doble-click hacia adelante, Home inicial) nunca
+    // trae "/" final, pero el botón "Subir" y los pills del breadcrumb
+    // (Main.qml) SÍ le agregan "/" a mano al final. KCoreDirLister reporta
+    // en onItemsAdded() la URL en SU forma canónica (sin esa barra final
+    // agregada a mano), así que comparar contra m_folder guardado tal cual
+    // llegó rompía el chequeo `directoryUrl != m_folder` de onItemsAdded()
+    // más abajo — descartaba el listado entero en silencio, carpeta
+    // vacía para siempre hasta la próxima navegación que sí calzara.
+    // adjusted(StripTrailingSlash) normaliza acá, una sola vez, para que a
+    // QML no le importe qué convención use cada botón.
+    const QUrl normalized = url.adjusted(QUrl::StripTrailingSlash);
+    if (!normalized.isValid() || normalized == m_folder)
         return;
 
-    m_folder = url;
+    m_folder = normalized;
     Q_EMIT folderChanged();
     // openUrl dispara onClear() + onItemsAdded() en cuanto KIO complete el
     // listado — no hace falta resetear el modelo a mano acá.
-    m_lister->openUrl(url, KCoreDirLister::NoFlags);
+    m_lister->openUrl(m_folder, KCoreDirLister::NoFlags);
 }
 
 int FolderModel::rowCount(const QModelIndex &parent) const
@@ -110,7 +124,11 @@ QHash<int, QByteArray> FolderModel::roleNames() const
 
 void FolderModel::onItemsAdded(const QUrl &directoryUrl, const KFileItemList &items)
 {
-    if (directoryUrl != m_folder)
+    // Mismo fix que setFolder() (ver comentario ahí): m_folder ya llega
+    // normalizado, pero directoryUrl es lo que KIO reporta tal cual — se
+    // normaliza acá también en vez de asumir que coincide byte a byte con
+    // la forma que adjusted(StripTrailingSlash) produce.
+    if (directoryUrl.adjusted(QUrl::StripTrailingSlash) != m_folder)
         return;
 
     beginInsertRows(QModelIndex(), m_items.count(), m_items.count() + items.count() - 1);
