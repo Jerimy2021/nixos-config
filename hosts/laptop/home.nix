@@ -42,6 +42,9 @@ in
     applicationsMenu
     papirus-icon-theme
     imv
+	protonvpn-gui
+    wireguard-tools
+    tor-browser
     nixfm
     mis-scripts.nixfm-fileops
 

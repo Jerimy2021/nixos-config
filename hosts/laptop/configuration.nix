@@ -114,6 +114,7 @@
   services.gvfs.enable = true;
 
   networking.firewall.allowedTCPPorts = [ 22 ];
+  networking.firewall.checkReversePath = false;
 
   # ==========================================
   # HABILITAR BINARIOS GENÉRICOS (NPM / CLAUDE)
