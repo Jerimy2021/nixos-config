@@ -155,7 +155,7 @@
   users.users.jerimy = {
     isNormalUser = true;
     description = "Jerimy";
-    extraGroups = [ "networkmanager" "wheel" "video" "audio" "docker" "wireshark" ];
+    extraGroups = [ "networkmanager" "wheel" "video" "audio" "docker" "wireshark" "dialout" ];
     shell = pkgs.zsh; 
   };
 
